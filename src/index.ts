@@ -2,7 +2,8 @@ import express from 'express';
 import TelegramBot from 'node-telegram-bot-api';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import mongoose, { ConnectOptions } from 'mongoose';
+import mongoose from 'mongoose';
+import type { ConnectOptions } from 'mongoose';
 import characterRoutes from './routes/character';
 
 // Umgebungsvariablen laden
@@ -46,7 +47,7 @@ async function connectToMongoDB() {
                 console.error('DNS-Test fehlgeschlagen:', dnsError);
             }
 
-            const mongooseOptions: ConnectOptions = {
+            const mongooseOptions = {
                 serverSelectionTimeoutMS: 30000,
                 socketTimeoutMS: 45000,
                 connectTimeoutMS: 30000,
@@ -68,7 +69,7 @@ async function connectToMongoDB() {
                     strict: true,
                     deprecationErrors: true
                 }
-            };
+            } satisfies ConnectOptions;
 
             await mongoose.connect(mongoUri, mongooseOptions);
 
@@ -85,14 +86,11 @@ async function connectToMongoDB() {
                     type: mongoError.reason?.type,
                     setName: mongoError.reason?.setName,
                     servers: mongoError.reason?.servers ? 
-                        Array.from(mongoError.reason.servers.entries()).map(entry => {
-                            const [host, desc] = entry as [string, any];
-                            return {
-                                host,
-                                type: desc.type,
-                                error: desc.error?.message
-                            };
-                        }) : []
+                        Array.from(mongoError.reason.servers.entries()).map((entry: [string, any]) => ({
+                            host: entry[0],
+                            type: entry[1].type,
+                            error: entry[1].error?.message
+                        })) : []
                 });
             }
 
