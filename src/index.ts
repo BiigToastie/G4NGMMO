@@ -27,10 +27,30 @@ async function connectToMongoDB() {
             const mongoUri = process.env.MONGODB_URI!;
             console.log('Versuche Verbindung mit MongoDB:', mongoUri.replace(/:[^:]*@/, ':****@'));
 
+            // DNS-Auflösung testen
+            try {
+                const { promisify } = require('util');
+                const dns = require('dns');
+                const lookup = promisify(dns.lookup);
+                const resolve = promisify(dns.resolve);
+
+                const hostname = 'cluster0.ktz7i.mongodb.net';
+                console.log('DNS-Test für:', hostname);
+                
+                const address = await lookup(hostname);
+                console.log('DNS Lookup Ergebnis:', address);
+                
+                const records = await resolve(hostname, 'SRV');
+                console.log('DNS SRV Records:', records);
+            } catch (dnsError) {
+                console.error('DNS-Test fehlgeschlagen:', dnsError);
+            }
+
             await mongoose.connect(mongoUri, {
                 serverSelectionTimeoutMS: 30000,
                 socketTimeoutMS: 45000,
                 connectTimeoutMS: 30000,
+                heartbeatFrequencyMS: 10000,
                 retryWrites: true,
                 retryReads: true,
                 w: 'majority',
@@ -40,8 +60,16 @@ async function connectToMongoDB() {
                 directConnection: false,
                 replicaSet: 'atlas-wi4lzq-shard-0',
                 ssl: true,
+                tls: true,
                 tlsAllowInvalidCertificates: false,
-                tlsAllowInvalidHostnames: false
+                tlsAllowInvalidHostnames: false,
+                useNewUrlParser: true,
+                useUnifiedTopology: true,
+                serverApi: {
+                    version: '1',
+                    strict: true,
+                    deprecationErrors: true
+                }
             });
 
             console.log('Mit MongoDB verbunden');
