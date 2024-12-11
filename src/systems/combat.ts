@@ -33,10 +33,4 @@ export enum CombatActionType {
     HEAL = 'HEAL',
     USE_ITEM = 'USE_ITEM',
     FLEE = 'FLEE'
-}
-
-export interface Reward {
-    experience: number;
-    items: Item[];
-    currency: number;
 } 
