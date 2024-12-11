@@ -53,7 +53,8 @@ async function connectToMongoDB() {
                     .map((record: SrvRecord) => `${record.name}:${record.port}`)
                     .join(',');
 
-                const mongoUri = `mongodb://${username}:${password}@${hosts}/${database}?replicaSet=atlas-wi4lzq-shard-0&tls=true&authSource=admin`;
+                // Erweiterte Verbindungs-URI mit zusätzlichen Optionen
+                const mongoUri = `mongodb://${username}:${password}@${hosts}/${database}?replicaSet=atlas-wi4lzq-shard-0&tls=true&authSource=admin&retryWrites=true&w=majority&readPreference=primaryPreferred&maxPoolSize=10&minPoolSize=5&maxIdleTimeMS=45000&connectTimeoutMS=60000`;
                 console.log('Versuche Verbindung mit MongoDB:', mongoUri.replace(/:[^:]*@/, ':****@'));
 
                 const mongooseOptions = {
@@ -72,19 +73,39 @@ async function connectToMongoDB() {
                         version: '1',
                         strict: true,
                         deprecationErrors: true
-                    }
+                    },
+                    // Zusätzliche Sicherheitsoptionen
+                    ssl: true,
+                    tls: true,
+                    tlsAllowInvalidCertificates: true, // Temporär für Debugging
+                    tlsAllowInvalidHostnames: true,    // Temporär für Debugging
+                    directConnection: false
                 } satisfies ConnectOptions;
 
-                await mongoose.connect(mongoUri, mongooseOptions);
-                console.log('Mit MongoDB verbunden');
-                return true;
+                // Versuche die Verbindung
+                try {
+                    await mongoose.connect(mongoUri, mongooseOptions);
+                    console.log('Mit MongoDB verbunden');
+                    return true;
+                } catch (mongoError) {
+                    if (mongoError instanceof Error) {
+                        console.error(`MongoDB Verbindungsversuch ${retries + 1}/${maxRetries} fehlgeschlagen:`, {
+                            message: mongoError.message,
+                            name: mongoError.name,
+                            stack: mongoError.stack
+                        });
+                    } else {
+                        console.error(`MongoDB Verbindungsversuch ${retries + 1}/${maxRetries} fehlgeschlagen:`, mongoError);
+                    }
+                    throw mongoError; // Weitergeben für Retry-Logik
+                }
 
             } catch (error) {
                 retries++;
                 if (error instanceof Error) {
-                    console.error(`MongoDB Verbindungsversuch ${retries}/${maxRetries} fehlgeschlagen:`, error.message);
+                    console.error(`Verbindungsversuch ${retries}/${maxRetries} fehlgeschlagen:`, error.message);
                 } else {
-                    console.error(`MongoDB Verbindungsversuch ${retries}/${maxRetries} fehlgeschlagen:`, error);
+                    console.error(`Verbindungsversuch ${retries}/${maxRetries} fehlgeschlagen:`, error);
                 }
 
                 if (retries === maxRetries) {
