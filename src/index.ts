@@ -46,6 +46,7 @@ class Game {
     private zones: Map<string, Zone> = new Map();
     private activeChats: Set<number> = new Set();
     private userCooldowns: Map<number, number> = new Map();
+    private welcomedUsers: Set<number> = new Set(); // Speichert User, die bereits begrüßt wurden
 
     constructor() {
         this.initializeGame();
@@ -68,7 +69,14 @@ class Game {
                     const userId = msg.from?.id;
                     const username = msg.from?.username || msg.from?.first_name || 'Unbekannt';
                     
+                    // Füge Chat zur Liste aktiver Chats hinzu
                     this.activeChats.add(chatId);
+
+                    // Sende Willkommensnachricht, wenn der User zum ersten Mal schreibt
+                    if (userId && !this.welcomedUsers.has(userId)) {
+                        await bot.sendMessage(chatId, 'Willkommen bei G4NGMMO ⚔️');
+                        this.welcomedUsers.add(userId);
+                    }
 
                     // Ignoriere Kommandos
                     if (msg.text?.startsWith('/')) {
