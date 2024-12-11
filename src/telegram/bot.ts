@@ -13,6 +13,7 @@ export class BotManager {
     private shutdownRequested: boolean = false;
     private activeChats: Set<number> = new Set(); // Speichert aktive Chat-IDs
     private userCooldowns: Map<number, number> = new Map(); // Speichert User-Cooldowns
+    private menuMessages: Map<number, number> = new Map(); // Speichert aktive Menü-Nachrichten pro Chat
 
     private constructor() {}
 
@@ -21,6 +22,37 @@ export class BotManager {
             BotManager.instance = new BotManager();
         }
         return BotManager.instance;
+    }
+
+    private async deleteOldMenu(chatId: number) {
+        const oldMessageId = this.menuMessages.get(chatId);
+        if (oldMessageId) {
+            try {
+                await this.bot?.deleteMessage(chatId, oldMessageId);
+            } catch (error) {
+                // Ignoriere Fehler beim Löschen alter Menüs
+            }
+        }
+    }
+
+    private async sendNewMenu(chatId: number, text: string, keyboard: TelegramBot.InlineKeyboardButton[][]) {
+        // Lösche altes Menü
+        await this.deleteOldMenu(chatId);
+
+        // Sende neues Menü
+        const message = await this.bot?.sendMessage(chatId, text, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: keyboard
+            }
+        });
+
+        // Speichere neue Menü-Nachricht
+        if (message) {
+            this.menuMessages.set(chatId, message.message_id);
+        }
+
+        return message;
     }
 
     private isUserInCooldown(userId: number): boolean {
@@ -127,21 +159,17 @@ export class BotManager {
                 this.activeChats.add(chatId);
 
                 // Sende Willkommensnachricht mit Hauptmenü
-                await this.bot?.sendMessage(chatId, 
+                await this.sendNewMenu(
+                    chatId,
                     '🎮 *Willkommen bei G4NG MMO!*\n\n' +
                     'Dies ist ein globaler Chat, in dem du mit allen anderen Spielern kommunizieren kannst. ' +
                     'Schreibe einfach eine Nachricht, um mit anderen zu chatten!\n\n' +
                     '_Hinweis: Nach jeder Nachricht gibt es einen 30-Sekunden Cooldown._',
-                    {
-                        parse_mode: 'Markdown',
-                        reply_markup: {
-                            inline_keyboard: [
-                                [{ text: '📊 Charakter Stats', callback_data: 'character_stats' }],
-                                [{ text: '🏰 Gilden-Verwaltung', callback_data: 'guild_menu' }],
-                                [{ text: '❓ Spielhilfe', callback_data: 'help' }]
-                            ]
-                        }
-                    }
+                    [
+                        [{ text: '📊 Charakter Stats', callback_data: 'character_stats' }],
+                        [{ text: '🏰 Gilden-Verwaltung', callback_data: 'guild_menu' }],
+                        [{ text: '❓ Spielhilfe', callback_data: 'help' }]
+                    ]
                 );
             });
 
@@ -156,39 +184,58 @@ export class BotManager {
                 try {
                     switch (action) {
                         case 'character_stats':
+                            await this.deleteOldMenu(chatId);
                             await this.handleCharacterStats(chatId, userId);
+                            await this.sendNewMenu(chatId, 'Hauptmenü:', [
+                                [{ text: '📊 Charakter Stats', callback_data: 'character_stats' }],
+                                [{ text: '🏰 Gilden-Verwaltung', callback_data: 'guild_menu' }],
+                                [{ text: '❓ Spielhilfe', callback_data: 'help' }]
+                            ]);
                             break;
 
                         case 'guild_menu':
-                            await this.handleGuildMenu(chatId, userId);
+                            await this.sendNewMenu(chatId,
+                                '🏰 *Gilden-Menü*\n\n' +
+                                'Wähle eine Option:',
+                                [
+                                    [{ text: '📝 Gilde erstellen', callback_data: 'guild_create' }],
+                                    [{ text: '🔍 Gilden durchsuchen', callback_data: 'guild_search' }],
+                                    [{ text: '⚔️ Gildenkämpfe', callback_data: 'guild_battles' }],
+                                    [{ text: '↩️ Zurück', callback_data: 'main_menu' }]
+                                ]
+                            );
                             break;
 
                         case 'help':
+                            await this.deleteOldMenu(chatId);
                             await this.handleHelp(chatId);
+                            await this.sendNewMenu(chatId, 'Hauptmenü:', [
+                                [{ text: '📊 Charakter Stats', callback_data: 'character_stats' }],
+                                [{ text: '🏰 Gilden-Verwaltung', callback_data: 'guild_menu' }],
+                                [{ text: '❓ Spielhilfe', callback_data: 'help' }]
+                            ]);
                             break;
 
                         case 'main_menu':
-                            // Zurück zum Hauptmenü
-                            await this.bot?.sendMessage(chatId, 
-                                'Hauptmenü:',
-                                {
-                                    reply_markup: {
-                                        inline_keyboard: [
-                                            [{ text: '📊 Charakter Stats', callback_data: 'character_stats' }],
-                                            [{ text: '🏰 Gilden', callback_data: 'guild_menu' }],
-                                            [{ text: '❓ Hilfe', callback_data: 'help' }]
-                                        ]
-                                    }
-                                }
-                            );
+                            await this.sendNewMenu(chatId, 'Hauptmenü:', [
+                                [{ text: '📊 Charakter Stats', callback_data: 'character_stats' }],
+                                [{ text: '🏰 Gilden-Verwaltung', callback_data: 'guild_menu' }],
+                                [{ text: '❓ Spielhilfe', callback_data: 'help' }]
+                            ]);
                             break;
 
                         // Gilden-bezogene Aktionen
                         case 'guild_create':
                         case 'guild_search':
                         case 'guild_battles':
-                            // TODO: Implementiere die entsprechenden Gilden-Funktionen
+                            await this.deleteOldMenu(chatId);
                             await this.bot?.sendMessage(chatId, '🚧 Diese Funktion wird bald verfügbar sein!');
+                            await this.sendNewMenu(chatId, 'Gilden-Menü:', [
+                                [{ text: '📝 Gilde erstellen', callback_data: 'guild_create' }],
+                                [{ text: '🔍 Gilden durchsuchen', callback_data: 'guild_search' }],
+                                [{ text: '⚔️ Gildenkämpfe', callback_data: 'guild_battles' }],
+                                [{ text: '↩️ Zurück', callback_data: 'main_menu' }]
+                            ]);
                             break;
                     }
                 } catch (error) {
