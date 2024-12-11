@@ -17,6 +17,7 @@ export interface GuildPermissions {
     canInvite: boolean;
     canKick: boolean;
     canManageResources: boolean;
+    // Leicht erweiterbar für neue Berechtigungen
 }
 
 export interface GuildResources {

@@ -1,8 +1,13 @@
 import { Player, Item, Reward } from '../types';
 
+// Entity-Interface hinzufügen
+interface Entity extends Player {
+    // Zusätzliche Entity-spezifische Eigenschaften können hier hinzugefügt werden
+}
+
 // Kampfsystem
 export interface Combat {
-    participants: Player[];
+    participants: Entity[];
     status: CombatStatus;
     turns: CombatTurn[];
     rewards: Reward[];
@@ -16,14 +21,14 @@ export enum CombatStatus {
 }
 
 export interface CombatTurn {
-    player: Player;
+    player: Entity;
     action: CombatAction;
     timestamp: Date;
 }
 
 export interface CombatAction {
     type: CombatActionType;
-    target: Player[];
+    target: Entity[];
     value: number;
 }
 

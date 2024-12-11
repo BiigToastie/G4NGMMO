@@ -2,7 +2,7 @@ import express from 'express';
 import TelegramBot from 'node-telegram-bot-api';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import mongoose from 'mongoose';
+import mongoose, { ConnectOptions } from 'mongoose';
 import characterRoutes from './routes/character';
 
 // Umgebungsvariablen laden
@@ -46,7 +46,7 @@ async function connectToMongoDB() {
                 console.error('DNS-Test fehlgeschlagen:', dnsError);
             }
 
-            await mongoose.connect(mongoUri, {
+            const mongooseOptions: ConnectOptions = {
                 serverSelectionTimeoutMS: 30000,
                 socketTimeoutMS: 45000,
                 connectTimeoutMS: 30000,
@@ -63,14 +63,14 @@ async function connectToMongoDB() {
                 tls: true,
                 tlsAllowInvalidCertificates: false,
                 tlsAllowInvalidHostnames: false,
-                useNewUrlParser: true,
-                useUnifiedTopology: true,
                 serverApi: {
                     version: '1',
                     strict: true,
                     deprecationErrors: true
                 }
-            });
+            };
+
+            await mongoose.connect(mongoUri, mongooseOptions);
 
             console.log('Mit MongoDB verbunden');
             return true;
@@ -84,11 +84,15 @@ async function connectToMongoDB() {
                 console.error('Server Selection Details:', {
                     type: mongoError.reason?.type,
                     setName: mongoError.reason?.setName,
-                    servers: Array.from(mongoError.reason?.servers?.entries() || []).map(([host, desc]: [string, any]) => ({
-                        host,
-                        type: desc.type,
-                        error: desc.error?.message
-                    }))
+                    servers: mongoError.reason?.servers ? 
+                        Array.from(mongoError.reason.servers.entries()).map(entry => {
+                            const [host, desc] = entry as [string, any];
+                            return {
+                                host,
+                                type: desc.type,
+                                error: desc.error?.message
+                            };
+                        }) : []
                 });
             }
 

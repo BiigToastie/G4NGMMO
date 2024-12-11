@@ -1,4 +1,25 @@
-import { Player, Guild, TelegramCallback, TelegramMessage, TelegramUser } from '../types';
+import { Player, Guild } from '../types';
+
+// Telegram-spezifische Typen
+export interface TelegramCallback {
+    id: string;
+    from: TelegramUser;
+    data: string;
+    message?: TelegramMessage;
+}
+
+export interface TelegramMessage {
+    id: string;
+    from: TelegramUser;
+    text: string;
+    date: Date;
+}
+
+export interface TelegramUser {
+    id: string;
+    username?: string;
+    firstName: string;
+}
 
 // Telegram-Integration
 export interface TelegramBot {
