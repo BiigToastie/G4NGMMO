@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Charakter-Editor</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        #container {
+            flex: 2;
+            height: 100vh;
+        }
+
+        #controls {
+            flex: 1;
+            padding: 20px;
+            background-color: white;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f8f8;
+            border-radius: 8px;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #4CAF50;
+        }
+
+        h3 {
+            color: #4CAF50;
+            margin: 0 0 10px 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+        }
+
+        select, input[type="range"], input[type="color"] {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        input[type="color"] {
+            height: 40px;
+            padding: 2px;
+        }
+
+        .expression-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .expression-button {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            background-color: #e0e0e0;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .expression-button:hover {
+            background-color: #d0d0d0;
+        }
+
+        .expression-button.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .height-display {
+            text-align: center;
+            margin-top: 5px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .preview-container {
+            position: relative;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="controls">
+        <h2>Charakter-Editor</h2>
+        
+        <div class="control-group">
+            <h3>Körper</h3>
+            <label for="body-type">Körpertyp:</label>
+            <select id="body-type">
+                <option value="average">Normal</option>
+                <option value="slim">Schlank</option>
+                <option value="athletic">Athletisch</option>
+            </select>
+
+            <label for="height">Größe:</label>
+            <input type="range" id="height" min="150" max="200" value="175" step="1">
+            <div class="height-display">
+                <span id="height-value">175</span> cm
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Gesicht</h3>
+            <label for="skin-tone">Hautfarbe:</label>
+            <input type="color" id="skin-tone" value="#ffdbac">
+
+            <label for="eye-color">Augenfarbe:</label>
+            <input type="color" id="eye-color" value="#634e34">
+
+            <label>Gesichtsausdruck:</label>
+            <div class="expression-buttons">
+                <button class="expression-button active" data-expression="neutral">Neutral</button>
+                <button class="expression-button" data-expression="happy">Fröhlich</button>
+                <button class="expression-button" data-expression="sad">Traurig</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Haare</h3>
+            <label for="hair-style">Frisur:</label>
+            <select id="hair-style">
+                <option value="short">Kurz</option>
+                <option value="medium">Mittel</option>
+                <option value="long">Lang</option>
+            </select>
+
+            <label for="hair-color">Haarfarbe:</label>
+            <input type="color" id="hair-color" value="#4a2f23">
+        </div>
+
+        <div class="control-group">
+            <h3>Kleidung</h3>
+            <label for="shirt-style">Oberteil-Stil:</label>
+            <select id="shirt-style">
+                <option value="t-shirt">T-Shirt</option>
+                <option value="sweater">Pullover</option>
+                <option value="jacket">Jacke</option>
+            </select>
+
+            <label for="shirt-color">Oberteil-Farbe:</label>
+            <input type="color" id="shirt-color" value="#ffffff">
+
+            <label for="pants-style">Hosen-Stil:</label>
+            <select id="pants-style">
+                <option value="jeans">Jeans</option>
+                <option value="shorts">Shorts</option>
+                <option value="slacks">Stoffhose</option>
+            </select>
+
+            <label for="pants-color">Hosen-Farbe:</label>
+            <input type="color" id="pants-color" value="#000066">
+        </div>
+
+        <button id="save-character">Charakter speichern</button>
+    </div>
+
+    <script src="dist/bundle.js"></script>
+</body>
+</html> 
