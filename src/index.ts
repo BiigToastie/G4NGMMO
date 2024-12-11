@@ -32,7 +32,7 @@ async function connectToMongoDB() {
             const database = process.env.MONGODB_DATABASE || 'mmo-game';
             
             // Direkte Verbindungs-URI mit allen Shards
-            const mongoUri = `mongodb://${username}:${password}@cluster0-shard-00-00.ktz7i.mongodb.net:27017,cluster0-shard-00-01.ktz7i.mongodb.net:27017,cluster0-shard-00-02.ktz7i.mongodb.net:27017/${database}?replicaSet=atlas-wi4lzq-shard-0&ssl=true&authSource=admin`;
+            const mongoUri = `mongodb://${username}:${password}@cluster0-shard-00-00.ktz7i.mongodb.net:27017,cluster0-shard-00-01.ktz7i.mongodb.net:27017,cluster0-shard-00-02.ktz7i.mongodb.net:27017/${database}?replicaSet=atlas-wi4lzq-shard-0&tls=true&authSource=admin`;
             
             console.log('Versuche Verbindung mit MongoDB:', mongoUri.replace(/:[^:]*@/, ':****@'));
 
@@ -49,11 +49,8 @@ async function connectToMongoDB() {
                 authSource: 'admin',
                 directConnection: false,
                 replicaSet: 'atlas-wi4lzq-shard-0',
-                ssl: true,
                 tls: true,
-                tlsInsecure: false,
-                tlsAllowInvalidCertificates: false,
-                tlsAllowInvalidHostnames: false,
+                tlsCAFile: require('path').join(__dirname, 'rds-combined-ca-bundle.pem'),
                 family: 4,
                 serverApi: {
                     version: '1',
@@ -76,11 +73,14 @@ async function connectToMongoDB() {
                     const socket = tls.connect({
                         host: host,
                         port: 27017,
-                        rejectUnauthorized: true
+                        rejectUnauthorized: true,
+                        minVersion: 'TLSv1.2',
+                        maxVersion: 'TLSv1.3'
                     });
 
                     socket.on('secureConnect', () => {
                         console.log(`TLS-Verbindung zu ${host} erfolgreich`);
+                        console.log(`TLS-Version: ${socket.getProtocol()}`);
                         socket.end();
                     });
 
