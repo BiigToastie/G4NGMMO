@@ -44,6 +44,8 @@ class Game {
     private players: Map<string, Player> = new Map();
     private items: Map<string, Item> = new Map();
     private zones: Map<string, Zone> = new Map();
+    private activeChats: Set<number> = new Set(); // Speichert aktive Chat IDs
+    private userCooldowns: Map<number, number> = new Map(); // Speichert User Cooldowns
 
     constructor() {
         this.initializeGame();
@@ -72,11 +74,54 @@ class Game {
             bot.on('message', async (msg: Message) => {
                 try {
                     const chatId = msg.chat.id;
+                    const userId = msg.from?.id;
+                    const username = msg.from?.username || msg.from?.first_name || 'Unbekannt';
                     
-                    // Sende nur eine Willkommensnachricht
-                    await bot.sendMessage(chatId, 'Willkommen bei G4NG MMO! Klicke auf den Spielen-Button neben dem Chat, um zu starten.');
+                    // Füge Chat zur Liste aktiver Chats hinzu
+                    this.activeChats.add(chatId);
+
+                    // Wenn es eine Textnachricht ist
+                    if (msg.text && userId) {
+                        // Prüfe Cooldown
+                        const lastMessageTime = this.userCooldowns.get(userId) || 0;
+                        const currentTime = Date.now();
+                        const timeSinceLastMessage = currentTime - lastMessageTime;
+
+                        if (timeSinceLastMessage >= 30000) { // 30 Sekunden Cooldown
+                            // Aktualisiere Cooldown
+                            this.userCooldowns.set(userId, currentTime);
+
+                            // Sende Nachricht an alle aktiven Chats
+                            const messageText = `👤 ${username}:\n${msg.text}`;
+                            
+                            for (const activeChatId of this.activeChats) {
+                                try {
+                                    await bot.sendMessage(activeChatId, messageText);
+                                } catch (error) {
+                                    console.error(`Fehler beim Senden an Chat ${activeChatId}:`, error);
+                                    // Entferne Chat aus der Liste, wenn er nicht mehr erreichbar ist
+                                    if ((error as any).code === 403) {
+                                        this.activeChats.delete(activeChatId);
+                                    }
+                                }
+                            }
+                        } else {
+                            // Informiere User über verbleibende Cooldown-Zeit
+                            const remainingTime = Math.ceil((30000 - timeSinceLastMessage) / 1000);
+                            await bot.sendMessage(chatId, 
+                                `⏳ Bitte warte noch ${remainingTime} Sekunden, bevor du eine weitere Nachricht sendest.`,
+                                { reply_to_message_id: msg.message_id }
+                            );
+                        }
+                    } else if (!msg.text) {
+                        // Wenn es keine Textnachricht ist (z.B. Bilder, Sticker etc.)
+                        await bot.sendMessage(chatId, 
+                            '❌ Nur Textnachrichten sind im globalen Chat erlaubt.',
+                            { reply_to_message_id: msg.message_id }
+                        );
+                    }
                 } catch (error) {
-                    console.error('Fehler beim Senden der Nachricht:', error);
+                    console.error('Fehler beim Verarbeiten der Nachricht:', error);
                 }
             });
 
