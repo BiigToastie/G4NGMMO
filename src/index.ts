@@ -8,15 +8,37 @@ import characterRoutes from './routes/character';
 // Umgebungsvariablen laden
 dotenv.config();
 
-// MongoDB Verbindung
-mongoose.connect(process.env.MONGODB_URI!, {
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
-    retryWrites: true,
-    w: 'majority'
-})
-    .then(() => console.log('Mit MongoDB verbunden'))
-    .catch(err => console.error('MongoDB Verbindungsfehler:', err));
+// MongoDB Verbindung mit Retry-Logik
+async function connectToMongoDB() {
+    const maxRetries = 5;
+    let retries = 0;
+
+    while (retries < maxRetries) {
+        try {
+            await mongoose.connect(process.env.MONGODB_URI!, {
+                serverSelectionTimeoutMS: 5000,
+                socketTimeoutMS: 45000,
+                retryWrites: true,
+                w: 'majority',
+                retryReads: true,
+                maxPoolSize: 10,
+                minPoolSize: 5
+            });
+            console.log('Mit MongoDB verbunden');
+            return true;
+        } catch (error) {
+            retries++;
+            console.error(`MongoDB Verbindungsversuch ${retries}/${maxRetries} fehlgeschlagen:`, error);
+            if (retries === maxRetries) {
+                console.error('Maximale Anzahl an Verbindungsversuchen erreicht');
+                return false;
+            }
+            // Warte exponentiell länger zwischen den Versuchen
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000));
+        }
+    }
+    return false;
+}
 
 // Express Server
 const app = express();
@@ -360,24 +382,26 @@ app.get('/game', (req: Request, res: Response) => {
     }
 });
 
-// Telegram Bot
+// Bot-Instanz und Status
 let bot: TelegramBot | null = null;
+let isInitializing = false;
+let shutdownRequested = false;
 
-interface TelegramError extends Error {
-    code?: string;
-    response?: any;
-}
-
-function initializeBot() {
+async function initializeBot() {
+    if (isInitializing || shutdownRequested) return;
+    
     try {
+        isInitializing = true;
+
         if (bot) {
-            bot.stopPolling();
+            await bot.stopPolling();
             bot = null;
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
         bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN!, { 
             polling: {
-                interval: 300,
+                interval: 1000,
                 autoStart: true,
                 params: {
                     timeout: 10
@@ -386,10 +410,15 @@ function initializeBot() {
         });
 
         // Error Handler für Polling-Fehler
-        bot.on('polling_error', (error: TelegramError) => {
-            if (error.code === 'ETELEGRAM' && error.message.includes('terminated by other getUpdates')) {
-                console.log('Bot-Instanz wurde durch eine andere ersetzt. Starte neu...');
-                setTimeout(initializeBot, 1000);
+        bot.on('polling_error', async (error: Error) => {
+            const telegramError = error as any;
+            if (telegramError.code === 'ETELEGRAM' && telegramError.message.includes('terminated by other getUpdates')) {
+                console.log('Bot-Instanz wurde durch eine andere ersetzt. Warte auf Bereinigung...');
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                if (!shutdownRequested) {
+                    isInitializing = false;
+                    await initializeBot();
+                }
                 return;
             }
             console.error('Polling-Fehler:', error);
@@ -443,32 +472,49 @@ function initializeBot() {
         console.log('Bot erfolgreich initialisiert');
     } catch (error) {
         console.error('Fehler beim Initialisieren des Bots:', error);
-        // Versuche nach 5 Sekunden erneut zu initialisieren
-        setTimeout(initializeBot, 5000);
+        isInitializing = false;
+        if (!shutdownRequested) {
+            // Versuche nach 5 Sekunden erneut zu initialisieren
+            setTimeout(() => initializeBot(), 5000);
+        }
+    } finally {
+        isInitializing = false;
     }
 }
 
-// Initialisiere den Bot
-initializeBot();
-
 // Prozess-Beendigung behandeln
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
     console.log('SIGTERM Signal empfangen. Beende Bot...');
+    shutdownRequested = true;
     if (bot) {
-        bot.stopPolling();
+        await bot.stopPolling();
+        bot = null;
     }
     process.exit(0);
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
     console.log('SIGINT Signal empfangen. Beende Bot...');
+    shutdownRequested = true;
     if (bot) {
-        bot.stopPolling();
+        await bot.stopPolling();
+        bot = null;
     }
     process.exit(0);
 });
 
-// Server starten
-app.listen(port, () => {
-    console.log(`Server läuft auf Port ${port}`);
-}); 
+// Server starten und Initialisierung
+async function startServer() {
+    const mongoConnected = await connectToMongoDB();
+    if (!mongoConnected) {
+        console.error('Konnte keine Verbindung zu MongoDB herstellen. Server wird nicht gestartet.');
+        process.exit(1);
+    }
+
+    app.listen(port, () => {
+        console.log(`Server läuft auf Port ${port}`);
+        initializeBot();
+    });
+}
+
+startServer(); 
