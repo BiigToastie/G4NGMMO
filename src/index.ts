@@ -214,6 +214,7 @@ app.get('/game', (req: Request, res: Response) => {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
                 <title>G4NG MMO</title>
                 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
                 <style>
                     body, html {
                         margin: 0;
@@ -222,6 +223,7 @@ app.get('/game', (req: Request, res: Response) => {
                         height: 100%;
                         overflow: hidden;
                         background: #000;
+                        font-family: Arial, sans-serif;
                     }
                     #game-container {
                         width: 100%;
@@ -239,10 +241,41 @@ app.get('/game', (req: Request, res: Response) => {
                         top: 0;
                         left: 0;
                         width: 100%;
+                        height: 100%;
                         pointer-events: none;
+                        display: flex;
+                        flex-direction: column;
+                        padding: 20px;
+                        box-sizing: border-box;
                     }
                     .ui-element {
                         pointer-events: auto;
+                        background: rgba(0, 0, 0, 0.7);
+                        color: white;
+                        padding: 10px;
+                        margin: 5px;
+                        border-radius: 5px;
+                        backdrop-filter: blur(5px);
+                    }
+                    #player-info {
+                        align-self: flex-start;
+                    }
+                    #chat-box {
+                        margin-top: auto;
+                        width: 100%;
+                        max-height: 150px;
+                        overflow-y: auto;
+                    }
+                    #controls-info {
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        text-align: center;
+                        background: rgba(0, 0, 0, 0.8);
+                        padding: 20px;
+                        border-radius: 10px;
+                        color: white;
                     }
                 </style>
             </head>
@@ -250,7 +283,20 @@ app.get('/game', (req: Request, res: Response) => {
                 <div id="game-container">
                     <canvas id="game-canvas"></canvas>
                     <div id="ui-overlay">
-                        <!-- UI-Elemente werden hier dynamisch eingefügt -->
+                        <div id="player-info" class="ui-element">
+                            Level: 1 | HP: 100/100 | MP: 100/100
+                        </div>
+                        <div id="chat-box" class="ui-element">
+                            Willkommen in der Welt von G4NG MMO!
+                        </div>
+                    </div>
+                    <div id="controls-info" class="ui-element">
+                        <h2>Steuerung</h2>
+                        <p>WASD - Bewegung</p>
+                        <p>Maus - Umsehen</p>
+                        <p>Leertaste - Springen</p>
+                        <p>E - Interagieren</p>
+                        <p>Klicken Sie irgendwo hin, um zu beginnen</p>
                     </div>
                 </div>
                 <script>
@@ -259,21 +305,73 @@ app.get('/game', (req: Request, res: Response) => {
                         const webapp = window.Telegram.WebApp;
                         webapp.expand();
                         
-                        // Game-Initialisierung
-                        window.onload = () => {
-                            const canvas = document.getElementById('game-canvas');
-                            const chatId = webapp.initDataUnsafe?.user?.id;
-                            
-                            // Spiel-Logik hier
-                            console.log('Game initialized for chat:', chatId);
-                            
-                            // Event an Telegram senden
-                            webapp.sendData(JSON.stringify({
-                                event: 'game_started',
-                                chatId: chatId,
-                                timestamp: new Date().toISOString()
-                            }));
-                        };
+                        // Three.js Setup
+                        const scene = new THREE.Scene();
+                        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                        const renderer = new THREE.WebGLRenderer({
+                            canvas: document.getElementById('game-canvas'),
+                            antialias: true
+                        });
+                        renderer.setSize(window.innerWidth, window.innerHeight);
+
+                        // Licht hinzufügen
+                        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                        scene.add(ambientLight);
+                        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+                        directionalLight.position.set(0, 1, 0);
+                        scene.add(directionalLight);
+
+                        // Boden erstellen
+                        const groundGeometry = new THREE.PlaneGeometry(100, 100);
+                        const groundMaterial = new THREE.MeshStandardMaterial({ 
+                            color: 0x3a8c3a,
+                            side: THREE.DoubleSide
+                        });
+                        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                        ground.rotation.x = Math.PI / 2;
+                        scene.add(ground);
+
+                        // Spieler (temporär als Würfel)
+                        const playerGeometry = new THREE.BoxGeometry(1, 2, 1);
+                        const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+                        const player = new THREE.Mesh(playerGeometry, playerMaterial);
+                        player.position.y = 1;
+                        scene.add(player);
+
+                        // Kamera-Position
+                        camera.position.set(0, 3, 5);
+                        camera.lookAt(player.position);
+
+                        // Animation Loop
+                        function animate() {
+                            requestAnimationFrame(animate);
+                            player.rotation.y += 0.01;
+                            renderer.render(scene, camera);
+                        }
+
+                        // Fenster-Größenänderung
+                        window.addEventListener('resize', () => {
+                            camera.aspect = window.innerWidth / window.innerHeight;
+                            camera.updateProjectionMatrix();
+                            renderer.setSize(window.innerWidth, window.innerHeight);
+                        });
+
+                        // Steuerungsinfo ausblenden bei Klick
+                        document.addEventListener('click', () => {
+                            const controlsInfo = document.getElementById('controls-info');
+                            if (controlsInfo) {
+                                controlsInfo.style.display = 'none';
+                            }
+                        });
+
+                        // Starte Animation
+                        animate();
+
+                        // Sende Spieldaten an Telegram
+                        webapp.sendData(JSON.stringify({
+                            event: 'game_started',
+                            timestamp: new Date().toISOString()
+                        }));
                     } catch (error) {
                         console.error('Fehler beim Initialisieren:', error);
                     }
