@@ -37,21 +37,47 @@ export class BaseCharacter {
             
             // Füge das Modell zur Mesh-Gruppe hinzu
             if (this.model) {
+                // Zentriere das Modell
+                const box = new THREE.Box3().setFromObject(this.model);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                
+                // Setze das Modell auf den Ursprung
+                this.model.position.sub(center);
+                
+                // Skaliere das Modell auf eine vernünftige Größe
+                const scale = 1.0 / size.y; // Normalisiere auf Höhe 1
+                this.model.scale.set(scale, scale, scale);
+                
+                // Füge eine Ambient Light hinzu für bessere Sichtbarkeit
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                this.mesh.add(ambientLight);
+                
+                // Füge eine Directional Light für Schatten hinzu
+                const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+                dirLight.position.set(5, 5, 5);
+                this.mesh.add(dirLight);
+
+                // Debug: Füge Achsenhelfer hinzu
+                const axesHelper = new THREE.AxesHelper(5);
+                this.mesh.add(axesHelper);
+
+                // Debug: Füge eine Box um das Modell hinzu
+                const boxHelper = new THREE.BoxHelper(this.model, 0xff0000);
+                this.mesh.add(boxHelper);
+
+                // Füge das Modell zur Szene hinzu
                 this.mesh.add(this.model);
                 
-                // Setze Standardposition und -rotation
-                this.model.position.set(0, 0, 0);
-                this.model.rotation.set(0, 0, 0);
-                
-                // Optional: Skaliere das Modell wenn nötig
-                this.model.scale.set(1, 1, 1);
-                
-                // Debug-Info
                 console.log('Modell zur Szene hinzugefügt:', {
-                    children: this.model.children.length,
-                    position: this.model.position,
-                    rotation: this.model.rotation,
-                    scale: this.model.scale
+                    position: this.model.position.toArray(),
+                    rotation: this.model.rotation.toArray(),
+                    scale: this.model.scale.toArray(),
+                    boundingBox: {
+                        min: box.min.toArray(),
+                        max: box.max.toArray(),
+                        size: size.toArray()
+                    }
                 });
                 
                 // Traversiere das Modell um Materialien zu speichern
@@ -60,8 +86,13 @@ export class BaseCharacter {
                         console.log('Gefundenes Mesh:', {
                             name: child.name,
                             material: child.material ? child.material.type : 'kein Material',
-                            geometry: child.geometry ? child.geometry.type : 'keine Geometrie'
+                            geometry: child.geometry ? child.geometry.type : 'keine Geometrie',
+                            position: child.position.toArray(),
+                            visible: child.visible
                         });
+                        
+                        // Stelle sicher, dass das Mesh sichtbar ist
+                        child.visible = true;
                         
                         // Speichere originale Materialien
                         if (child.material) {
@@ -71,9 +102,11 @@ export class BaseCharacter {
                             if (child.material instanceof THREE.MeshStandardMaterial) {
                                 console.log('Material Details:', {
                                     name: child.name,
-                                    color: child.material.color,
+                                    color: child.material.color.getHexString(),
                                     map: child.material.map ? 'Textur vorhanden' : 'keine Textur',
-                                    normalMap: child.material.normalMap ? 'Normal Map vorhanden' : 'keine Normal Map'
+                                    normalMap: child.material.normalMap ? 'Normal Map vorhanden' : 'keine Normal Map',
+                                    transparent: child.material.transparent,
+                                    opacity: child.material.opacity
                                 });
                             }
                         }
@@ -160,7 +193,6 @@ export class BaseCharacter {
     public setHairStyle(style: string) {
         if (!this.model) return;
         
-        // Aktiviere/Deaktiviere verschiedene Haarteile basierend auf dem Style
         this.model.traverse((child) => {
             if (child instanceof THREE.Mesh) {
                 if (child.name.includes('hair')) {
@@ -187,7 +219,6 @@ export class BaseCharacter {
     public setFacialExpression(expression: 'neutral' | 'happy' | 'sad') {
         if (!this.model) return;
 
-        // Aktiviere/Deaktiviere verschiedene Gesichtsausdrücke
         this.model.traverse((child) => {
             if (child instanceof THREE.Mesh) {
                 if (child.name.includes('expression')) {
