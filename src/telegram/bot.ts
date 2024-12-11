@@ -60,7 +60,7 @@ Viel Spaß beim Spielen! 🚀
                     messages?.forEach(async (update) => {
                         if (update.message?.chat.id === chatId) {
                             try {
-                                await this.bot?.deleteMessage(chatId, update.message.message_id.toString());
+                                await this.bot?.deleteMessage(chatId, update.message.message_id);
                             } catch (error) {
                                 // Ignoriere Fehler beim Löschen alter Nachrichten
                             }
@@ -153,7 +153,7 @@ Viel Spaß beim Spielen! 🚀
                     // Lösche Nachricht nach kurzer Verzögerung
                     setTimeout(async () => {
                         try {
-                            await this.bot?.deleteMessage(chatId, messageId.toString());
+                            await this.bot?.deleteMessage(chatId, messageId);
                         } catch (error) {
                             // Ignoriere Fehler beim Löschen
                         }
