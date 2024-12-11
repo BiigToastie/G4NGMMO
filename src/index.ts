@@ -370,14 +370,14 @@ bot.onText(/\/start/, async (msg) => {
 
     try {
         // Prüfen, ob bereits ein Charakter existiert
-        const response = await fetch(`http://localhost:${port}/api/character/${userId}`);
+        const response = await fetch(`${process.env.BASE_URL}/api/character/${userId}`);
         
         if (response.ok) {
             // Charakter existiert bereits
             bot.sendMessage(chatId, 'Willkommen zurück! Dein Charakter ist bereits erstellt.');
         } else {
             // Neuer Spieler - Charaktererstellung starten
-            const gameUrl = `http://localhost:${port}/game`;
+            const gameUrl = `${process.env.BASE_URL}/game`;
             bot.sendMessage(chatId, 
                 'Willkommen bei G4NG MMO! Lass uns deinen Charakter erstellen.',
                 {
