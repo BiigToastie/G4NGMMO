@@ -44,21 +44,74 @@ class Game {
     private players: Map<string, Player> = new Map();
     private items: Map<string, Item> = new Map();
     private zones: Map<string, Zone> = new Map();
-    private activeChats: Set<number> = new Set(); // Speichert aktive Chat IDs
-    private userCooldowns: Map<number, number> = new Map(); // Speichert User Cooldowns
+    private activeChats: Set<number> = new Set();
+    private userCooldowns: Map<number, number> = new Map();
+    private systemMessages: Map<number, { messageId: number, deleteAt: number }[]> = new Map();
 
     constructor() {
         this.initializeGame();
         this.setupBotHandlers();
+        this.startCleanupInterval();
     }
 
     private initializeGame() {
         console.log('Game initialized');
     }
 
+    private startCleanupInterval() {
+        // Alle 5 Sekunden aufräumen
+        setInterval(() => {
+            const now = Date.now();
+            for (const [chatId, messages] of this.systemMessages.entries()) {
+                const expiredMessages = messages.filter(msg => msg.deleteAt <= now);
+                expiredMessages.forEach(async (msg) => {
+                    try {
+                        await bot.deleteMessage(chatId, msg.messageId);
+                    } catch (error) {
+                        console.error('Fehler beim Löschen der Nachricht:', error);
+                    }
+                });
+                // Aktualisiere die Liste der System-Nachrichten
+                this.systemMessages.set(
+                    chatId,
+                    messages.filter(msg => msg.deleteAt > now)
+                );
+            }
+        }, 5000);
+    }
+
+    private async sendSystemMessage(chatId: number, text: string, replyToMessage?: number, deleteAfter: number = 5000) {
+        try {
+            const msg = await bot.sendMessage(chatId, text, {
+                reply_to_message_id: replyToMessage
+            });
+
+            // Speichere die System-Nachricht zum späteren Löschen
+            if (!this.systemMessages.has(chatId)) {
+                this.systemMessages.set(chatId, []);
+            }
+            this.systemMessages.get(chatId)!.push({
+                messageId: msg.message_id,
+                deleteAt: Date.now() + deleteAfter
+            });
+
+            // Optional: Lösche auch die Original-Nachricht, auf die geantwortet wurde
+            if (replyToMessage) {
+                setTimeout(async () => {
+                    try {
+                        await bot.deleteMessage(chatId, replyToMessage);
+                    } catch (error) {
+                        console.error('Fehler beim Löschen der Original-Nachricht:', error);
+                    }
+                }, deleteAfter);
+            }
+        } catch (error) {
+            console.error('Fehler beim Senden der System-Nachricht:', error);
+        }
+    }
+
     private async setupBotHandlers() {
         try {
-            // Setze den Menü-Button für alle Chats
             await bot.setMyCommands([]);
             
             // Behandle /start Kommando
@@ -66,7 +119,6 @@ class Game {
                 try {
                     const chatId = msg.chat.id;
                     
-                    // Setze den Menü-Button für diesen Chat
                     await bot.setChatMenuButton({
                         chat_id: chatId,
                         menu_button: {
@@ -78,7 +130,7 @@ class Game {
                         }
                     });
 
-                    await bot.sendMessage(chatId, 'Willkommen bei G4NG MMO! Der Spielen-Button wurde aktiviert.');
+                    await this.sendSystemMessage(chatId, 'Willkommen bei G4NG MMO! Der Spielen-Button wurde aktiviert.', msg.message_id);
                 } catch (error) {
                     console.error('Fehler beim Setzen des Menü-Buttons:', error);
                 }
@@ -91,52 +143,53 @@ class Game {
                     const userId = msg.from?.id;
                     const username = msg.from?.username || msg.from?.first_name || 'Unbekannt';
                     
-                    // Füge Chat zur Liste aktiver Chats hinzu
                     this.activeChats.add(chatId);
 
-                    // Wenn es eine Textnachricht ist und nicht mit / beginnt
                     if (msg.text && userId && !msg.text.startsWith('/')) {
-                        // Prüfe Cooldown
                         const lastMessageTime = this.userCooldowns.get(userId) || 0;
                         const currentTime = Date.now();
                         const timeSinceLastMessage = currentTime - lastMessageTime;
 
-                        if (timeSinceLastMessage >= 30000) { // 30 Sekunden Cooldown
-                            // Aktualisiere Cooldown
+                        if (timeSinceLastMessage >= 30000) {
                             this.userCooldowns.set(userId, currentTime);
-
-                            // Formatiere die Nachricht
                             const messageText = `👤 ${username}:\n${msg.text}`;
                             
-                            // Sende Nachricht an alle aktiven Chats
                             for (const activeChatId of this.activeChats) {
                                 try {
-                                    // Sende die Nachricht immer, auch an den Absender
                                     await bot.sendMessage(activeChatId, messageText);
                                 } catch (error) {
                                     console.error(`Fehler beim Senden an Chat ${activeChatId}:`, error);
-                                    // Entferne Chat aus der Liste, wenn er nicht mehr erreichbar ist
                                     if ((error as any).code === 403) {
                                         this.activeChats.delete(activeChatId);
                                     }
                                 }
                             }
+
+                            // Lösche die Original-Nachricht nach einer kurzen Verzögerung
+                            setTimeout(async () => {
+                                try {
+                                    await bot.deleteMessage(chatId, msg.message_id);
+                                } catch (error) {
+                                    console.error('Fehler beim Löschen der Original-Nachricht:', error);
+                                }
+                            }, 500);
                         } else {
-                            // Informiere User über verbleibende Cooldown-Zeit
                             const remainingTime = Math.ceil((30000 - timeSinceLastMessage) / 1000);
-                            await bot.sendMessage(chatId, 
+                            await this.sendSystemMessage(
+                                chatId,
                                 `⏳ Bitte warte noch ${remainingTime} Sekunden, bevor du eine weitere Nachricht sendest.`,
-                                { reply_to_message_id: msg.message_id }
+                                msg.message_id,
+                                5000
                             );
                         }
                     } else if (msg.text?.startsWith('/')) {
-                        // Ignoriere Kommandos
                         return;
                     } else if (!msg.text) {
-                        // Wenn es keine Textnachricht ist (z.B. Bilder, Sticker etc.)
-                        await bot.sendMessage(chatId, 
+                        await this.sendSystemMessage(
+                            chatId,
                             '❌ Nur Textnachrichten sind im globalen Chat erlaubt.',
-                            { reply_to_message_id: msg.message_id }
+                            msg.message_id,
+                            5000
                         );
                     }
                 } catch (error) {
@@ -151,8 +204,7 @@ class Game {
                     const parsedData = JSON.parse(data);
                     console.log('Web App Data received:', parsedData);
                     
-                    // Bestätige den Empfang
-                    await bot.sendMessage(msg.chat.id, 'Spieldaten empfangen!');
+                    await this.sendSystemMessage(msg.chat.id, 'Spieldaten empfangen!', undefined, 3000);
                 } catch (error) {
                     console.error('Fehler beim Verarbeiten der Web App Daten:', error);
                 }
