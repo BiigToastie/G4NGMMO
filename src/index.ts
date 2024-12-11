@@ -19,6 +19,7 @@ async function connectToMongoDB() {
         const response = await fetch('https://api.ipify.org?format=json');
         const data = await response.json() as { ip: string };
         console.log('Server IP-Adresse:', data.ip);
+        console.log('WICHTIG: Diese IP-Adresse muss in der MongoDB Atlas IP-Whitelist hinzugefügt werden!');
     } catch (error) {
         console.error('Fehler beim Abrufen der IP-Adresse:', error);
     }
@@ -34,17 +35,45 @@ async function connectToMongoDB() {
                 const dns = require('dns');
                 const lookup = promisify(dns.lookup);
                 const resolve = promisify(dns.resolve);
+                const resolveSrv = promisify(dns.resolveSrv);
 
                 const hostname = 'cluster0.ktz7i.mongodb.net';
-                console.log('DNS-Test für:', hostname);
+                console.log('DNS-Tests für:', hostname);
                 
-                const address = await lookup(hostname);
-                console.log('DNS Lookup Ergebnis:', address);
-                
-                const records = await resolve(hostname, 'SRV');
-                console.log('DNS SRV Records:', records);
+                // Standard DNS Lookup
+                try {
+                    const address = await lookup(hostname);
+                    console.log('Standard DNS Lookup Ergebnis:', address);
+                } catch (lookupError) {
+                    console.error('Standard DNS Lookup fehlgeschlagen:', lookupError);
+                }
+
+                // SRV Records
+                try {
+                    const srvRecords = await resolveSrv(`_mongodb._tcp.${hostname}`);
+                    console.log('SRV Records:', srvRecords);
+                } catch (srvError) {
+                    console.error('SRV Record Lookup fehlgeschlagen:', srvError);
+                }
+
+                // Direkte Verbindungsversuche zu den Shards
+                const shardHosts = [
+                    'cluster0-shard-00-00.ktz7i.mongodb.net',
+                    'cluster0-shard-00-01.ktz7i.mongodb.net',
+                    'cluster0-shard-00-02.ktz7i.mongodb.net'
+                ];
+
+                for (const shardHost of shardHosts) {
+                    try {
+                        const shardAddress = await lookup(shardHost);
+                        console.log(`Shard DNS Lookup (${shardHost}):`, shardAddress);
+                    } catch (shardError) {
+                        console.error(`Shard DNS Lookup fehlgeschlagen (${shardHost}):`, shardError);
+                    }
+                }
+
             } catch (dnsError) {
-                console.error('DNS-Test fehlgeschlagen:', dnsError);
+                console.error('Allgemeiner DNS-Test fehlgeschlagen:', dnsError);
             }
 
             const mongooseOptions = {
@@ -90,7 +119,8 @@ async function connectToMongoDB() {
                             .map(([host, desc]) => ({
                                 host,
                                 type: desc.type,
-                                error: desc.error?.message
+                                error: desc.error?.message,
+                                state: desc.state
                             })) : []
                 });
             }
@@ -99,7 +129,11 @@ async function connectToMongoDB() {
                 console.error('Maximale Anzahl an Verbindungsversuchen erreicht');
                 return false;
             }
-            await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000));
+            
+            // Exponentielles Backoff mit zusätzlicher Zufallskomponente
+            const backoffTime = Math.pow(2, retries) * 1000 + Math.random() * 1000;
+            console.log(`Warte ${Math.round(backoffTime/1000)} Sekunden vor dem nächsten Versuch...`);
+            await new Promise(resolve => setTimeout(resolve, backoffTime));
         }
     }
     return false;
