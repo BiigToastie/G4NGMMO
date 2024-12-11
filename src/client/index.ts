@@ -1,4 +1,5 @@
 import { CharacterCreator } from './character/CharacterCreator';
+import * as THREE from 'three';
 
 document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('container');
