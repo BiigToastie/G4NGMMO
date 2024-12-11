@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 export class CharacterCreator {
     private scene: THREE.Scene;
@@ -105,35 +105,37 @@ export class CharacterCreator {
 
             this.characterModel = gltf.scene;
             
-            // Wende die Textur auf alle Mesh-Materialien an
-            this.characterModel.traverse((child) => {
-                if (child instanceof THREE.Mesh) {
-                    const material = child.material as THREE.MeshStandardMaterial;
-                    material.map = baseTexture;
-                    material.needsUpdate = true;
-                }
-            });
+            if (this.characterModel) {
+                // Wende die Textur auf alle Mesh-Materialien an
+                this.characterModel.traverse((child) => {
+                    if (child instanceof THREE.Mesh) {
+                        const material = child.material as THREE.MeshStandardMaterial;
+                        material.map = baseTexture;
+                        material.needsUpdate = true;
+                    }
+                });
 
-            this.characterModel.scale.set(1, 1, 1);
-            this.characterModel.position.set(0, 0, 0);
-            this.scene.add(this.characterModel);
+                this.characterModel.scale.set(1, 1, 1);
+                this.characterModel.position.set(0, 0, 0);
+                this.scene.add(this.characterModel);
 
-            // Debug Helper
-            const box = new THREE.Box3().setFromObject(this.characterModel);
-            const center = box.getCenter(new THREE.Vector3());
-            const size = box.getSize(new THREE.Vector3());
-            
-            console.log('Model loaded:', {
-                position: this.characterModel.position,
-                scale: this.characterModel.scale,
-                center: center,
-                size: size
-            });
+                // Debug Helper
+                const box = new THREE.Box3().setFromObject(this.characterModel);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                
+                console.log('Model loaded:', {
+                    position: this.characterModel.position,
+                    scale: this.characterModel.scale,
+                    center: center,
+                    size: size
+                });
 
-            // Apply initial settings
-            this.updateCharacterHeight(175);
-            this.updateSkinColor('#f4d03f');
-            this.updateHairColor('#3d2314');
+                // Apply initial settings
+                this.updateCharacterHeight(175);
+                this.updateSkinColor('#f4d03f');
+                this.updateHairColor('#3d2314');
+            }
         }, 
         (progress) => {
             console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
@@ -205,7 +207,10 @@ export class CharacterCreator {
         // UI Controls
         document.getElementById('character-height')?.addEventListener('input', (e) => {
             const height = (e.target as HTMLInputElement).value;
-            document.getElementById('height-value')!.textContent = `${height} cm`;
+            const heightValue = document.getElementById('height-value');
+            if (heightValue) {
+                heightValue.textContent = `${height} cm`;
+            }
             this.updateCharacterHeight(parseFloat(height));
         });
 
@@ -243,13 +248,13 @@ export class CharacterCreator {
 
     private saveCharacter(): void {
         const characterData = {
-            name: (document.getElementById('character-name') as HTMLInputElement).value,
-            gender: (document.getElementById('character-gender') as HTMLSelectElement).value,
-            height: (document.getElementById('character-height') as HTMLInputElement).value,
-            bodyType: (document.getElementById('body-type') as HTMLSelectElement).value,
-            skinColor: (document.getElementById('skin-color') as HTMLInputElement).value,
-            hairStyle: (document.getElementById('hair-style') as HTMLSelectElement).value,
-            hairColor: (document.getElementById('hair-color') as HTMLInputElement).value,
+            name: (document.getElementById('character-name') as HTMLInputElement)?.value || '',
+            gender: (document.getElementById('character-gender') as HTMLSelectElement)?.value || 'male',
+            height: (document.getElementById('character-height') as HTMLInputElement)?.value || '175',
+            bodyType: (document.getElementById('body-type') as HTMLSelectElement)?.value || 'average',
+            skinColor: (document.getElementById('skin-color') as HTMLInputElement)?.value || '#f4d03f',
+            hairStyle: (document.getElementById('hair-style') as HTMLSelectElement)?.value || 'kurz',
+            hairColor: (document.getElementById('hair-color') as HTMLInputElement)?.value || '#3d2314',
         };
 
         localStorage.setItem('characterData', JSON.stringify(characterData));
