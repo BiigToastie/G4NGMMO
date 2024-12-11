@@ -41,6 +41,67 @@ export class BotManager {
         return Math.ceil((cooldownTime - timeSinceLastMessage) / 1000);
     }
 
+    private async handleCharacterStats(chatId: number, userId: number) {
+        try {
+            // TODO: Implementiere Charakter-Statistiken Abruf
+            await this.bot?.sendMessage(chatId, 
+                `🎮 *Charakter-Statistiken*\n\n` +
+                `Level: 1\n` +
+                `Erfahrung: 0/100\n` +
+                `Angriff: 10\n` +
+                `Verteidigung: 5\n` +
+                `Leben: 100/100\n` +
+                `Gold: 0`,
+                { parse_mode: 'Markdown' }
+            );
+        } catch (error) {
+            console.error('Fehler beim Abrufen der Charakter-Stats:', error);
+        }
+    }
+
+    private async handleGuildMenu(chatId: number, userId: number) {
+        try {
+            await this.bot?.sendMessage(chatId,
+                '🏰 *Gilden-Menü*\n\n' +
+                'Wähle eine Option:',
+                {
+                    parse_mode: 'Markdown',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: '📝 Gilde erstellen', callback_data: 'guild_create' }],
+                            [{ text: '🔍 Gilden durchsuchen', callback_data: 'guild_search' }],
+                            [{ text: '⚔️ Gildenkämpfe', callback_data: 'guild_battles' }],
+                            [{ text: '↩️ Zurück', callback_data: 'main_menu' }]
+                        ]
+                    }
+                }
+            );
+        } catch (error) {
+            console.error('Fehler beim Anzeigen des Gilden-Menüs:', error);
+        }
+    }
+
+    private async handleHelp(chatId: number) {
+        try {
+            await this.bot?.sendMessage(chatId,
+                '❓ *G4NG MMO Hilfe*\n\n' +
+                '🎮 *Spielablauf*\n' +
+                'Schreibe einfach Nachrichten in diesen Chat, um mit anderen Spielern zu kommunizieren.\n\n' +
+                '⏳ *Cooldown*\n' +
+                'Nach jeder Nachricht musst du 30 Sekunden warten.\n\n' +
+                '🏰 *Gilden*\n' +
+                'Erstelle oder tritt einer Gilde bei, um gemeinsam stärker zu werden.\n\n' +
+                '📊 *Statistiken*\n' +
+                'Verbessere deinen Charakter durch Kämpfe und Quests.\n\n' +
+                '💬 *Chat*\n' +
+                'Alle Nachrichten werden an alle aktiven Spieler gesendet.',
+                { parse_mode: 'Markdown' }
+            );
+        } catch (error) {
+            console.error('Fehler beim Anzeigen der Hilfe:', error);
+        }
+    }
+
     public async initialize() {
         if (this.isInitializing || this.shutdownRequested) {
             return;
@@ -65,8 +126,72 @@ export class BotManager {
                 // Füge Chat zur Liste aktiver Chats hinzu
                 this.activeChats.add(chatId);
 
-                // Sende Willkommensnachricht
-                await this.bot?.sendMessage(chatId, 'Willkommen bei G4NGMMO ⚔️');
+                // Sende Willkommensnachricht mit Hauptmenü
+                await this.bot?.sendMessage(chatId, 
+                    'Willkommen bei G4NG MMO ⚔️\n\n' +
+                    'Wähle eine Option:',
+                    {
+                        reply_markup: {
+                            inline_keyboard: [
+                                [{ text: '📊 Charakter Stats', callback_data: 'character_stats' }],
+                                [{ text: '🏰 Gilden', callback_data: 'guild_menu' }],
+                                [{ text: '❓ Hilfe', callback_data: 'help' }]
+                            ]
+                        }
+                    }
+                );
+            });
+
+            // Callback Query Handler
+            this.bot.on('callback_query', async (callbackQuery) => {
+                const chatId = callbackQuery.message?.chat.id;
+                const userId = callbackQuery.from.id;
+                const action = callbackQuery.data;
+
+                if (!chatId || !action) return;
+
+                try {
+                    switch (action) {
+                        case 'character_stats':
+                            await this.handleCharacterStats(chatId, userId);
+                            break;
+
+                        case 'guild_menu':
+                            await this.handleGuildMenu(chatId, userId);
+                            break;
+
+                        case 'help':
+                            await this.handleHelp(chatId);
+                            break;
+
+                        case 'main_menu':
+                            // Zurück zum Hauptmenü
+                            await this.bot?.sendMessage(chatId, 
+                                'Hauptmenü:',
+                                {
+                                    reply_markup: {
+                                        inline_keyboard: [
+                                            [{ text: '📊 Charakter Stats', callback_data: 'character_stats' }],
+                                            [{ text: '🏰 Gilden', callback_data: 'guild_menu' }],
+                                            [{ text: '❓ Hilfe', callback_data: 'help' }]
+                                        ]
+                                    }
+                                }
+                            );
+                            break;
+
+                        // Gilden-bezogene Aktionen
+                        case 'guild_create':
+                        case 'guild_search':
+                        case 'guild_battles':
+                            // TODO: Implementiere die entsprechenden Gilden-Funktionen
+                            await this.bot?.sendMessage(chatId, '🚧 Diese Funktion wird bald verfügbar sein!');
+                            break;
+                    }
+                } catch (error) {
+                    console.error('Fehler bei Callback-Verarbeitung:', error);
+                    await this.bot?.sendMessage(chatId, 'Es gab einen Fehler. Bitte versuche es später erneut.');
+                }
             });
 
             // Globaler Nachrichten-Handler
