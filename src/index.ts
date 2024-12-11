@@ -77,9 +77,9 @@ async function connectToMongoDB() {
             }
 
             const mongooseOptions = {
-                serverSelectionTimeoutMS: 30000,
+                serverSelectionTimeoutMS: 60000,
                 socketTimeoutMS: 45000,
-                connectTimeoutMS: 30000,
+                connectTimeoutMS: 60000,
                 heartbeatFrequencyMS: 10000,
                 retryWrites: true,
                 retryReads: true,
@@ -97,6 +97,24 @@ async function connectToMongoDB() {
                     version: '1',
                     strict: true,
                     deprecationErrors: true
+                },
+                hosts: [
+                    'cluster0-shard-00-00.ktz7i.mongodb.net:27017',
+                    'cluster0-shard-00-01.ktz7i.mongodb.net:27017',
+                    'cluster0-shard-00-02.ktz7i.mongodb.net:27017'
+                ],
+                family: 4,
+                lookup: async (host: string, options: any, callback: Function) => {
+                    console.log('DNS Lookup für Host:', host);
+                    const dns = require('dns');
+                    try {
+                        const result = await dns.promises.lookup(host, { family: 4 });
+                        console.log('DNS Lookup Ergebnis:', result);
+                        callback(null, result.address, result.family);
+                    } catch (error) {
+                        console.error('DNS Lookup Fehler:', error);
+                        callback(error);
+                    }
                 }
             } satisfies ConnectOptions;
 
