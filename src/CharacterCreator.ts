@@ -9,6 +9,7 @@ export class CharacterCreator {
     private controls: OrbitControls;
     private loadingManager: THREE.LoadingManager;
     private characterModel: THREE.Group | null = null;
+    private textureLoader: THREE.TextureLoader;
 
     constructor() {
         // Scene Setup
@@ -18,7 +19,7 @@ export class CharacterCreator {
         // Camera Setup
         this.camera = new THREE.PerspectiveCamera(
             75,
-            window.innerWidth * 0.6 / (window.innerHeight * 0.6),
+            window.innerWidth / (window.innerHeight * 0.6),
             0.1,
             1000
         );
@@ -40,12 +41,15 @@ export class CharacterCreator {
         this.controls.maxDistance = 4;
         this.controls.target.set(0, 1.7, 0);
 
-        // Lighting Setup
-        this.setupLighting();
-
         // Loading Manager
         this.loadingManager = new THREE.LoadingManager();
         this.setupLoadingManager();
+
+        // Texture Loader
+        this.textureLoader = new THREE.TextureLoader(this.loadingManager);
+
+        // Lighting Setup
+        this.setupLighting();
 
         // Event Listeners
         this.setupEventListeners();
@@ -87,6 +91,114 @@ export class CharacterCreator {
         };
     }
 
+    private loadCharacterModel(): void {
+        const loader = new GLTFLoader(this.loadingManager);
+        
+        // Lade die Basis-Textur
+        const baseTexture = this.textureLoader.load('/models/textures/base_texture.png');
+        baseTexture.flipY = false; // Wichtig für GLTF
+        
+        loader.load('/models/character.gltf', (gltf) => {
+            if (this.characterModel) {
+                this.scene.remove(this.characterModel);
+            }
+
+            this.characterModel = gltf.scene;
+            
+            // Wende die Textur auf alle Mesh-Materialien an
+            this.characterModel.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    const material = child.material as THREE.MeshStandardMaterial;
+                    material.map = baseTexture;
+                    material.needsUpdate = true;
+                }
+            });
+
+            this.characterModel.scale.set(1, 1, 1);
+            this.characterModel.position.set(0, 0, 0);
+            this.scene.add(this.characterModel);
+
+            // Debug Helper
+            const box = new THREE.Box3().setFromObject(this.characterModel);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            
+            console.log('Model loaded:', {
+                position: this.characterModel.position,
+                scale: this.characterModel.scale,
+                center: center,
+                size: size
+            });
+
+            // Apply initial settings
+            this.updateCharacterHeight(175);
+            this.updateSkinColor('#f4d03f');
+            this.updateHairColor('#3d2314');
+        }, 
+        (progress) => {
+            console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
+        },
+        (error) => {
+            console.error('Error loading model:', error);
+        });
+    }
+
+    private updateCharacterHeight(height: number): void {
+        if (this.characterModel) {
+            const scale = height / 175;
+            this.characterModel.scale.setY(scale);
+        }
+    }
+
+    private updateBodyType(bodyType: string): void {
+        if (this.characterModel) {
+            switch (bodyType) {
+                case 'slim':
+                    this.characterModel.scale.setX(0.9);
+                    this.characterModel.scale.setZ(0.9);
+                    break;
+                case 'average':
+                    this.characterModel.scale.setX(1.0);
+                    this.characterModel.scale.setZ(1.0);
+                    break;
+                case 'athletic':
+                    this.characterModel.scale.setX(1.1);
+                    this.characterModel.scale.setZ(1.1);
+                    break;
+            }
+        }
+    }
+
+    private updateSkinColor(color: string): void {
+        if (this.characterModel) {
+            const newColor = new THREE.Color(color);
+            this.characterModel.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    const material = child.material as THREE.MeshStandardMaterial;
+                    if (child.name.toLowerCase().includes('skin')) {
+                        material.color = newColor;
+                        material.needsUpdate = true;
+                    }
+                }
+            });
+        }
+    }
+
+    private updateHairColor(color: string): void {
+        if (this.characterModel) {
+            const newColor = new THREE.Color(color);
+            this.characterModel.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    const material = child.material as THREE.MeshStandardMaterial;
+                    if (child.name.toLowerCase().includes('hair')) {
+                        material.color = newColor;
+                        material.needsUpdate = true;
+                    }
+                }
+            });
+        }
+    }
+
     private setupEventListeners(): void {
         window.addEventListener('resize', this.onWindowResize.bind(this));
 
@@ -115,96 +227,10 @@ export class CharacterCreator {
         document.getElementById('confirm-button')?.addEventListener('click', () => {
             this.saveCharacter();
         });
-
-        // Preset Colors
-        document.querySelectorAll('.color-preset').forEach(preset => {
-            preset.addEventListener('click', (e) => {
-                const color = (e.target as HTMLElement).getAttribute('data-color');
-                if (color) {
-                    const parent = (e.target as HTMLElement).closest('.control-item');
-                    const colorInput = parent?.querySelector('input[type="color"]') as HTMLInputElement;
-                    if (colorInput) {
-                        colorInput.value = color;
-                        colorInput.dispatchEvent(new Event('input'));
-                    }
-                }
-            });
-        });
-    }
-
-    private loadCharacterModel(): void {
-        const loader = new GLTFLoader(this.loadingManager);
-        loader.load('/models/character.glb', (gltf) => {
-            if (this.characterModel) {
-                this.scene.remove(this.characterModel);
-            }
-
-            this.characterModel = gltf.scene;
-            this.characterModel.scale.set(1, 1, 1);
-            this.characterModel.position.set(0, 0, 0);
-            this.scene.add(this.characterModel);
-
-            // Apply initial settings
-            this.updateCharacterHeight(175);
-            this.updateSkinColor('#f4d03f');
-            this.updateHairColor('#3d2314');
-        });
-    }
-
-    private updateCharacterHeight(height: number): void {
-        if (this.characterModel) {
-            const scale = height / 175; // Base height is 175cm
-            this.characterModel.scale.setY(scale);
-        }
-    }
-
-    private updateBodyType(bodyType: string): void {
-        if (this.characterModel) {
-            // Implementiere verschiedene Körpertypen durch Skalierung oder Mesh-Morphing
-            switch (bodyType) {
-                case 'slim':
-                    this.characterModel.scale.setX(0.9);
-                    break;
-                case 'average':
-                    this.characterModel.scale.setX(1.0);
-                    break;
-                case 'athletic':
-                    this.characterModel.scale.setX(1.1);
-                    break;
-            }
-        }
-    }
-
-    private updateSkinColor(color: string): void {
-        if (this.characterModel) {
-            this.characterModel.traverse((child) => {
-                if (child instanceof THREE.Mesh && child.material) {
-                    if (child.name.toLowerCase().includes('skin')) {
-                        (child.material as THREE.MeshStandardMaterial).color.setHex(
-                            parseInt(color.replace('#', ''), 16)
-                        );
-                    }
-                }
-            });
-        }
-    }
-
-    private updateHairColor(color: string): void {
-        if (this.characterModel) {
-            this.characterModel.traverse((child) => {
-                if (child instanceof THREE.Mesh && child.material) {
-                    if (child.name.toLowerCase().includes('hair')) {
-                        (child.material as THREE.MeshStandardMaterial).color.setHex(
-                            parseInt(color.replace('#', ''), 16)
-                        );
-                    }
-                }
-            });
-        }
     }
 
     private onWindowResize(): void {
-        this.camera.aspect = window.innerWidth * 0.6 / (window.innerHeight * 0.6);
+        this.camera.aspect = window.innerWidth / (window.innerHeight * 0.6);
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight * 0.6);
     }
@@ -226,10 +252,8 @@ export class CharacterCreator {
             hairColor: (document.getElementById('hair-color') as HTMLInputElement).value,
         };
 
-        // Speichere die Charakterdaten
         localStorage.setItem('characterData', JSON.stringify(characterData));
         
-        // Sende die Daten an den Server
         fetch('/api/character/create', {
             method: 'POST',
             headers: {
@@ -240,7 +264,7 @@ export class CharacterCreator {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                window.location.href = '/game.html'; // Weiterleitung zum Spiel
+                window.location.href = '/game.html';
             } else {
                 alert('Fehler beim Speichern des Charakters: ' + data.error);
             }
