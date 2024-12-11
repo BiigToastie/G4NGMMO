@@ -236,7 +236,10 @@ async function startServer() {
 
     const botManager = BotManager.getInstance();
 
-    app.listen(port, () => {
+    const port = process.env.PORT || 3000;
+    console.log('Starte Server auf Port:', port);
+
+    app.listen(port, '0.0.0.0', () => {
         console.log(`Server läuft auf Port ${port}`);
         botManager.initialize();
     });
