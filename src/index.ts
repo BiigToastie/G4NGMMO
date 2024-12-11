@@ -386,27 +386,39 @@ app.get('/game', (req: Request, res: Response) => {
 let bot: TelegramBot | null = null;
 let isInitializing = false;
 let shutdownRequested = false;
+let lastInitAttempt = 0;
+const MIN_INIT_INTERVAL = 10000; // Mindestens 10 Sekunden zwischen Initialisierungsversuchen
 
 async function initializeBot() {
-    if (isInitializing || shutdownRequested) return;
+    const now = Date.now();
+    if (isInitializing || shutdownRequested || (now - lastInitAttempt < MIN_INIT_INTERVAL)) {
+        return;
+    }
     
     try {
         isInitializing = true;
+        lastInitAttempt = now;
 
         if (bot) {
-            await bot.stopPolling();
+            try {
+                await bot.stopPolling();
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            } catch (error) {
+                console.error('Fehler beim Stoppen des alten Bots:', error);
+            }
             bot = null;
-            await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
         bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN!, { 
             polling: {
-                interval: 1000,
+                interval: 2000,
                 autoStart: true,
                 params: {
-                    timeout: 10
+                    timeout: 30,
+                    allowed_updates: ['message', 'callback_query']
                 }
-            }
+            },
+            filepath: false // Deaktiviere lokale Dateispeicherung
         });
 
         // Error Handler für Polling-Fehler
@@ -414,7 +426,7 @@ async function initializeBot() {
             const telegramError = error as any;
             if (telegramError.code === 'ETELEGRAM' && telegramError.message.includes('terminated by other getUpdates')) {
                 console.log('Bot-Instanz wurde durch eine andere ersetzt. Warte auf Bereinigung...');
-                await new Promise(resolve => setTimeout(resolve, 5000));
+                await new Promise(resolve => setTimeout(resolve, 10000)); // 10 Sekunden warten
                 if (!shutdownRequested) {
                     isInitializing = false;
                     await initializeBot();
@@ -474,8 +486,8 @@ async function initializeBot() {
         console.error('Fehler beim Initialisieren des Bots:', error);
         isInitializing = false;
         if (!shutdownRequested) {
-            // Versuche nach 5 Sekunden erneut zu initialisieren
-            setTimeout(() => initializeBot(), 5000);
+            // Versuche nach 10 Sekunden erneut zu initialisieren
+            setTimeout(() => initializeBot(), 10000);
         }
     } finally {
         isInitializing = false;
