@@ -128,14 +128,17 @@ export class BotManager {
 
                 // Sende Willkommensnachricht mit Hauptmenü
                 await this.bot?.sendMessage(chatId, 
-                    'Willkommen bei G4NG MMO ⚔️\n\n' +
-                    'Wähle eine Option:',
+                    '🎮 *Willkommen bei G4NG MMO!*\n\n' +
+                    'Dies ist ein globaler Chat, in dem du mit allen anderen Spielern kommunizieren kannst. ' +
+                    'Schreibe einfach eine Nachricht, um mit anderen zu chatten!\n\n' +
+                    '_Hinweis: Nach jeder Nachricht gibt es einen 30-Sekunden Cooldown._',
                     {
+                        parse_mode: 'Markdown',
                         reply_markup: {
                             inline_keyboard: [
                                 [{ text: '📊 Charakter Stats', callback_data: 'character_stats' }],
-                                [{ text: '🏰 Gilden', callback_data: 'guild_menu' }],
-                                [{ text: '❓ Hilfe', callback_data: 'help' }]
+                                [{ text: '🏰 Gilden-Verwaltung', callback_data: 'guild_menu' }],
+                                [{ text: '❓ Spielhilfe', callback_data: 'help' }]
                             ]
                         }
                     }
