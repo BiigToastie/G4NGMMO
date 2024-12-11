@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { BufferGeometryUtils } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export class BaseCharacter {
     private mesh: THREE.Group;
@@ -132,7 +133,7 @@ export class BaseCharacter {
             }
         });
 
-        return THREE.BufferGeometryUtils.mergeBufferGeometries(geometries);
+        return BufferGeometryUtils.mergeGeometries(geometries);
     }
 
     private createDetailedTorso(): THREE.BufferGeometry {
@@ -166,7 +167,7 @@ export class BaseCharacter {
         const backGeometry = this.createBackMuscles();
 
         // Kombiniere alle Geometrien
-        return THREE.BufferGeometryUtils.mergeBufferGeometries([
+        return BufferGeometryUtils.mergeGeometries([
             baseTorso,
             chestGeometry,
             absGeometry,
@@ -756,7 +757,7 @@ export class BaseCharacter {
             muscles.push(muscleGeometry.applyMatrix4(matrix));
         }
 
-        return THREE.BufferGeometryUtils.mergeBufferGeometries(muscles);
+        return BufferGeometryUtils.mergeGeometries(muscles);
     }
 
     private createBackMuscles(): THREE.BufferGeometry {
@@ -790,7 +791,7 @@ export class BaseCharacter {
             muscles.push(spineGeometry.applyMatrix4(spineMatrix));
         });
 
-        return THREE.BufferGeometryUtils.mergeBufferGeometries(muscles);
+        return BufferGeometryUtils.mergeGeometries(muscles);
     }
 
     private createDetailedForearm(): THREE.BufferGeometry {
@@ -810,7 +811,7 @@ export class BaseCharacter {
         const extensorMatrix = new THREE.Matrix4().makeTranslation(-0.02, -0.02, 0);
         muscles.push(extensorGeometry.applyMatrix4(extensorMatrix));
 
-        return THREE.BufferGeometryUtils.mergeBufferGeometries(muscles);
+        return BufferGeometryUtils.mergeGeometries(muscles);
     }
 
     private createDetailedThigh(): THREE.BufferGeometry {
@@ -830,7 +831,7 @@ export class BaseCharacter {
         const hamstringMatrix = new THREE.Matrix4().makeTranslation(0, 0, -0.04);
         muscles.push(hamstringGeometry.applyMatrix4(hamstringMatrix));
 
-        return THREE.BufferGeometryUtils.mergeBufferGeometries(muscles);
+        return BufferGeometryUtils.mergeGeometries(muscles);
     }
 
     private createDetailedCalf(): THREE.BufferGeometry {
@@ -845,7 +846,7 @@ export class BaseCharacter {
         const soleusMatrix = new THREE.Matrix4().makeTranslation(0, -0.02, -0.01);
         muscles.push(soleusGeometry.applyMatrix4(soleusMatrix));
 
-        return THREE.BufferGeometryUtils.mergeBufferGeometries(muscles);
+        return BufferGeometryUtils.mergeGeometries(muscles);
     }
 
     private createFootArch(): THREE.BufferGeometry {
