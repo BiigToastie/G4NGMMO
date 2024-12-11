@@ -358,6 +358,11 @@ app.get('/game', (req: Request, res: Response) => {
 // Telegram Bot
 let bot: TelegramBot | null = null;
 
+interface TelegramError extends Error {
+    code?: string;
+    response?: any;
+}
+
 function initializeBot() {
     try {
         if (bot) {
@@ -368,12 +373,12 @@ function initializeBot() {
         bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN!, { 
             polling: true,
             // Polling-Optionen für bessere Stabilität
-            polling_interval: 300,
+            pollingInterval: 300,
             timeout: 10
         });
 
         // Error Handler für Polling-Fehler
-        bot.on('polling_error', (error) => {
+        bot.on('polling_error', (error: TelegramError) => {
             if (error.code === 'ETELEGRAM' && error.message.includes('terminated by other getUpdates')) {
                 console.log('Bot-Instanz wurde durch eine andere ersetzt. Starte neu...');
                 setTimeout(initializeBot, 1000);
