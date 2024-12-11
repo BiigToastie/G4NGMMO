@@ -54,41 +54,48 @@ class Game {
         console.log('Game initialized');
     }
 
-    private setupBotHandlers() {
-        // Behandle neue Chat-Nachrichten
-        bot.on('message', async (msg: Message) => {
-            try {
-                const chatId = msg.chat.id;
-                
-                // Sende Willkommensnachricht mit Spielen-Button
-                await bot.sendMessage(chatId, 'Willkommen bei G4NG MMO!', {
-                    reply_markup: {
-                        keyboard: [[{
-                            text: '🎮 Spielen',
-                            web_app: { url: `https://g4ngmmo.onrender.com/game?id=${chatId}` }
-                        }]],
-                        resize_keyboard: true,
-                        one_time_keyboard: false
+    private async setupBotHandlers() {
+        try {
+            // Setze den Menü-Button für alle Chats
+            await bot.setMyCommands([]);
+            await bot.setChatMenuButton({
+                menu_button: {
+                    type: 'web_app',
+                    text: '🎮 Spielen',
+                    web_app: {
+                        url: 'https://g4ngmmo.onrender.com/game'
                     }
-                });
-            } catch (error) {
-                console.error('Fehler beim Senden der Nachricht:', error);
-            }
-        });
+                }
+            });
 
-        // Behandle Web App Daten
-        bot.on('web_app_data', async (msg: any) => {
-            try {
-                const { data } = msg.web_app_data;
-                const parsedData = JSON.parse(data);
-                console.log('Web App Data received:', parsedData);
-                
-                // Bestätige den Empfang
-                await bot.sendMessage(msg.chat.id, 'Spieldaten empfangen!');
-            } catch (error) {
-                console.error('Fehler beim Verarbeiten der Web App Daten:', error);
-            }
-        });
+            // Behandle neue Chat-Nachrichten
+            bot.on('message', async (msg: Message) => {
+                try {
+                    const chatId = msg.chat.id;
+                    
+                    // Sende nur eine Willkommensnachricht
+                    await bot.sendMessage(chatId, 'Willkommen bei G4NG MMO! Klicke auf den Spielen-Button neben dem Chat, um zu starten.');
+                } catch (error) {
+                    console.error('Fehler beim Senden der Nachricht:', error);
+                }
+            });
+
+            // Behandle Web App Daten
+            bot.on('web_app_data', async (msg: any) => {
+                try {
+                    const { data } = msg.web_app_data;
+                    const parsedData = JSON.parse(data);
+                    console.log('Web App Data received:', parsedData);
+                    
+                    // Bestätige den Empfang
+                    await bot.sendMessage(msg.chat.id, 'Spieldaten empfangen!');
+                } catch (error) {
+                    console.error('Fehler beim Verarbeiten der Web App Daten:', error);
+                }
+            });
+        } catch (error) {
+            console.error('Fehler beim Setup der Bot-Handler:', error);
+        }
     }
 
     public addPlayer(player: Player) {
@@ -111,11 +118,6 @@ app.get('/', (req: Request, res: Response) => {
 // Game-Route für den Vollbildmodus
 app.get('/game', (req: Request, res: Response) => {
     try {
-        const chatId = req.query.id;
-        if (!chatId) {
-            return res.status(400).json({ error: 'Chat ID fehlt!' });
-        }
-
         res.send(`
             <!DOCTYPE html>
             <html lang="de">
@@ -172,7 +174,7 @@ app.get('/game', (req: Request, res: Response) => {
                         // Game-Initialisierung
                         window.onload = () => {
                             const canvas = document.getElementById('game-canvas');
-                            const chatId = '${chatId}';
+                            const chatId = webapp.initDataUnsafe?.user?.id;
                             
                             // Spiel-Logik hier
                             console.log('Game initialized for chat:', chatId);
