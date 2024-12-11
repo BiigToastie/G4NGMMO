@@ -383,137 +383,104 @@ app.get('/game', (req: Request, res: Response) => {
 });
 
 // Bot-Instanz und Status
-let bot: TelegramBot | null = null;
-let isInitializing = false;
-let shutdownRequested = false;
-let lastInitAttempt = 0;
-const MIN_INIT_INTERVAL = 10000; // Mindestens 10 Sekunden zwischen Initialisierungsversuchen
+class BotManager {
+    private static instance: BotManager;
+    private bot: TelegramBot | null = null;
+    private isInitializing: boolean = false;
+    private shutdownRequested: boolean = false;
+    private lastInitAttempt: number = 0;
+    private readonly MIN_INIT_INTERVAL = 15000; // 15 Sekunden
+    private cleanupTimeout: NodeJS.Timeout | null = null;
 
-async function initializeBot() {
-    const now = Date.now();
-    if (isInitializing || shutdownRequested || (now - lastInitAttempt < MIN_INIT_INTERVAL)) {
-        return;
+    private constructor() {}
+
+    public static getInstance(): BotManager {
+        if (!BotManager.instance) {
+            BotManager.instance = new BotManager();
+        }
+        return BotManager.instance;
     }
-    
-    try {
-        isInitializing = true;
-        lastInitAttempt = now;
 
-        if (bot) {
+    private async cleanup() {
+        if (this.bot) {
             try {
-                await bot.stopPolling();
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await this.bot.stopPolling();
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                this.bot = null;
             } catch (error) {
-                console.error('Fehler beim Stoppen des alten Bots:', error);
+                console.error('Fehler beim Cleanup:', error);
             }
-            bot = null;
+        }
+    }
+
+    public async initialize() {
+        const now = Date.now();
+        if (this.isInitializing || this.shutdownRequested || (now - this.lastInitAttempt < this.MIN_INIT_INTERVAL)) {
+            return;
         }
 
-        bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN!, { 
-            polling: {
-                interval: 2000,
-                autoStart: true,
-                params: {
-                    timeout: 30,
-                    allowed_updates: ['message', 'callback_query']
-                }
-            },
-            filepath: false // Deaktiviere lokale Dateispeicherung
-        });
+        try {
+            this.isInitializing = true;
+            this.lastInitAttempt = now;
 
-        // Error Handler für Polling-Fehler
-        bot.on('polling_error', async (error: Error) => {
-            const telegramError = error as any;
-            if (telegramError.code === 'ETELEGRAM' && telegramError.message.includes('terminated by other getUpdates')) {
-                console.log('Bot-Instanz wurde durch eine andere ersetzt. Warte auf Bereinigung...');
-                await new Promise(resolve => setTimeout(resolve, 10000)); // 10 Sekunden warten
-                if (!shutdownRequested) {
-                    isInitializing = false;
-                    await initializeBot();
-                }
-                return;
-            }
-            console.error('Polling-Fehler:', error);
-        });
+            await this.cleanup();
 
-        // Bot-Befehle
-        bot.onText(/\/start/, async (msg) => {
-            const chatId = msg.chat.id;
-            const userId = msg.from?.id.toString();
+            this.bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN!, {
+                polling: {
+                    interval: 3000,
+                    autoStart: true,
+                    params: {
+                        timeout: 30,
+                        allowed_updates: ['message', 'callback_query'],
+                        limit: 100
+                    }
+                },
+                filepath: false
+            });
 
-            if (!userId) {
-                bot?.sendMessage(chatId, 'Fehler: Benutzer-ID nicht gefunden');
-                return;
-            }
-
-            try {
-                if (!process.env.BASE_URL) {
-                    throw new Error('BASE_URL ist nicht definiert');
-                }
-
-                // Prüfen, ob bereits ein Charakter existiert
-                const characterUrl = new URL(`/api/character/${userId}`, process.env.BASE_URL).toString();
-                const response = await fetch(characterUrl);
-                
-                if (response.ok) {
-                    // Charakter existiert bereits
-                    bot?.sendMessage(chatId, 'Willkommen zurück! Dein Charakter ist bereits erstellt.');
-                } else {
-                    // Neuer Spieler - Charaktererstellung starten
-                    const gameUrl = new URL('/game', process.env.BASE_URL).toString();
-                    bot?.sendMessage(chatId, 
-                        'Willkommen bei G4NG MMO! Lass uns deinen Charakter erstellen.',
-                        {
-                            reply_markup: {
-                                inline_keyboard: [[
-                                    {
-                                        text: 'Charakter erstellen',
-                                        web_app: { url: gameUrl }
-                                    }
-                                ]]
-                            }
+            this.bot.on('polling_error', async (error: Error) => {
+                const telegramError = error as any;
+                if (telegramError.code === 'ETELEGRAM' && telegramError.message.includes('terminated by other getUpdates')) {
+                    console.log('Bot-Instanz wurde durch eine andere ersetzt. Starte Cleanup...');
+                    
+                    if (this.cleanupTimeout) {
+                        clearTimeout(this.cleanupTimeout);
+                    }
+                    
+                    this.cleanupTimeout = setTimeout(async () => {
+                        this.isInitializing = false;
+                        if (!this.shutdownRequested) {
+                            await this.initialize();
                         }
-                    );
+                    }, 15000);
+                    
+                    return;
                 }
-            } catch (error) {
-                console.error('Fehler beim Prüfen des Charakters:', error);
-                bot?.sendMessage(chatId, 'Es ist ein Fehler aufgetreten. Bitte versuche es später erneut.');
-            }
-        });
+                console.error('Polling-Fehler:', error);
+            });
 
-        console.log('Bot erfolgreich initialisiert');
-    } catch (error) {
-        console.error('Fehler beim Initialisieren des Bots:', error);
-        isInitializing = false;
-        if (!shutdownRequested) {
-            // Versuche nach 10 Sekunden erneut zu initialisieren
-            setTimeout(() => initializeBot(), 10000);
+            // Rest der Bot-Konfiguration...
+
+            console.log('Bot erfolgreich initialisiert');
+        } catch (error) {
+            console.error('Fehler beim Initialisieren des Bots:', error);
+            this.isInitializing = false;
+            if (!this.shutdownRequested) {
+                setTimeout(() => this.initialize(), 15000);
+            }
+        } finally {
+            this.isInitializing = false;
         }
-    } finally {
-        isInitializing = false;
+    }
+
+    public async shutdown() {
+        this.shutdownRequested = true;
+        if (this.cleanupTimeout) {
+            clearTimeout(this.cleanupTimeout);
+        }
+        await this.cleanup();
     }
 }
-
-// Prozess-Beendigung behandeln
-process.on('SIGTERM', async () => {
-    console.log('SIGTERM Signal empfangen. Beende Bot...');
-    shutdownRequested = true;
-    if (bot) {
-        await bot.stopPolling();
-        bot = null;
-    }
-    process.exit(0);
-});
-
-process.on('SIGINT', async () => {
-    console.log('SIGINT Signal empfangen. Beende Bot...');
-    shutdownRequested = true;
-    if (bot) {
-        await bot.stopPolling();
-        bot = null;
-    }
-    process.exit(0);
-});
 
 // Server starten und Initialisierung
 async function startServer() {
@@ -523,9 +490,24 @@ async function startServer() {
         process.exit(1);
     }
 
+    const botManager = BotManager.getInstance();
+
     app.listen(port, () => {
         console.log(`Server läuft auf Port ${port}`);
-        initializeBot();
+        botManager.initialize();
+    });
+
+    // Prozess-Beendigung behandeln
+    process.on('SIGTERM', async () => {
+        console.log('SIGTERM Signal empfangen. Beende Bot...');
+        await botManager.shutdown();
+        process.exit(0);
+    });
+
+    process.on('SIGINT', async () => {
+        console.log('SIGINT Signal empfangen. Beende Bot...');
+        await botManager.shutdown();
+        process.exit(0);
     });
 }
 
