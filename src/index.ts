@@ -459,6 +459,61 @@ class BotManager {
                 console.error('Polling-Fehler:', error);
             });
 
+            // Bot-Befehle
+            this.bot.onText(/\/start/, async (msg) => {
+                const chatId = msg.chat.id;
+                const userId = msg.from?.id.toString();
+
+                if (!userId) {
+                    console.error('Start-Befehl: Keine Benutzer-ID gefunden');
+                    this.bot?.sendMessage(chatId, 'Fehler: Benutzer-ID nicht gefunden');
+                    return;
+                }
+
+                try {
+                    if (!process.env.BASE_URL) {
+                        throw new Error('BASE_URL ist nicht definiert');
+                    }
+
+                    console.log(`Prüfe Charakter für Benutzer ${userId}`);
+                    
+                    // Prüfen, ob bereits ein Charakter existiert
+                    const characterUrl = new URL(`/api/character/${userId}`, process.env.BASE_URL).toString();
+                    console.log('Character URL:', characterUrl);
+                    
+                    const response = await fetch(characterUrl);
+                    console.log('API Response Status:', response.status);
+                    
+                    if (response.ok) {
+                        // Charakter existiert bereits
+                        console.log(`Existierender Charakter gefunden für Benutzer ${userId}`);
+                        this.bot?.sendMessage(chatId, 'Willkommen zurück! Dein Charakter ist bereits erstellt.');
+                    } else {
+                        // Neuer Spieler - Charaktererstellung starten
+                        console.log(`Kein Charakter gefunden für Benutzer ${userId}, starte Erstellung`);
+                        const gameUrl = new URL('/game', process.env.BASE_URL).toString();
+                        console.log('Game URL:', gameUrl);
+                        
+                        this.bot?.sendMessage(chatId, 
+                            'Willkommen bei G4NG MMO! Lass uns deinen Charakter erstellen.',
+                            {
+                                reply_markup: {
+                                    inline_keyboard: [[
+                                        {
+                                            text: 'Charakter erstellen',
+                                            web_app: { url: gameUrl }
+                                        }
+                                    ]]
+                                }
+                            }
+                        );
+                    }
+                } catch (error) {
+                    console.error('Fehler beim Prüfen des Charakters:', error);
+                    this.bot?.sendMessage(chatId, 'Es ist ein Fehler aufgetreten. Bitte versuche es später erneut.');
+                }
+            });
+
             // Rest der Bot-Konfiguration...
 
             console.log('Bot erfolgreich initialisiert');
