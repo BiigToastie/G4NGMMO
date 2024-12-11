@@ -32,7 +32,7 @@ async function connectToMongoDB() {
             const database = process.env.MONGODB_DATABASE || 'mmo-game';
             
             // Direkte Verbindungs-URI mit allen Shards
-            const mongoUri = `mongodb://${username}:${password}@cluster0-shard-00-00.ktz7i.mongodb.net:27017,cluster0-shard-00-01.ktz7i.mongodb.net:27017,cluster0-shard-00-02.ktz7i.mongodb.net:27017/${database}?ssl=true&replicaSet=atlas-wi4lzq-shard-0&authSource=admin&retryWrites=true&w=majority&readPreference=primaryPreferred`;
+            const mongoUri = `mongodb://${username}:${password}@cluster0-shard-00-00.ktz7i.mongodb.net:27017,cluster0-shard-00-01.ktz7i.mongodb.net:27017,cluster0-shard-00-02.ktz7i.mongodb.net:27017/${database}?replicaSet=atlas-wi4lzq-shard-0&ssl=true&authSource=admin`;
             
             console.log('Versuche Verbindung mit MongoDB:', mongoUri.replace(/:[^:]*@/, ':****@'));
 
@@ -51,6 +51,7 @@ async function connectToMongoDB() {
                 replicaSet: 'atlas-wi4lzq-shard-0',
                 ssl: true,
                 tls: true,
+                tlsInsecure: false,
                 tlsAllowInvalidCertificates: false,
                 tlsAllowInvalidHostnames: false,
                 family: 4,
@@ -68,15 +69,33 @@ async function connectToMongoDB() {
                 'cluster0-shard-00-02.ktz7i.mongodb.net'
             ];
 
+            // Teste TLS-Verbindung zu jedem Shard
             for (const host of shardHosts) {
                 try {
+                    const tls = require('tls');
+                    const socket = tls.connect({
+                        host: host,
+                        port: 27017,
+                        rejectUnauthorized: true
+                    });
+
+                    socket.on('secureConnect', () => {
+                        console.log(`TLS-Verbindung zu ${host} erfolgreich`);
+                        socket.end();
+                    });
+
+                    socket.on('error', (error) => {
+                        console.error(`TLS-Verbindung zu ${host} fehlgeschlagen:`, error);
+                    });
+
+                    // DNS-Test
                     const { promisify } = require('util');
                     const dns = require('dns');
                     const lookup = promisify(dns.lookup);
                     const result = await lookup(host, { family: 4 });
                     console.log(`DNS Lookup für Shard ${host}:`, result);
                 } catch (error) {
-                    console.error(`DNS Lookup fehlgeschlagen für Shard ${host}:`, error);
+                    console.error(`Test fehlgeschlagen für Shard ${host}:`, error);
                 }
             }
 
