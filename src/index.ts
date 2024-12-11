@@ -32,7 +32,7 @@ async function connectToMongoDB() {
             const database = process.env.MONGODB_DATABASE || 'mmo-game';
             
             // Direkte Verbindungs-URI mit allen Shards
-            const mongoUri = `mongodb://${username}:${password}@cluster0-shard-00-00.ktz7i.mongodb.net:27017,cluster0-shard-00-01.ktz7i.mongodb.net:27017,cluster0-shard-00-02.ktz7i.mongodb.net:27017/${database}?ssl=true&replicaSet=atlas-wi4lzq-shard-0&authSource=admin&retryWrites=true&w=majority`;
+            const mongoUri = `mongodb://${username}:${password}@cluster0-shard-00-00.ktz7i.mongodb.net:27017,cluster0-shard-00-01.ktz7i.mongodb.net:27017,cluster0-shard-00-02.ktz7i.mongodb.net:27017/${database}?ssl=true&replicaSet=atlas-wi4lzq-shard-0&authSource=admin&retryWrites=true&w=majority&readPreference=primaryPreferred`;
             
             console.log('Versuche Verbindung mit MongoDB:', mongoUri.replace(/:[^:]*@/, ':****@'));
 
@@ -58,11 +58,7 @@ async function connectToMongoDB() {
                     version: '1',
                     strict: true,
                     deprecationErrors: true
-                },
-                // Zusätzliche Replica Set-Optionen
-                readPreference: 'primaryPreferred',
-                replicaSet: 'atlas-wi4lzq-shard-0',
-                secondaryAcceptableLatencyMS: 500
+                }
             } satisfies ConnectOptions;
 
             // DNS-Tests für die Shards
