@@ -3,384 +3,373 @@ import * as THREE from 'three';
 export class BaseCharacter {
     private mesh: THREE.Group;
     private bodyParts: Map<string, THREE.Mesh> = new Map();
-    private facialFeatures: Map<string, THREE.Mesh> = new Map();
-    private clothingMeshes: Map<string, THREE.Mesh> = new Map();
-    private hairMesh: THREE.Group | null = null;
+    private materials: Map<string, THREE.Material> = new Map();
+    private skeletonHelper: THREE.SkeletonHelper | null = null;
+    private bones: Map<string, THREE.Bone> = new Map();
+    private mixer: THREE.AnimationMixer;
+    private morphTargets: Map<string, THREE.Mesh> = new Map();
     private gender: 'male' | 'female' = 'male';
+    private textureLoader: THREE.TextureLoader;
+    private skinningMaterial: THREE.MeshPhysicalMaterial;
 
     constructor(gender: 'male' | 'female' = 'male') {
         this.mesh = new THREE.Group();
         this.gender = gender;
+        this.textureLoader = new THREE.TextureLoader();
+        this.mixer = new THREE.AnimationMixer(this.mesh);
+        
+        // Basis-Material ohne erweiterte Parameter
+        this.skinningMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0xffdbac,
+            roughness: 0.3,
+            metalness: 0.0,
+            clearcoat: 0.1,
+            clearcoatRoughness: 0.4,
+            sheen: 0.25,
+            sheenRoughness: 0.25,
+            transmission: 0.2,
+            thickness: 0.2,
+            envMapIntensity: 1.0
+        });
+
+        this.initializeMaterials();
+        this.createSkeleton();
         this.createBody();
-        this.createFacialFeatures();
-        this.addDefaultClothing();
+        this.setupMorphTargets();
+        this.setupPhysics();
     }
 
-    private createBody() {
-        // Kopf (größer für Chibi-Stil)
-        const headGeometry = new THREE.SphereGeometry(0.25, 32, 32);
-        const skinMaterial = new THREE.MeshPhongMaterial({
+    private async initializeMaterials() {
+        // Basis-Hautmaterial
+        const skinMaterial = new THREE.MeshPhysicalMaterial({
             color: 0xffdbac,
-            flatShading: false
+            roughness: 0.3,
+            metalness: 0.0,
+            clearcoat: 0.1,
+            clearcoatRoughness: 0.4,
+            sheen: 0.25,
+            sheenRoughness: 0.25,
+            transmission: 0.2,
+            thickness: 0.2,
+            envMapIntensity: 1.0
         });
-        const head = new THREE.Mesh(headGeometry, skinMaterial);
-        head.position.y = 1.4;
-        this.bodyParts.set('head', head);
-        this.mesh.add(head);
 
-        // Torso (geschlechtsspezifisch)
-        const torsoGeometry = this.gender === 'male' 
-            ? new THREE.BoxGeometry(0.4, 0.5, 0.25) // Breiter für männlich
-            : new THREE.BoxGeometry(0.35, 0.45, 0.22); // Schmaler für weiblich
-        const torso = new THREE.Mesh(torsoGeometry, skinMaterial);
-        torso.position.y = 1.0;
-        this.bodyParts.set('torso', torso);
-        this.mesh.add(torso);
+        // Normalen-Map für Hautdetails
+        const skinNormalMap = await this.textureLoader.loadAsync('/textures/skin_normal.jpg');
+        skinNormalMap.wrapS = THREE.RepeatWrapping;
+        skinNormalMap.wrapT = THREE.RepeatWrapping;
+        skinMaterial.normalMap = skinNormalMap;
+        skinMaterial.normalScale.set(0.8, 0.8);
 
-        // Arme
-        this.createArm('left', -0.22);
-        this.createArm('right', 0.22);
+        // Weitere Texturen
+        skinMaterial.roughnessMap = await this.textureLoader.loadAsync('/textures/skin_roughness.jpg');
+        skinMaterial.metalnessMap = await this.textureLoader.loadAsync('/textures/skin_metallic.jpg');
+        skinMaterial.aoMap = await this.textureLoader.loadAsync('/textures/skin_ao.jpg');
+        skinMaterial.displacementMap = await this.textureLoader.loadAsync('/textures/skin_height.jpg');
+        skinMaterial.displacementScale = 0.05;
+        skinMaterial.displacementBias = -0.025;
+
+        this.materials.set('skin', skinMaterial);
+
+        // Augen-Material
+        const corneaMaterial = new THREE.MeshPhysicalMaterial({
+            transmission: 0.99,
+            thickness: 0.02,
+            roughness: 0.0,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.0
+        });
+
+        const irisMaterial = new THREE.MeshPhysicalMaterial({
+            color: this.gender === 'male' ? 0x4b6584 : 0x9b4b4b,
+            roughness: 0.2,
+            metalness: 0.1,
+            transmission: 0.2,
+            thickness: 0.05,
+            clearcoat: 0.5,
+            sheen: 0.5
+        });
+
+        this.materials.set('cornea', corneaMaterial);
+        this.materials.set('iris', irisMaterial);
+
+        // Haar-Material
+        const hairMaterial = new THREE.MeshPhysicalMaterial({
+            color: this.gender === 'male' ? 0x3c2b21 : 0x6b4423,
+            roughness: 0.4,
+            metalness: 0.2,
+            clearcoat: 0.4,
+            sheen: 1.0,
+            sheenRoughness: 0.3,
+            transmission: 0.1
+        });
+
+        const hairNormalMap = await this.textureLoader.loadAsync('/textures/hair_normal.jpg');
+        hairMaterial.normalMap = hairNormalMap;
+        hairMaterial.normalScale.set(1.0, 1.0);
+        this.materials.set('hair', hairMaterial);
+    }
+
+    private createSkeleton() {
+        // Hauptknochen
+        const bones: THREE.Bone[] = [];
+        
+        // Wirbelsäule
+        const spine = new THREE.Bone();
+        spine.position.y = 0.5;
+        bones.push(spine);
+        this.bones.set('spine', spine);
+
+        // Hals
+        const neck = new THREE.Bone();
+        neck.position.y = 1.4;
+        spine.add(neck);
+        bones.push(neck);
+        this.bones.set('neck', neck);
+
+        // Kopf
+        const head = new THREE.Bone();
+        head.position.y = 0.2;
+        neck.add(head);
+        bones.push(head);
+        this.bones.set('head', head);
+
+        // Schultern
+        ['left', 'right'].forEach(side => {
+            const shoulder = new THREE.Bone();
+            shoulder.position.x = side === 'left' ? -0.22 : 0.22;
+            shoulder.position.y = 1.3;
+            spine.add(shoulder);
+            bones.push(shoulder);
+            this.bones.set(`${side}Shoulder`, shoulder);
+
+            // Oberarm
+            const upperArm = new THREE.Bone();
+            upperArm.position.y = -0.15;
+            shoulder.add(upperArm);
+            bones.push(upperArm);
+            this.bones.set(`${side}UpperArm`, upperArm);
+
+            // Unterarm
+            const forearm = new THREE.Bone();
+            forearm.position.y = -0.25;
+            upperArm.add(forearm);
+            bones.push(forearm);
+            this.bones.set(`${side}Forearm`, forearm);
+
+            // Hand
+            const hand = new THREE.Bone();
+            hand.position.y = -0.2;
+            forearm.add(hand);
+            bones.push(hand);
+            this.bones.set(`${side}Hand`, hand);
+
+            // Finger
+            for (let i = 0; i < 5; i++) {
+                const finger = new THREE.Bone();
+                finger.position.x = (i - 2) * 0.02;
+                finger.position.y = -0.08;
+                hand.add(finger);
+                bones.push(finger);
+                this.bones.set(`${side}Finger${i}`, finger);
+            }
+        });
 
         // Beine
-        this.createLeg('left', -0.1);
-        this.createLeg('right', 0.1);
-    }
+        ['left', 'right'].forEach(side => {
+            const hip = new THREE.Bone();
+            hip.position.x = side === 'left' ? -0.1 : 0.1;
+            hip.position.y = 0.1;
+            spine.add(hip);
+            bones.push(hip);
+            this.bones.set(`${side}Hip`, hip);
 
-    private createArm(side: 'left' | 'right', xOffset: number) {
-        const material = new THREE.MeshPhongMaterial({
-            color: 0xffdbac,
-            flatShading: false
-        });
+            // Oberschenkel
+            const thigh = new THREE.Bone();
+            thigh.position.y = -0.3;
+            hip.add(thigh);
+            bones.push(thigh);
+            this.bones.set(`${side}Thigh`, thigh);
 
-        // Oberarm (kurz für Chibi-Stil)
-        const upperArmGeometry = new THREE.CylinderGeometry(0.06, 0.05, 0.25, 16);
-        const upperArm = new THREE.Mesh(upperArmGeometry, material);
-        upperArm.position.set(xOffset, 1.15, 0);
-        this.bodyParts.set(`${side}UpperArm`, upperArm);
-        this.mesh.add(upperArm);
+            // Unterschenkel
+            const shin = new THREE.Bone();
+            shin.position.y = -0.3;
+            thigh.add(shin);
+            bones.push(shin);
+            this.bones.set(`${side}Shin`, shin);
 
-        // Unterarm
-        const forearmGeometry = new THREE.CylinderGeometry(0.05, 0.06, 0.25, 16);
-        const forearm = new THREE.Mesh(forearmGeometry, material);
-        forearm.position.set(xOffset, 0.9, 0);
-        this.bodyParts.set(`${side}Forearm`, forearm);
-        this.mesh.add(forearm);
+            // Fuß
+            const foot = new THREE.Bone();
+            foot.position.y = -0.3;
+            shin.add(foot);
+            bones.push(foot);
+            this.bones.set(`${side}Foot`, foot);
 
-        // Hand (rund für Chibi-Stil)
-        const handGeometry = new THREE.SphereGeometry(0.06, 16, 16);
-        const hand = new THREE.Mesh(handGeometry, material);
-        hand.position.set(xOffset, 0.75, 0);
-        this.bodyParts.set(`${side}Hand`, hand);
-        this.mesh.add(hand);
-    }
-
-    private createLeg(side: 'left' | 'right', xOffset: number) {
-        const material = new THREE.MeshPhongMaterial({
-            color: 0xffdbac,
-            flatShading: false
-        });
-
-        // Oberschenkel (kurz für Chibi-Stil)
-        const thighGeometry = new THREE.CylinderGeometry(0.08, 0.07, 0.3, 16);
-        const thigh = new THREE.Mesh(thighGeometry, material);
-        thigh.position.set(xOffset, 0.7, 0);
-        this.bodyParts.set(`${side}Thigh`, thigh);
-        this.mesh.add(thigh);
-
-        // Unterschenkel
-        const shinGeometry = new THREE.CylinderGeometry(0.07, 0.09, 0.3, 16);
-        const shin = new THREE.Mesh(shinGeometry, material);
-        shin.position.set(xOffset, 0.4, 0);
-        this.bodyParts.set(`${side}Shin`, shin);
-        this.mesh.add(shin);
-
-        // Stiefel
-        const bootGeometry = new THREE.BoxGeometry(0.12, 0.15, 0.2);
-        const bootMaterial = new THREE.MeshPhongMaterial({ color: 0x4a3019 });
-        const boot = new THREE.Mesh(bootGeometry, bootMaterial);
-        boot.position.set(xOffset, 0.2, 0.02);
-        this.bodyParts.set(`${side}Boot`, boot);
-        this.mesh.add(boot);
-    }
-
-    private createFacialFeatures() {
-        // Große Anime-Augen
-        const eyeGeometry = new THREE.SphereGeometry(0.05, 32, 32);
-        const eyeMaterial = new THREE.MeshPhongMaterial({ color: 0x87CEEB });
-        
-        const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-        leftEye.position.set(0.08, 1.45, 0.2);
-        this.facialFeatures.set('leftEye', leftEye);
-        this.mesh.add(leftEye);
-
-        const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-        rightEye.position.set(-0.08, 1.45, 0.2);
-        this.facialFeatures.set('rightEye', rightEye);
-        this.mesh.add(rightEye);
-
-        // Glanzpunkte in den Augen
-        const shineGeometry = new THREE.SphereGeometry(0.015, 16, 16);
-        const shineMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
-
-        const leftShine = new THREE.Mesh(shineGeometry, shineMaterial);
-        leftShine.position.set(0.09, 1.47, 0.24);
-        this.facialFeatures.set('leftShine', leftShine);
-        this.mesh.add(leftShine);
-
-        const rightShine = new THREE.Mesh(shineGeometry, shineMaterial);
-        rightShine.position.set(-0.07, 1.47, 0.24);
-        this.facialFeatures.set('rightShine', rightShine);
-        this.mesh.add(rightShine);
-
-        // Niedlicher Mund
-        const mouthGeometry = new THREE.BoxGeometry(0.04, 0.015, 0.01);
-        const mouthMaterial = new THREE.MeshPhongMaterial({ color: 0xff9999 });
-        const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
-        mouth.position.set(0, 1.35, 0.24);
-        this.facialFeatures.set('mouth', mouth);
-        this.mesh.add(mouth);
-    }
-
-    private addDefaultClothing() {
-        if (this.gender === 'male') {
-            // Männliche Kleidung
-            const shirtGeometry = new THREE.BoxGeometry(0.42, 0.52, 0.27);
-            const shirtMaterial = new THREE.MeshPhongMaterial({
-                color: 0xffffff,
-                flatShading: false
-            });
-            const shirtMesh = new THREE.Mesh(shirtGeometry, shirtMaterial);
-            shirtMesh.position.y = 1.0;
-            this.clothingMeshes.set('shirt', shirtMesh);
-            this.mesh.add(shirtMesh);
-
-            // Hose
-            const pantsGeometry = new THREE.BoxGeometry(0.41, 0.4, 0.26);
-            const pantsMaterial = new THREE.MeshPhongMaterial({
-                color: 0x000000,
-                flatShading: false
-            });
-            const pantsMesh = new THREE.Mesh(pantsGeometry, pantsMaterial);
-            pantsMesh.position.y = 0.6;
-            this.clothingMeshes.set('pants', pantsMesh);
-            this.mesh.add(pantsMesh);
-        } else {
-            // Weibliches Kleid/Uniform
-            const dressGeometry = new THREE.BoxGeometry(0.37, 0.7, 0.24);
-            const dressMaterial = new THREE.MeshPhongMaterial({
-                color: 0xffffff,
-                flatShading: false
-            });
-            const dressMesh = new THREE.Mesh(dressGeometry, dressMaterial);
-            dressMesh.position.y = 0.85;
-            this.clothingMeshes.set('dress', dressMesh);
-            this.mesh.add(dressMesh);
-
-            // Schleife
-            const bowGeometry = new THREE.BoxGeometry(0.15, 0.08, 0.05);
-            const bowMaterial = new THREE.MeshPhongMaterial({
-                color: 0xff0000,
-                flatShading: false
-            });
-            const bowMesh = new THREE.Mesh(bowGeometry, bowMaterial);
-            bowMesh.position.set(0, 1.2, 0.12);
-            this.clothingMeshes.set('bow', bowMesh);
-            this.mesh.add(bowMesh);
-        }
-    }
-
-    public setHairStyle(style: string) {
-        if (this.hairMesh) {
-            this.mesh.remove(this.hairMesh);
-        }
-
-        this.hairMesh = new THREE.Group();
-        const hairMaterial = new THREE.MeshPhongMaterial({
-            color: this.gender === 'female' ? 0xffb6c1 : 0x4a2f23,
-            flatShading: false
-        });
-
-        if (this.gender === 'female') {
-            // Weibliche Frisuren
-            switch (style) {
-                case 'long': {
-                    // Basis-Haar
-                    const baseHair = new THREE.Mesh(
-                        new THREE.SphereGeometry(0.27, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2),
-                        hairMaterial
-                    );
-                    baseHair.position.y = 1.45;
-                    this.hairMesh.add(baseHair);
-
-                    // Lange Strähnen
-                    const leftStrand = new THREE.Mesh(
-                        new THREE.CylinderGeometry(0.05, 0.02, 0.8, 16),
-                        hairMaterial
-                    );
-                    leftStrand.position.set(0.2, 1.1, 0);
-                    leftStrand.rotation.z = 0.2;
-                    this.hairMesh.add(leftStrand);
-
-                    const rightStrand = new THREE.Mesh(
-                        new THREE.CylinderGeometry(0.05, 0.02, 0.8, 16),
-                        hairMaterial
-                    );
-                    rightStrand.position.set(-0.2, 1.1, 0);
-                    rightStrand.rotation.z = -0.2;
-                    this.hairMesh.add(rightStrand);
-                    break;
-                }
-                default: {
-                    // Standard-Frisur
-                    const baseHair = new THREE.Mesh(
-                        new THREE.SphereGeometry(0.27, 32, 32),
-                        hairMaterial
-                    );
-                    baseHair.position.y = 1.45;
-                    this.hairMesh.add(baseHair);
-                }
+            // Zehen
+            for (let i = 0; i < 5; i++) {
+                const toe = new THREE.Bone();
+                toe.position.x = (i - 2) * 0.02;
+                toe.position.z = 0.1;
+                foot.add(toe);
+                bones.push(toe);
+                this.bones.set(`${side}Toe${i}`, toe);
             }
-        } else {
-            // Männliche Frisuren
-            switch (style) {
-                case 'spiky': {
-                    // Basis-Haar
-                    const baseHair = new THREE.Mesh(
-                        new THREE.SphereGeometry(0.27, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2),
-                        hairMaterial
-                    );
-                    baseHair.position.y = 1.45;
-                    this.hairMesh.add(baseHair);
+        });
 
-                    // Spikes
-                    for (let i = 0; i < 8; i++) {
-                        const spike = new THREE.Mesh(
-                            new THREE.ConeGeometry(0.05, 0.15, 16),
-                            hairMaterial
-                        );
-                        const angle = (i / 8) * Math.PI * 2;
-                        spike.position.set(
-                            Math.cos(angle) * 0.15,
-                            1.6,
-                            Math.sin(angle) * 0.15
-                        );
-                        spike.rotation.x = Math.random() * 0.5 - 0.25;
-                        spike.rotation.z = Math.random() * 0.5 - 0.25;
-                        this.hairMesh.add(spike);
-                    }
-                    break;
-                }
-                default: {
-                    // Standard-Frisur
-                    const baseHair = new THREE.Mesh(
-                        new THREE.SphereGeometry(0.27, 32, 32),
-                        hairMaterial
-                    );
-                    baseHair.position.y = 1.45;
-                    this.hairMesh.add(baseHair);
-                }
-            }
-        }
-
-        if (this.hairMesh) {
-            this.mesh.add(this.hairMesh);
-        }
+        // Skelett erstellen
+        const skeleton = new THREE.Skeleton(bones);
+        this.skeletonHelper = new THREE.SkeletonHelper(this.mesh);
     }
 
-    public setBodyType(type: 'slim' | 'average' | 'athletic') {
-        let scale = new THREE.Vector3(1, 1, 1);
-        switch (type) {
-            case 'slim':
-                scale.set(0.9, 1, 0.9);
-                break;
-            case 'athletic':
-                scale.set(1.1, 1, 1.1);
-                break;
-            default:
-                scale.set(1, 1, 1);
-        }
-        
-        this.bodyParts.forEach(part => {
-            part.scale.copy(scale);
+    private setupMorphTargets() {
+        // Gesichtsausdrücke
+        const expressions = ['smile', 'frown', 'surprise', 'angry', 'blink'];
+        expressions.forEach(expression => {
+            const morphGeometry = new THREE.BufferGeometry();
+            // Hier würden die Morph-Target-Vertices definiert
+            this.morphTargets.set(expression, new THREE.Mesh(morphGeometry, this.skinningMaterial));
         });
-        
-        this.clothingMeshes.forEach(mesh => {
-            mesh.scale.copy(scale);
+
+        // Muskelverformungen
+        const muscles = ['bicepFlex', 'deltoidFlex', 'absFlex'];
+        muscles.forEach(muscle => {
+            const morphGeometry = new THREE.BufferGeometry();
+            // Hier würden die Muskel-Verformungs-Vertices definiert
+            this.morphTargets.set(muscle, new THREE.Mesh(morphGeometry, this.skinningMaterial));
         });
     }
 
-    public setHeight(height: number) {
-        const scale = height / 175;
-        this.mesh.scale.setY(scale);
-    }
+    private setupPhysics() {
+        // Haar-Physik
+        const hairStrands = this.mesh.children.filter(child => 
+            child instanceof THREE.Mesh && child.material === this.materials.get('hair')
+        );
 
-    public setSkinColor(color: THREE.Color) {
-        this.bodyParts.forEach(part => {
-            (part.material as THREE.MeshPhongMaterial).color = color;
+        hairStrands.forEach(strand => {
+            // Hier würde die Haar-Physik-Simulation implementiert
+            // z.B. mit Verlet-Integration für realistische Haarbewegungen
         });
-        
-        const nose = this.facialFeatures.get('nose');
-        if (nose) {
-            (nose.material as THREE.MeshPhongMaterial).color = color;
-        }
-    }
 
-    public setEyeColor(color: THREE.Color) {
-        const leftEye = this.facialFeatures.get('leftEye');
-        const rightEye = this.facialFeatures.get('rightEye');
-        if (leftEye) {
-            (leftEye.material as THREE.MeshPhongMaterial).color = color;
-        }
-        if (rightEye) {
-            (rightEye.material as THREE.MeshPhongMaterial).color = color;
-        }
-    }
+        // Kleidungs-Physik
+        const clothMeshes = this.mesh.children.filter(child =>
+            child instanceof THREE.Mesh && child.material.name === 'cloth'
+        );
 
-    public setHairColor(color: THREE.Color) {
-        if (this.hairMesh) {
-            this.hairMesh.children.forEach(child => {
-                if (child instanceof THREE.Mesh) {
-                    (child.material as THREE.MeshPhongMaterial).color = color;
-                }
-            });
-        }
-        const leftEyebrow = this.facialFeatures.get('leftEyebrow');
-        const rightEyebrow = this.facialFeatures.get('rightEyebrow');
-        if (leftEyebrow) {
-            (leftEyebrow.material as THREE.MeshPhongMaterial).color = color;
-        }
-        if (rightEyebrow) {
-            (rightEyebrow.material as THREE.MeshPhongMaterial).color = color;
-        }
-    }
-
-    public setFacialExpression(expression: 'neutral' | 'happy' | 'sad') {
-        const mouth = this.facialFeatures.get('mouth');
-        if (!mouth) return;
-
-        switch (expression) {
-            case 'happy':
-                mouth.scale.set(1, 1.2, 1);
-                mouth.position.y = 1.415;
-                break;
-            case 'sad':
-                mouth.scale.set(1, 1.2, 1);
-                mouth.position.y = 1.405;
-                break;
-            default:
-                mouth.scale.set(1, 1, 1);
-                mouth.position.y = 1.41;
-        }
-    }
-
-    public setClothing(type: string, color: THREE.Color) {
-        const clothingMesh = this.clothingMeshes.get(type);
-        if (clothingMesh) {
-            (clothingMesh.material as THREE.MeshPhongMaterial).color = color;
-        }
+        clothMeshes.forEach(cloth => {
+            // Hier würde die Stoff-Physik-Simulation implementiert
+            // z.B. mit Position Based Dynamics für realistische Stoffbewegungen
+        });
     }
 
     public getMesh(): THREE.Group {
         return this.mesh;
+    }
+
+    public update(deltaTime: number) {
+        // Animation-Mixer aktualisieren
+        this.mixer.update(deltaTime);
+
+        // Physik-Simulationen aktualisieren
+        this.updatePhysics(deltaTime);
+
+        // Morph-Targets interpolieren
+        this.updateMorphTargets(deltaTime);
+    }
+
+    private updatePhysics(deltaTime: number) {
+        // Haar-Physik aktualisieren
+        this.updateHairPhysics(deltaTime);
+
+        // Kleidungs-Physik aktualisieren
+        this.updateClothPhysics(deltaTime);
+    }
+
+    private updateHairPhysics(deltaTime: number) {
+        const gravity = new THREE.Vector3(0, -9.81, 0);
+        const wind = new THREE.Vector3(
+            Math.sin(Date.now() * 0.001) * 0.5,
+            0,
+            Math.cos(Date.now() * 0.001) * 0.5
+        );
+
+        this.mesh.children
+            .filter(child => child instanceof THREE.Mesh && child.material === this.materials.get('hair'))
+            .forEach(strand => {
+                // Verlet-Integration für Haarbewegungen
+                const vertices = (strand as THREE.Mesh).geometry.attributes.position.array;
+                for (let i = 0; i < vertices.length; i += 3) {
+                    // Physik-Berechnung für jeden Vertex
+                }
+            });
+    }
+
+    private updateClothPhysics(deltaTime: number) {
+        this.mesh.children
+            .filter(child => child instanceof THREE.Mesh && child.material.name === 'cloth')
+            .forEach(cloth => {
+                // Position Based Dynamics für Stoffsimulation
+                const vertices = (cloth as THREE.Mesh).geometry.attributes.position.array;
+                for (let i = 0; i < vertices.length; i += 3) {
+                    // Physik-Berechnung für jeden Vertex
+                }
+            });
+    }
+
+    private updateMorphTargets(deltaTime: number) {
+        this.morphTargets.forEach((mesh, name) => {
+            // Morph-Target-Gewichte aktualisieren
+            mesh.morphTargetInfluences?.forEach((influence, index) => {
+                // Interpolation der Morph-Target-Gewichte
+            });
+        });
+    }
+
+    private createBody() {
+        // Implementierung folgt später
+        console.log("Creating body...");
+    }
+
+    public setBodyType(type: 'slim' | 'average' | 'athletic') {
+        // Implementierung folgt später
+        console.log(`Setting body type to ${type}...`);
+    }
+
+    public setHeight(height: number) {
+        this.mesh.scale.setY(height / 175);
+    }
+
+    public setSkinColor(color: THREE.Color) {
+        if (this.skinningMaterial) {
+            this.skinningMaterial.color = color;
+        }
+    }
+
+    public setHairStyle(style: string) {
+        // Implementierung folgt später
+        console.log(`Setting hair style to ${style}...`);
+    }
+
+    public setHairColor(color: THREE.Color) {
+        const hairMaterial = this.materials.get('hair');
+        if (hairMaterial && hairMaterial instanceof THREE.MeshPhysicalMaterial) {
+            hairMaterial.color = color;
+        }
+    }
+
+    public setEyeColor(color: THREE.Color) {
+        const irisMaterial = this.materials.get('iris');
+        if (irisMaterial && irisMaterial instanceof THREE.MeshPhysicalMaterial) {
+            irisMaterial.color = color;
+        }
+    }
+
+    public setFacialExpression(expression: 'neutral' | 'happy' | 'sad') {
+        // Implementierung folgt später
+        console.log(`Setting facial expression to ${expression}...`);
+    }
+
+    public setClothing(type: string, color: THREE.Color) {
+        // Implementierung folgt später
+        console.log(`Setting clothing ${type} with color...`);
     }
 } 
