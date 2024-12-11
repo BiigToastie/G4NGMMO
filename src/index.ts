@@ -4,7 +4,6 @@ import { connectToMongoDB } from './database/mongodb';
 import { BotManager } from './telegram/bot';
 import characterRoutes from './routes/character';
 
-// Express Server
 const app = express();
 const port = parseInt(process.env.PORT || '3000', 10);
 
@@ -19,12 +18,12 @@ app.use('/api/character', characterRoutes);
 
 // Basis-Route für Gesundheitscheck
 app.get('/', (req, res) => {
-    res.json({ status: 'ok', message: 'G4NG MMO API läuft' });
+    res.sendFile('index.html', { root: 'public' });
 });
 
-// Game-Route für die Web-App
-app.get('/game', (req, res) => {
-    res.sendFile('public/index.html', { root: '.' });
+// Character-Route
+app.get('/character', (req, res) => {
+    res.sendFile('character.html', { root: 'public' });
 });
 
 // Server starten und Initialisierung
