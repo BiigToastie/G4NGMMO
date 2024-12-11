@@ -32,11 +32,90 @@ export class BaseCharacter {
             envMapIntensity: 1.0
         });
 
-        this.initializeMaterials();
-        this.createSkeleton();
-        this.createBody();
-        this.setupMorphTargets();
-        this.setupPhysics();
+        // Erstelle sofort einen grundlegenden Körper mit dem Basis-Material
+        this.createBasicBody();
+        
+        // Initialisiere dann asynchron die erweiterten Features
+        this.initializeMaterials().then(() => {
+            this.createSkeleton();
+            this.setupMorphTargets();
+            this.setupPhysics();
+        }).catch(error => {
+            console.error('Fehler beim Initialisieren der Materialien:', error);
+        });
+    }
+
+    private createBasicBody() {
+        // Kopf
+        const headGeometry = new THREE.SphereGeometry(0.25, 32, 32);
+        const head = new THREE.Mesh(headGeometry, this.skinningMaterial);
+        head.position.y = 1.4;
+        this.bodyParts.set('head', head);
+        this.mesh.add(head);
+
+        // Torso
+        const torsoGeometry = new THREE.CylinderGeometry(
+            0.25, // Radius oben
+            0.2,  // Radius unten
+            0.5,  // Höhe
+            12    // Segmente
+        );
+        const torso = new THREE.Mesh(torsoGeometry, this.skinningMaterial);
+        torso.position.y = 1.0;
+        this.bodyParts.set('torso', torso);
+        this.mesh.add(torso);
+
+        // Arme
+        ['left', 'right'].forEach(side => {
+            const xOffset = side === 'left' ? -0.35 : 0.35;
+            
+            // Oberarm
+            const upperArmGeometry = new THREE.CylinderGeometry(0.05, 0.04, 0.3, 8);
+            const upperArm = new THREE.Mesh(upperArmGeometry, this.skinningMaterial);
+            upperArm.position.set(xOffset, 1.2, 0);
+            this.bodyParts.set(`${side}UpperArm`, upperArm);
+            this.mesh.add(upperArm);
+
+            // Unterarm
+            const forearmGeometry = new THREE.CylinderGeometry(0.04, 0.05, 0.3, 8);
+            const forearm = new THREE.Mesh(forearmGeometry, this.skinningMaterial);
+            forearm.position.set(xOffset, 0.9, 0);
+            this.bodyParts.set(`${side}Forearm`, forearm);
+            this.mesh.add(forearm);
+
+            // Hand
+            const handGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+            const hand = new THREE.Mesh(handGeometry, this.skinningMaterial);
+            hand.position.set(xOffset, 0.7, 0);
+            this.bodyParts.set(`${side}Hand`, hand);
+            this.mesh.add(hand);
+        });
+
+        // Beine
+        ['left', 'right'].forEach(side => {
+            const xOffset = side === 'left' ? -0.1 : 0.1;
+
+            // Oberschenkel
+            const thighGeometry = new THREE.CylinderGeometry(0.07, 0.06, 0.3, 8);
+            const thigh = new THREE.Mesh(thighGeometry, this.skinningMaterial);
+            thigh.position.set(xOffset, 0.7, 0);
+            this.bodyParts.set(`${side}Thigh`, thigh);
+            this.mesh.add(thigh);
+
+            // Unterschenkel
+            const shinGeometry = new THREE.CylinderGeometry(0.06, 0.07, 0.3, 8);
+            const shin = new THREE.Mesh(shinGeometry, this.skinningMaterial);
+            shin.position.set(xOffset, 0.4, 0);
+            this.bodyParts.set(`${side}Shin`, shin);
+            this.mesh.add(shin);
+
+            // Fuß
+            const footGeometry = new THREE.BoxGeometry(0.1, 0.05, 0.15);
+            const foot = new THREE.Mesh(footGeometry, this.skinningMaterial);
+            foot.position.set(xOffset, 0.2, 0.05);
+            this.bodyParts.set(`${side}Foot`, foot);
+            this.mesh.add(foot);
+        });
     }
 
     private async initializeMaterials() {
