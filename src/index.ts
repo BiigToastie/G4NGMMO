@@ -17,8 +17,27 @@ app.use(express.static('public'));
 app.use('/api/character', characterRoutes);
 
 // Basis-Route für Gesundheitscheck
-app.get('/', (req, res) => {
-    res.sendFile('index.html', { root: 'public' });
+app.get('/', async (req, res) => {
+    // Prüfe ob der Benutzer einen Charakter hat
+    const userId = req.query.userId;
+    if (!userId) {
+        res.redirect('/character');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${process.env.BASE_URL}/api/character/${userId}`);
+        const data = await response.json();
+        
+        if (data.character) {
+            res.redirect('/game');
+        } else {
+            res.redirect('/character');
+        }
+    } catch (error) {
+        console.error('Fehler beim Charakter-Check:', error);
+        res.redirect('/character');
+    }
 });
 
 // Character-Route
@@ -27,8 +46,27 @@ app.get('/character', (req, res) => {
 });
 
 // Game-Route
-app.get('/game', (req, res) => {
-    res.sendFile('game.html', { root: 'public' });
+app.get('/game', async (req, res) => {
+    // Prüfe ob der Benutzer einen Charakter hat
+    const userId = req.query.userId;
+    if (!userId) {
+        res.redirect('/character');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${process.env.BASE_URL}/api/character/${userId}`);
+        const data = await response.json();
+        
+        if (data.character) {
+            res.sendFile('game.html', { root: 'public' });
+        } else {
+            res.redirect('/character');
+        }
+    } catch (error) {
+        console.error('Fehler beim Charakter-Check:', error);
+        res.redirect('/character');
+    }
 });
 
 // Fallback für alle anderen Routen
