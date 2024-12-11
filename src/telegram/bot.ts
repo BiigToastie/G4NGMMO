@@ -11,10 +11,10 @@ export class BotManager {
     private bot: TelegramBot | null = null;
     private isInitializing: boolean = false;
     private shutdownRequested: boolean = false;
-    private activeChats: Set<number> = new Set(); // Speichert aktive Chat-IDs
-    private userCooldowns: Map<number, number> = new Map(); // Speichert User-Cooldowns
-    private menuMessages: Map<number, number> = new Map(); // Speichert aktive Menü-Nachrichten pro Chat
-    private tempMessages: Map<number, number[]> = new Map(); // Speichert temporäre Nachrichten-IDs pro Chat
+    private activeChats: Set<number> = new Set();
+    private userCooldowns: Map<number, number> = new Map();
+    private menuMessages: Map<number, number> = new Map();
+    private tempMessages: Map<number, number[]> = new Map();
 
     private constructor() {}
 
@@ -37,10 +37,7 @@ export class BotManager {
     }
 
     private async sendNewMenu(chatId: number, text: string, keyboard: TelegramBot.InlineKeyboardButton[][]) {
-        // Lösche altes Menü
         await this.deleteOldMenu(chatId);
-
-        // Sende neues Menü
         const message = await this.bot?.sendMessage(chatId, text, {
             parse_mode: 'Markdown',
             reply_markup: {
@@ -48,7 +45,6 @@ export class BotManager {
             }
         });
 
-        // Speichere neue Menü-Nachricht
         if (message) {
             this.menuMessages.set(chatId, message.message_id);
         }
@@ -56,29 +52,26 @@ export class BotManager {
         return message;
     }
 
-    private isUserInCooldown(userId: number): boolean {
-        const lastMessageTime = this.userCooldowns.get(userId);
-        if (!lastMessageTime) return false;
-
-        const cooldownTime = 30 * 1000; // 30 Sekunden in Millisekunden
-        const timeSinceLastMessage = Date.now() - lastMessageTime;
-        return timeSinceLastMessage < cooldownTime;
-    }
-
-    private getRemainingCooldown(userId: number): number {
-        const lastMessageTime = this.userCooldowns.get(userId);
-        if (!lastMessageTime) return 0;
-
-        const cooldownTime = 30 * 1000;
-        const timeSinceLastMessage = Date.now() - lastMessageTime;
-        return Math.ceil((cooldownTime - timeSinceLastMessage) / 1000);
+    private async handleCharacterMenu(chatId: number, userId: number) {
+        try {
+            await this.sendNewMenu(chatId,
+                '👤 *Charakter-Menü*\n\n' +
+                'Wähle eine Option:',
+                [
+                    [{ text: '🎨 Charakter erstellen/anpassen', web_app: { url: 'https://g4ngmmo.onrender.com/game' } }],
+                    [{ text: '📊 Statistiken anzeigen', callback_data: 'character_stats' }],
+                    [{ text: '↩️ Zurück zum Hauptmenü', callback_data: 'main_menu' }]
+                ]
+            );
+        } catch (error) {
+            console.error('Fehler beim Anzeigen des Charakter-Menüs:', error);
+        }
     }
 
     private async handleCharacterStats(chatId: number, userId: number) {
         try {
-            await this.deleteOldMenu(chatId);
             await this.sendNewMenu(chatId,
-                `🎮 *Charakter-Statistiken*\n\n` +
+                `📊 *Charakter-Statistiken*\n\n` +
                 `Level: 1\n` +
                 `Erfahrung: 0/100\n` +
                 `Angriff: 10\n` +
@@ -86,7 +79,7 @@ export class BotManager {
                 `Leben: 100/100\n` +
                 `Gold: 0`,
                 [
-                    [{ text: '↩️ Zurück zum Hauptmenü', callback_data: 'main_menu' }]
+                    [{ text: '↩️ Zurück zum Charakter-Menü', callback_data: 'character_menu' }]
                 ]
             );
         } catch (error) {
@@ -123,7 +116,7 @@ export class BotManager {
                 '• Deine eigene Nachricht wird gelöscht und erscheint neu formatiert für alle (auch für dich)\n' +
                 '• 30 Sekunden Cooldown zwischen Nachrichten\n\n' +
                 '*📊 Charakter*\n' +
-                '• Jeder Spieler hat einen eigenen Charakter\n' +
+                '• Erstelle und passe deinen Charakter in der Web-App an\n' +
                 '• Verbessere deine Stats durch Kämpfe und Quests\n' +
                 '• Sammle Ausrüstung und Gold\n\n' +
                 '*🏰 Gilden*\n' +
@@ -155,24 +148,6 @@ export class BotManager {
         }
     }
 
-    private async addTempMessage(chatId: number, messageId: number) {
-        const messages = this.tempMessages.get(chatId) || [];
-        messages.push(messageId);
-        this.tempMessages.set(chatId, messages);
-    }
-
-    private async clearTempMessages(chatId: number) {
-        const messages = this.tempMessages.get(chatId) || [];
-        for (const messageId of messages) {
-            try {
-                await this.bot?.deleteMessage(chatId, messageId);
-            } catch (error) {
-                // Ignoriere Fehler beim Löschen
-            }
-        }
-        this.tempMessages.delete(chatId);
-    }
-
     private async showMainMenu(chatId: number) {
         await this.clearTempMessages(chatId);
         return await this.sendNewMenu(
@@ -182,11 +157,64 @@ export class BotManager {
             'Schreibe einfach eine Nachricht, um mit anderen zu chatten!\n\n' +
             '_Hinweis: Nach jeder Nachricht gibt es einen 30-Sekunden Cooldown._',
             [
-                [{ text: '📊 Charakter Stats', callback_data: 'character_stats' }],
+                [{ text: '👤 Charakter', callback_data: 'character_menu' }],
                 [{ text: '🏰 Gilden-Verwaltung', callback_data: 'guild_menu' }],
                 [{ text: '❓ Spielhilfe', callback_data: 'help' }]
             ]
         );
+    }
+
+    private async handleCallback(callbackQuery: TelegramBot.CallbackQuery) {
+        const chatId = callbackQuery.message?.chat.id;
+        const userId = callbackQuery.from.id;
+        const action = callbackQuery.data;
+
+        if (!chatId || !action) return;
+
+        try {
+            switch (action) {
+                case 'character_menu':
+                    await this.handleCharacterMenu(chatId, userId);
+                    break;
+
+                case 'character_stats':
+                    await this.handleCharacterStats(chatId, userId);
+                    break;
+
+                case 'guild_menu':
+                    await this.handleGuildMenu(chatId, userId);
+                    break;
+
+                case 'help':
+                    await this.handleHelp(chatId);
+                    break;
+
+                case 'main_menu':
+                    await this.showMainMenu(chatId);
+                    break;
+
+                case 'guild_create':
+                case 'guild_search':
+                case 'guild_battles':
+                    const tempMessage = await this.bot?.sendMessage(chatId, '🚧 Diese Funktion wird bald verfügbar sein!');
+                    if (tempMessage) {
+                        await this.addTempMessage(chatId, tempMessage.message_id);
+                    }
+                    setTimeout(async () => {
+                        await this.showMainMenu(chatId);
+                    }, 2000);
+                    break;
+            }
+        } catch (error) {
+            console.error('Fehler bei Callback-Verarbeitung:', error);
+            const errorMessage = await this.bot?.sendMessage(chatId, 'Es gab einen Fehler. Bitte versuche es später erneut.');
+            if (errorMessage) {
+                await this.addTempMessage(chatId, errorMessage.message_id);
+            }
+            setTimeout(async () => {
+                await this.showMainMenu(chatId);
+            }, 2000);
+        }
     }
 
     public async initialize() {
@@ -219,54 +247,7 @@ export class BotManager {
 
             // Callback Query Handler
             this.bot.on('callback_query', async (callbackQuery) => {
-                const chatId = callbackQuery.message?.chat.id;
-                const userId = callbackQuery.from.id;
-                const action = callbackQuery.data;
-
-                if (!chatId || !action) return;
-
-                try {
-                    switch (action) {
-                        case 'character_stats':
-                            await this.handleCharacterStats(chatId, userId);
-                            break;
-
-                        case 'guild_menu':
-                            await this.handleGuildMenu(chatId, userId);
-                            break;
-
-                        case 'help':
-                            await this.handleHelp(chatId);
-                            break;
-
-                        case 'main_menu':
-                            await this.showMainMenu(chatId);
-                            break;
-
-                        // Gilden-bezogene Aktionen
-                        case 'guild_create':
-                        case 'guild_search':
-                        case 'guild_battles':
-                            const tempMessage = await this.bot?.sendMessage(chatId, '🚧 Diese Funktion wird bald verfügbar sein!');
-                            if (tempMessage) {
-                                await this.addTempMessage(chatId, tempMessage.message_id);
-                            }
-                            // Warte kurz, damit die Nachricht gelesen werden kann
-                            setTimeout(async () => {
-                                await this.showMainMenu(chatId);
-                            }, 2000);
-                            break;
-                    }
-                } catch (error) {
-                    console.error('Fehler bei Callback-Verarbeitung:', error);
-                    const errorMessage = await this.bot?.sendMessage(chatId, 'Es gab einen Fehler. Bitte versuche es später erneut.');
-                    if (errorMessage) {
-                        await this.addTempMessage(chatId, errorMessage.message_id);
-                    }
-                    setTimeout(async () => {
-                        await this.showMainMenu(chatId);
-                    }, 2000);
-                }
+                await this.handleCallback(callbackQuery);
             });
 
             // Globaler Nachrichten-Handler
