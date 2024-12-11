@@ -24,25 +24,46 @@ async function connectToMongoDB() {
 
     while (retries < maxRetries) {
         try {
-            await mongoose.connect(process.env.MONGODB_URI!, {
-                serverSelectionTimeoutMS: 10000,
+            const mongoUri = process.env.MONGODB_URI!;
+            console.log('Versuche Verbindung mit MongoDB:', mongoUri.replace(/:[^:]*@/, ':****@'));
+
+            await mongoose.connect(mongoUri, {
+                serverSelectionTimeoutMS: 30000,
                 socketTimeoutMS: 45000,
-                connectTimeoutMS: 10000,
+                connectTimeoutMS: 30000,
                 retryWrites: true,
                 retryReads: true,
                 w: 'majority',
                 maxPoolSize: 10,
                 minPoolSize: 5,
-                keepAlive: true,
-                keepAliveInitialDelay: 300000,
-                autoIndex: true,
-                authSource: 'admin'
+                authSource: 'admin',
+                directConnection: false,
+                replicaSet: 'atlas-wi4lzq-shard-0',
+                ssl: true,
+                tlsAllowInvalidCertificates: false,
+                tlsAllowInvalidHostnames: false
             });
+
             console.log('Mit MongoDB verbunden');
             return true;
         } catch (error) {
             retries++;
             console.error(`MongoDB Verbindungsversuch ${retries}/${maxRetries} fehlgeschlagen:`, error);
+            
+            // Detailliertere Fehleranalyse
+            const mongoError = error as any;
+            if (mongoError.name === 'MongoServerSelectionError') {
+                console.error('Server Selection Details:', {
+                    type: mongoError.reason?.type,
+                    setName: mongoError.reason?.setName,
+                    servers: Array.from(mongoError.reason?.servers?.entries() || []).map(([host, desc]: [string, any]) => ({
+                        host,
+                        type: desc.type,
+                        error: desc.error?.message
+                    }))
+                });
+            }
+
             if (retries === maxRetries) {
                 console.error('Maximale Anzahl an Verbindungsversuchen erreicht');
                 return false;
