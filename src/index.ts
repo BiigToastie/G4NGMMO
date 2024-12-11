@@ -1,5 +1,5 @@
-import express from 'express';
-import TelegramBot from 'node-telegram-bot-api';
+import express, { Request, Response } from 'express';
+import TelegramBot, { Message } from 'node-telegram-bot-api';
 import dotenv from 'dotenv';
 import {
     BiomeType,
@@ -43,12 +43,12 @@ class Game {
     }
 
     private setupBotCommands() {
-        bot.onText(/\/start/, (msg) => {
+        bot.onText(/\/start/, (msg: Message) => {
             const chatId = msg.chat.id;
             bot.sendMessage(chatId, 'Willkommen beim MMO-Spiel! Benutze /help für eine Liste der verfügbaren Befehle.');
         });
 
-        bot.onText(/\/help/, (msg) => {
+        bot.onText(/\/help/, (msg: Message) => {
             const chatId = msg.chat.id;
             const helpText = `
 Verfügbare Befehle:
@@ -75,7 +75,7 @@ Verfügbare Befehle:
 const game = new Game();
 
 // Express Routen
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
     res.send('MMO Game Server läuft!');
 });
 
