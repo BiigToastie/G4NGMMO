@@ -9,7 +9,12 @@ import characterRoutes from './routes/character';
 dotenv.config();
 
 // MongoDB Verbindung
-mongoose.connect(process.env.MONGODB_URI!)
+mongoose.connect(process.env.MONGODB_URI!, {
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+    retryWrites: true,
+    w: 'majority'
+})
     .then(() => console.log('Mit MongoDB verbunden'))
     .catch(err => console.error('MongoDB Verbindungsfehler:', err));
 
@@ -401,15 +406,20 @@ function initializeBot() {
             }
 
             try {
+                if (!process.env.BASE_URL) {
+                    throw new Error('BASE_URL ist nicht definiert');
+                }
+
                 // Prüfen, ob bereits ein Charakter existiert
-                const response = await fetch(`${process.env.BASE_URL}/api/character/${userId}`);
+                const characterUrl = new URL(`/api/character/${userId}`, process.env.BASE_URL).toString();
+                const response = await fetch(characterUrl);
                 
                 if (response.ok) {
                     // Charakter existiert bereits
                     bot?.sendMessage(chatId, 'Willkommen zurück! Dein Charakter ist bereits erstellt.');
                 } else {
                     // Neuer Spieler - Charaktererstellung starten
-                    const gameUrl = `${process.env.BASE_URL}/game`;
+                    const gameUrl = new URL('/game', process.env.BASE_URL).toString();
                     bot?.sendMessage(chatId, 
                         'Willkommen bei G4NG MMO! Lass uns deinen Charakter erstellen.',
                         {
