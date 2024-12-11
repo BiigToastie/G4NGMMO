@@ -1,5 +1,11 @@
 import TelegramBot from 'node-telegram-bot-api';
 
+interface TelegramError extends Error {
+    response?: {
+        statusCode?: number;
+    };
+}
+
 export class BotManager {
     private static instance: BotManager;
     private bot: TelegramBot | null = null;
@@ -74,7 +80,7 @@ export class BotManager {
                 if (text === '/start') return;
 
                 // Prüfe ob es eine gültige Nachricht ist
-                if (!userId || !text) return;
+                if (!userId || !text || !msg.from) return;
 
                 try {
                     // Prüfe Cooldown
@@ -112,7 +118,8 @@ export class BotManager {
                                 { parse_mode: 'Markdown' }
                             );
                         } catch (error) {
-                            if (error.response?.statusCode === 403) {
+                            const telegramError = error as TelegramError;
+                            if (telegramError.response?.statusCode === 403) {
                                 // Bot wurde blockiert oder Chat wurde beendet
                                 this.activeChats.delete(activeChatId);
                             }
