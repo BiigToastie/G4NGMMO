@@ -98,25 +98,28 @@ async function connectToMongoDB() {
                     strict: true,
                     deprecationErrors: true
                 },
-                hosts: [
-                    'cluster0-shard-00-00.ktz7i.mongodb.net:27017',
-                    'cluster0-shard-00-01.ktz7i.mongodb.net:27017',
-                    'cluster0-shard-00-02.ktz7i.mongodb.net:27017'
-                ],
-                family: 4,
-                lookup: async (host: string, options: any, callback: Function) => {
-                    console.log('DNS Lookup für Host:', host);
-                    const dns = require('dns');
-                    try {
-                        const result = await dns.promises.lookup(host, { family: 4 });
-                        console.log('DNS Lookup Ergebnis:', result);
-                        callback(null, result.address, result.family);
-                    } catch (error) {
-                        console.error('DNS Lookup Fehler:', error);
-                        callback(error);
-                    }
-                }
+                family: 4
             } satisfies ConnectOptions;
+
+            // Versuche direkte Verbindung zu den Shards
+            const shardHosts = [
+                'cluster0-shard-00-00.ktz7i.mongodb.net:27017',
+                'cluster0-shard-00-01.ktz7i.mongodb.net:27017',
+                'cluster0-shard-00-02.ktz7i.mongodb.net:27017'
+            ];
+
+            // DNS-Tests für jeden Shard
+            for (const host of shardHosts) {
+                try {
+                    const { promisify } = require('util');
+                    const dns = require('dns');
+                    const lookup = promisify(dns.lookup);
+                    const result = await lookup(host.split(':')[0], { family: 4 });
+                    console.log(`DNS Lookup für Shard ${host}:`, result);
+                } catch (error) {
+                    console.error(`DNS Lookup fehlgeschlagen für Shard ${host}:`, error);
+                }
+            }
 
             await mongoose.connect(mongoUri, mongooseOptions);
 
