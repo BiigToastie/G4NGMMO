@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>G4NG MMO - Spiel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --tg-theme-bg-color: #18222d;
+            --tg-theme-text-color: #ffffff;
+            --tg-theme-hint-color: #7d8b99;
+            --tg-theme-link-color: #64baf0;
+            --tg-theme-button-color: #2ea6ff;
+            --tg-theme-button-text-color: #ffffff;
+        }
+
+        body {
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            font-size: 14px;
+            line-height: 1.4;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: var(--tg-theme-link-color);
+        }
+
+        p {
+            margin-bottom: 15px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 800px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .character-info {
+            text-align: left;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+        }
+
+        .character-info h2 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: var(--tg-theme-link-color);
+        }
+
+        .character-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color);
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        button {
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Willkommen im Spiel</h1>
+        <p>Dein Charakter wurde erfolgreich erstellt!</p>
+
+        <div class="character-info">
+            <h2>Charakter-Information</h2>
+            <div class="character-stats">
+                <div class="stat-item">
+                    <div class="stat-label">Level</div>
+                    <div class="stat-value">1</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Erfahrung</div>
+                    <div class="stat-value">0 / 100</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Leben</div>
+                    <div class="stat-value">100 / 100</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Energie</div>
+                    <div class="stat-value">100 / 100</div>
+                </div>
+            </div>
+        </div>
+
+        <button onclick="startAdventure()">Abenteuer starten</button>
+    </div>
+
+    <script>
+        // Lade Charakterdaten
+        const characterData = JSON.parse(localStorage.getItem('characterData') || '{}');
+        
+        // Zeige Charakterdaten an
+        if (characterData.name) {
+            document.querySelector('h1').textContent = `Willkommen, ${characterData.name}!`;
+        }
+
+        function startAdventure() {
+            alert('Abenteuer beginnt bald!');
+        }
+    </script>
+</body>
+</html> 

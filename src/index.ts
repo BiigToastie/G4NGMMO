@@ -26,6 +26,16 @@ app.get('/character', (req, res) => {
     res.sendFile('character.html', { root: 'public' });
 });
 
+// Game-Route
+app.get('/game', (req, res) => {
+    res.sendFile('game.html', { root: 'public' });
+});
+
+// Fallback für alle anderen Routen
+app.get('*', (req, res) => {
+    res.redirect('/');
+});
+
 // Server starten und Initialisierung
 async function startServer() {
     try {
