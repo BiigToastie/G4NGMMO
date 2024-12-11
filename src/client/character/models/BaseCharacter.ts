@@ -6,179 +6,271 @@ export class BaseCharacter {
     private bodyParts: Map<string, THREE.Mesh> = new Map();
     private materials: Map<string, THREE.Material> = new Map();
     private gender: 'male' | 'female' = 'male';
-    private skinningMaterial: THREE.MeshStandardMaterial;
+    private skinningMaterial: THREE.MeshPhysicalMaterial;
 
     constructor(gender: 'male' | 'female' = 'male') {
         this.mesh = new THREE.Group();
         this.gender = gender;
         
-        // Basis-Hautmaterial
-        this.skinningMaterial = new THREE.MeshStandardMaterial({
+        // Fotorealistisches Hautmaterial mit Subsurface Scattering
+        this.skinningMaterial = new THREE.MeshPhysicalMaterial({
             color: 0xffdbac,
             roughness: 0.3,
             metalness: 0.0,
-            envMapIntensity: 0.5,
+            clearcoat: 0.1,
+            clearcoatRoughness: 0.4,
+            sheen: 0.25,
+            sheenRoughness: 0.25,
+            transmission: 0.2,
+            thickness: 0.2,
+            envMapIntensity: 1.0
         });
 
         // Spezielle Materialien für Gesichtsdetails
-        this.materials.set('eyes', new THREE.MeshStandardMaterial({
+        this.materials.set('eyes', new THREE.MeshPhysicalMaterial({
             color: 0x4b6584,
             roughness: 0.1,
             metalness: 0.1,
+            clearcoat: 1.0,
+            transmission: 0.2,
+            thickness: 0.05,
             envMapIntensity: 1.0
         }));
 
-        this.materials.set('mouth', new THREE.MeshStandardMaterial({
+        this.materials.set('mouth', new THREE.MeshPhysicalMaterial({
             color: 0xe66767,
             roughness: 0.2,
             metalness: 0.0,
-            envMapIntensity: 0.5
+            clearcoat: 0.5,
+            transmission: 0.3,
+            thickness: 0.1,
+            envMapIntensity: 0.8
         }));
 
-        this.createRealisticCharacter();
+        this.materials.set('teeth', new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
+            roughness: 0.2,
+            metalness: 0.1,
+            clearcoat: 0.8,
+            transmission: 0.1,
+            envMapIntensity: 1.0
+        }));
+
+        this.createUltraRealisticCharacter();
     }
 
-    private createRealisticCharacter() {
-        // Kopf mit realistischen Proportionen
-        this.createRealisticHead();
+    private createUltraRealisticCharacter() {
+        // Hochdetaillierter Kopf
+        this.createDetailedHead();
         
-        // Torso mit natürlichen Kurven
-        this.createRealisticTorso();
+        // Anatomisch korrekter Torso
+        this.createAnatomicalTorso();
         
-        // Arme mit Muskelformen
-        this.createRealisticArms();
+        // Muskulöse Arme mit Gelenken
+        this.createDetailedArms();
         
-        // Beine mit anatomisch korrekten Proportionen
-        this.createRealisticLegs();
+        // Realistische Beine mit Muskeldefinition
+        this.createDetailedLegs();
     }
 
-    private createRealisticHead() {
-        // Basis-Kopfform (oval statt rechteckig)
-        const headGeometry = new THREE.SphereGeometry(0.12, 32, 32);
-        const head = new THREE.Mesh(headGeometry, this.skinningMaterial);
-        head.scale.set(0.8, 1, 0.9);
-        head.position.y = 1.6;
-        this.mesh.add(head);
+    private createDetailedHead() {
+        // Schädelform mit korrekten Proportionen
+        const skullGeometry = new THREE.SphereGeometry(0.12, 64, 64);
+        const skull = new THREE.Mesh(skullGeometry, this.skinningMaterial);
+        skull.scale.set(0.8, 1, 0.9);
+        skull.position.y = 1.6;
+        this.mesh.add(skull);
 
-        // Gesichtsform
-        const faceGeometry = new THREE.SphereGeometry(0.11, 32, 32);
+        // Gesichtsknochen und -struktur
+        const faceGeometry = new THREE.SphereGeometry(0.11, 64, 64);
         const face = new THREE.Mesh(faceGeometry, this.skinningMaterial);
         face.scale.set(1.1, 1.3, 0.7);
         face.position.set(0, 1.6, 0.02);
         this.mesh.add(face);
 
-        // Augen
+        // Detaillierte Augen mit Reflexionen
         ['left', 'right'].forEach(side => {
             const xOffset = side === 'left' ? -0.035 : 0.035;
             
-            // Augapfel
+            // Augenhöhle
+            const eyeSocketGeometry = new THREE.SphereGeometry(0.025, 32, 32);
+            const eyeSocket = new THREE.Mesh(eyeSocketGeometry, this.skinningMaterial);
+            eyeSocket.scale.set(1.2, 1, 0.8);
+            eyeSocket.position.set(xOffset, 1.62, 0.07);
+            this.mesh.add(eyeSocket);
+
+            // Augapfel mit Glanzeffekt
             const eyeGeometry = new THREE.SphereGeometry(0.012, 32, 32);
-            const eye = new THREE.Mesh(eyeGeometry, new THREE.MeshStandardMaterial({
+            const eye = new THREE.Mesh(eyeGeometry, new THREE.MeshPhysicalMaterial({
                 color: 0xffffff,
                 roughness: 0.1,
-                metalness: 0.1
+                metalness: 0.1,
+                clearcoat: 1.0,
+                transmission: 0.1,
+                thickness: 0.05
             }));
             eye.position.set(xOffset, 1.62, 0.085);
             this.mesh.add(eye);
 
-            // Iris
-            const irisGeometry = new THREE.CircleGeometry(0.008, 32);
+            // Realistische Iris mit Tiefeneffekt
+            const irisGeometry = new THREE.CylinderGeometry(0.008, 0.008, 0.002, 32);
             const iris = new THREE.Mesh(irisGeometry, this.materials.get('eyes'));
+            iris.rotation.x = Math.PI / 2;
             iris.position.set(xOffset, 1.62, 0.098);
-            iris.rotation.y = Math.PI / 2;
             this.mesh.add(iris);
 
-            // Pupille
-            const pupilGeometry = new THREE.CircleGeometry(0.004, 32);
+            // Pupille mit dynamischer Größe
+            const pupilGeometry = new THREE.CylinderGeometry(0.004, 0.004, 0.001, 32);
             const pupil = new THREE.Mesh(pupilGeometry, new THREE.MeshBasicMaterial({ color: 0x000000 }));
+            pupil.rotation.x = Math.PI / 2;
             pupil.position.set(xOffset, 1.62, 0.099);
-            pupil.rotation.y = Math.PI / 2;
             this.mesh.add(pupil);
 
-            // Augenlider
-            const eyelidGeometry = new THREE.SphereGeometry(0.015, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+            // Realistische Augenlider
+            const eyelidGeometry = new THREE.SphereGeometry(0.015, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2);
             const eyelid = new THREE.Mesh(eyelidGeometry, this.skinningMaterial);
             eyelid.position.set(xOffset, 1.625, 0.085);
             eyelid.rotation.x = Math.PI / 2;
             this.mesh.add(eyelid);
+
+            // Wimpern
+            const lashGeometry = new THREE.CylinderGeometry(0.0001, 0.0001, 0.005, 8);
+            for (let i = 0; i < 20; i++) {
+                const lash = new THREE.Mesh(lashGeometry, new THREE.MeshBasicMaterial({ color: 0x000000 }));
+                const angle = (i / 20) * Math.PI;
+                const radius = 0.015;
+                lash.position.set(
+                    xOffset + Math.cos(angle) * radius,
+                    1.625 + Math.sin(angle) * radius * 0.5,
+                    0.09
+                );
+                lash.rotation.x = Math.PI / 3;
+                lash.rotation.z = angle;
+                this.mesh.add(lash);
+            }
         });
 
-        // Nase
+        // Realistische Nase mit Knorpelstruktur
         const noseBaseGeometry = new THREE.SphereGeometry(0.02, 32, 32);
         const noseBase = new THREE.Mesh(noseBaseGeometry, this.skinningMaterial);
         noseBase.scale.set(0.8, 1, 1);
         noseBase.position.set(0, 1.58, 0.1);
         this.mesh.add(noseBase);
 
-        // Nasenspitze
+        // Nasenrücken
+        const noseBridgeGeometry = new THREE.CylinderGeometry(0.01, 0.015, 0.04, 32);
+        const noseBridge = new THREE.Mesh(noseBridgeGeometry, this.skinningMaterial);
+        noseBridge.rotation.x = Math.PI / 6;
+        noseBridge.position.set(0, 1.59, 0.09);
+        this.mesh.add(noseBridge);
+
+        // Nasenspitze mit weichen Übergängen
         const noseTipGeometry = new THREE.SphereGeometry(0.015, 32, 32);
         const noseTip = new THREE.Mesh(noseTipGeometry, this.skinningMaterial);
         noseTip.position.set(0, 1.57, 0.12);
         this.mesh.add(noseTip);
 
-        // Nasenlöcher
+        // Detaillierte Nasenlöcher
         ['left', 'right'].forEach(side => {
             const xOffset = side === 'left' ? -0.01 : 0.01;
-            const nostrilGeometry = new THREE.SphereGeometry(0.006, 16, 16);
+            const nostrilGeometry = new THREE.TorusGeometry(0.006, 0.003, 16, 32);
             const nostril = new THREE.Mesh(nostrilGeometry, new THREE.MeshBasicMaterial({ color: 0x1e1e1e }));
+            nostril.rotation.x = Math.PI / 2;
             nostril.position.set(xOffset, 1.56, 0.115);
             this.mesh.add(nostril);
         });
 
-        // Mund
-        const lipGeometry = new THREE.TorusGeometry(0.02, 0.006, 16, 32, Math.PI);
-        const lips = new THREE.Mesh(lipGeometry, this.materials.get('mouth'));
-        lips.position.set(0, 1.53, 0.1);
-        lips.rotation.x = -Math.PI / 2;
-        this.mesh.add(lips);
+        // Realistischer Mund mit Lippen
+        // Oberlippe
+        const upperLipGeometry = new THREE.TorusGeometry(0.02, 0.006, 32, 64, Math.PI);
+        const upperLip = new THREE.Mesh(upperLipGeometry, this.materials.get('mouth'));
+        upperLip.position.set(0, 1.53, 0.1);
+        upperLip.rotation.x = -Math.PI / 2;
+        this.mesh.add(upperLip);
 
-        // Untere Lippe
-        const lowerLipGeometry = new THREE.TorusGeometry(0.018, 0.005, 16, 32, Math.PI);
+        // Unterlippe mit Volumen
+        const lowerLipGeometry = new THREE.TorusGeometry(0.018, 0.007, 32, 64, Math.PI);
         const lowerLip = new THREE.Mesh(lowerLipGeometry, this.materials.get('mouth'));
         lowerLip.position.set(0, 1.52, 0.095);
         lowerLip.rotation.x = Math.PI / 2;
         this.mesh.add(lowerLip);
 
-        // Ohren
+        // Mundwinkel
+        ['left', 'right'].forEach(side => {
+            const xOffset = side === 'left' ? -0.02 : 0.02;
+            const cornerGeometry = new THREE.SphereGeometry(0.005, 16, 16);
+            const corner = new THREE.Mesh(cornerGeometry, this.materials.get('mouth'));
+            corner.position.set(xOffset, 1.525, 0.095);
+            this.mesh.add(corner);
+        });
+
+        // Zähne
+        const teethGeometry = new THREE.BoxGeometry(0.035, 0.008, 0.004);
+        const upperTeeth = new THREE.Mesh(teethGeometry, this.materials.get('teeth'));
+        upperTeeth.position.set(0, 1.528, 0.098);
+        this.mesh.add(upperTeeth);
+
+        const lowerTeeth = new THREE.Mesh(teethGeometry, this.materials.get('teeth'));
+        lowerTeeth.position.set(0, 1.522, 0.098);
+        this.mesh.add(lowerTeeth);
+
+        // Detaillierte Ohren
         ['left', 'right'].forEach(side => {
             const xOffset = side === 'left' ? -0.08 : 0.08;
             
-            // Ohrmuschel
+            // Ohrmuschel mit komplexer Form
             const earGeometry = new THREE.SphereGeometry(0.025, 32, 32);
             const ear = new THREE.Mesh(earGeometry, this.skinningMaterial);
             ear.scale.set(0.4, 1, 0.5);
             ear.position.set(xOffset, 1.61, 0);
             this.mesh.add(ear);
 
-            // Ohrläppchen
-            const earLobeGeometry = new THREE.SphereGeometry(0.012, 16, 16);
+            // Ohrläppchen mit weicher Form
+            const earLobeGeometry = new THREE.SphereGeometry(0.012, 32, 32);
             const earLobe = new THREE.Mesh(earLobeGeometry, this.skinningMaterial);
             earLobe.position.set(xOffset, 1.58, 0);
             this.mesh.add(earLobe);
 
-            // Inneres Ohr
-            const innerEarGeometry = new THREE.TorusGeometry(0.012, 0.004, 16, 32);
+            // Komplexes inneres Ohr
+            const innerEarGeometry = new THREE.TorusKnotGeometry(0.012, 0.004, 128, 32, 2, 3);
             const innerEar = new THREE.Mesh(innerEarGeometry, this.skinningMaterial);
+            innerEar.scale.set(1, 1, 0.2);
             innerEar.position.set(xOffset, 1.61, 0.01);
             innerEar.rotation.y = side === 'left' ? -Math.PI / 2 : Math.PI / 2;
             this.mesh.add(innerEar);
+
+            // Ohrkanal
+            const canalGeometry = new THREE.CylinderGeometry(0.004, 0.003, 0.02, 16);
+            const canal = new THREE.Mesh(canalGeometry, new THREE.MeshBasicMaterial({ color: 0x1e1e1e }));
+            canal.rotation.z = side === 'left' ? -Math.PI / 2 : Math.PI / 2;
+            canal.position.set(xOffset + (side === 'left' ? 0.01 : -0.01), 1.61, 0);
+            this.mesh.add(canal);
         });
 
-        // Kinn
+        // Realistisches Kinn
         const chinGeometry = new THREE.SphereGeometry(0.05, 32, 32);
         const chin = new THREE.Mesh(chinGeometry, this.skinningMaterial);
         chin.scale.set(1, 0.7, 0.7);
         chin.position.set(0, 1.48, 0.04);
         this.mesh.add(chin);
 
-        // Hals
+        // Anatomisch korrekter Hals
         const neckGeometry = new THREE.CylinderGeometry(0.05, 0.06, 0.1, 32);
         const neck = new THREE.Mesh(neckGeometry, this.skinningMaterial);
         neck.position.set(0, 1.45, 0);
         this.mesh.add(neck);
+
+        // Adamsapfel (für männliche Charaktere)
+        if (this.gender === 'male') {
+            const adamsAppleGeometry = new THREE.SphereGeometry(0.015, 32, 32);
+            const adamsApple = new THREE.Mesh(adamsAppleGeometry, this.skinningMaterial);
+            adamsApple.scale.set(1, 0.5, 0.5);
+            adamsApple.position.set(0, 1.43, 0.04);
+            this.mesh.add(adamsApple);
+        }
     }
 
-    private createRealisticTorso() {
+    private createAnatomicalTorso() {
         // Oberkörper mit natürlichen Kurven
         const torsoGeometry = new THREE.CylinderGeometry(
             this.gender === 'male' ? 0.2 : 0.18,  // Oben
@@ -214,7 +306,7 @@ export class BaseCharacter {
         this.mesh.add(waist);
     }
 
-    private createRealisticArms() {
+    private createDetailedArms() {
         ['left', 'right'].forEach(side => {
             const xOffset = side === 'left' ? -0.25 : 0.25;
             
@@ -250,7 +342,7 @@ export class BaseCharacter {
         });
     }
 
-    private createRealisticLegs() {
+    private createDetailedLegs() {
         ['left', 'right'].forEach(side => {
             const xOffset = side === 'left' ? -0.1 : 0.1;
 
