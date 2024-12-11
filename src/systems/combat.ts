@@ -1,4 +1,4 @@
-import { Player } from '../types';
+import { Player, Item, Reward } from '../types';
 
 // Kampfsystem
 export interface Combat {
