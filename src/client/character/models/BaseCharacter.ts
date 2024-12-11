@@ -1,167 +1,101 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 export class BaseCharacter {
     private mesh: THREE.Group;
-    private bodyParts: Map<string, THREE.Mesh> = new Map();
+    private model: THREE.Group | null = null;
+    private loader: GLTFLoader;
     private materials: Map<string, THREE.Material> = new Map();
     private gender: 'male' | 'female' = 'male';
+    private modelLoaded: boolean = false;
 
     constructor(gender: 'male' | 'female' = 'male') {
         this.mesh = new THREE.Group();
         this.gender = gender;
+        this.loader = new GLTFLoader();
         
-        // Basis-Material für den Körper - exakte Farbe wie im Original
-        this.materials.set('body', new THREE.MeshToonMaterial({
-            color: 0xF4D03F, // Gelb wie im Original
-            emissive: 0x000000,
-            gradientMap: this.createToonGradient()
-        }));
-
-        // Material für die Augen - tiefschwarz wie im Original
-        this.materials.set('eyes', new THREE.MeshBasicMaterial({
-            color: 0x000000
-        }));
-
-        // Material für den Mund - tiefschwarz wie im Original
-        this.materials.set('mouth', new THREE.MeshBasicMaterial({
-            color: 0x000000
-        }));
-
-        this.createCharacter();
+        // Lade das Modell
+        this.loadCharacterModel();
     }
 
-    private createToonGradient(): THREE.Texture {
-        const gradientMap = new THREE.DataTexture(
-            new Uint8Array([0, 128, 255]),
-            3,
-            1,
-            THREE.LuminanceFormat
-        );
-        gradientMap.needsUpdate = true;
-        return gradientMap;
+    private async loadCharacterModel() {
+        try {
+            console.log('Starte Laden des Modells...');
+            
+            // Setze den Basis-Pfad für Texturen
+            this.loader.setPath('/models/');
+            
+            const gltf = await this.loader.loadAsync('character.gltf');
+            this.model = gltf.scene;
+            
+            console.log('GLTF Datei geladen:', {
+                animations: gltf.animations.length,
+                scenes: gltf.scenes.length,
+                cameras: gltf.cameras.length,
+                assets: gltf.asset
+            });
+            
+            // Füge das Modell zur Mesh-Gruppe hinzu
+            if (this.model) {
+                this.mesh.add(this.model);
+                
+                // Setze Standardposition und -rotation
+                this.model.position.set(0, 0, 0);
+                this.model.rotation.set(0, 0, 0);
+                
+                // Optional: Skaliere das Modell wenn nötig
+                this.model.scale.set(1, 1, 1);
+                
+                // Debug-Info
+                console.log('Modell zur Szene hinzugefügt:', {
+                    children: this.model.children.length,
+                    position: this.model.position,
+                    rotation: this.model.rotation,
+                    scale: this.model.scale
+                });
+                
+                // Traversiere das Modell um Materialien zu speichern
+                this.model.traverse((child) => {
+                    if (child instanceof THREE.Mesh) {
+                        console.log('Gefundenes Mesh:', {
+                            name: child.name,
+                            material: child.material ? child.material.type : 'kein Material',
+                            geometry: child.geometry ? child.geometry.type : 'keine Geometrie'
+                        });
+                        
+                        // Speichere originale Materialien
+                        if (child.material) {
+                            this.materials.set(child.name, child.material);
+                            
+                            // Debug Material-Informationen
+                            if (child.material instanceof THREE.MeshStandardMaterial) {
+                                console.log('Material Details:', {
+                                    name: child.name,
+                                    color: child.material.color,
+                                    map: child.material.map ? 'Textur vorhanden' : 'keine Textur',
+                                    normalMap: child.material.normalMap ? 'Normal Map vorhanden' : 'keine Normal Map'
+                                });
+                            }
+                        }
+                    }
+                });
+                
+                this.modelLoaded = true;
+                console.log('Modell vollständig geladen und initialisiert');
+            }
+        } catch (error) {
+            console.error('Fehler beim Laden des Charaktermodells:', error);
+            if (error instanceof Error) {
+                console.error('Details:', {
+                    message: error.message,
+                    stack: error.stack
+                });
+            }
+        }
     }
 
-    private createCharacter() {
-        this.createHead();
-        this.createBody();
-        this.createArms();
-        this.createLegs();
-    }
-
-    private createHead() {
-        // Kopf - exakte Form wie im Original
-        const headGeometry = new THREE.BoxGeometry(0.8, 0.8, 0.7);
-        const head = new THREE.Mesh(headGeometry, this.materials.get('body'));
-        head.position.y = 1.9;
-        this.mesh.add(head);
-
-        // Augen - große ovale Formen wie im Original
-        ['left', 'right'].forEach(side => {
-            const eyeGeometry = new THREE.BoxGeometry(0.2, 0.25, 0.1);
-            const eye = new THREE.Mesh(eyeGeometry, this.materials.get('eyes'));
-            eye.position.set(side === 'left' ? -0.2 : 0.2, 1.95, 0.36);
-            this.mesh.add(eye);
-
-            // Weiße Glanzpunkte wie im Original
-            const highlightGeometry = new THREE.BoxGeometry(0.05, 0.05, 0.01);
-            const highlightMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-            const highlight = new THREE.Mesh(highlightGeometry, highlightMaterial);
-            highlight.position.set(
-                side === 'left' ? -0.17 : 0.23,
-                2.0,
-                0.42
-            );
-            this.mesh.add(highlight);
-        });
-
-        // Mund - einfache schwarze Linie wie im Original
-        const mouthGeometry = new THREE.BoxGeometry(0.3, 0.05, 0.1);
-        const mouth = new THREE.Mesh(mouthGeometry, this.materials.get('mouth'));
-        mouth.position.set(0, 1.75, 0.36);
-        this.mesh.add(mouth);
-    }
-
-    private createBody() {
-        // Torso - exakte Form wie im Original
-        const torsoGeometry = new THREE.BoxGeometry(1.0, 0.9, 0.6);
-        const torso = new THREE.Mesh(torsoGeometry, this.materials.get('body'));
-        torso.position.y = 1.2;
-        this.mesh.add(torso);
-
-        // Hals - verbindet Kopf und Körper
-        const neckGeometry = new THREE.BoxGeometry(0.3, 0.2, 0.3);
-        const neck = new THREE.Mesh(neckGeometry, this.materials.get('body'));
-        neck.position.y = 1.65;
-        this.mesh.add(neck);
-    }
-
-    private createArms() {
-        ['left', 'right'].forEach(side => {
-            // Schultern - wie im Original
-            const shoulderGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
-            const shoulder = new THREE.Mesh(shoulderGeometry, this.materials.get('body'));
-            shoulder.position.set(side === 'left' ? -0.65 : 0.65, 1.4, 0);
-            this.mesh.add(shoulder);
-
-            // Oberarm - exakte Form
-            const upperArmGeometry = new THREE.BoxGeometry(0.25, 0.6, 0.25);
-            const upperArm = new THREE.Mesh(upperArmGeometry, this.materials.get('body'));
-            upperArm.position.set(side === 'left' ? -0.65 : 0.65, 1.1, 0);
-            this.mesh.add(upperArm);
-
-            // Ellbogen - wie im Original
-            const elbowGeometry = new THREE.BoxGeometry(0.27, 0.27, 0.27);
-            const elbow = new THREE.Mesh(elbowGeometry, this.materials.get('body'));
-            elbow.position.set(side === 'left' ? -0.65 : 0.65, 0.8, 0);
-            this.mesh.add(elbow);
-
-            // Unterarm
-            const lowerArmGeometry = new THREE.BoxGeometry(0.25, 0.5, 0.25);
-            const lowerArm = new THREE.Mesh(lowerArmGeometry, this.materials.get('body'));
-            lowerArm.position.set(side === 'left' ? -0.65 : 0.65, 0.5, 0);
-            this.mesh.add(lowerArm);
-
-            // Hand - exakte Form
-            const handGeometry = new THREE.BoxGeometry(0.25, 0.25, 0.25);
-            const hand = new THREE.Mesh(handGeometry, this.materials.get('body'));
-            hand.position.set(side === 'left' ? -0.65 : 0.65, 0.2, 0);
-            this.mesh.add(hand);
-        });
-    }
-
-    private createLegs() {
-        ['left', 'right'].forEach(side => {
-            // Hüfte - wie im Original
-            const hipGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
-            const hip = new THREE.Mesh(hipGeometry, this.materials.get('body'));
-            hip.position.set(side === 'left' ? -0.25 : 0.25, 0.8, 0);
-            this.mesh.add(hip);
-
-            // Oberschenkel - exakte Form
-            const thighGeometry = new THREE.BoxGeometry(0.25, 0.5, 0.25);
-            const thigh = new THREE.Mesh(thighGeometry, this.materials.get('body'));
-            thigh.position.set(side === 'left' ? -0.25 : 0.25, 0.5, 0);
-            this.mesh.add(thigh);
-
-            // Knie - wie im Original
-            const kneeGeometry = new THREE.BoxGeometry(0.27, 0.27, 0.27);
-            const knee = new THREE.Mesh(kneeGeometry, this.materials.get('body'));
-            knee.position.set(side === 'left' ? -0.25 : 0.25, 0.25, 0);
-            this.mesh.add(knee);
-
-            // Unterschenkel
-            const calfGeometry = new THREE.BoxGeometry(0.25, 0.4, 0.25);
-            const calf = new THREE.Mesh(calfGeometry, this.materials.get('body'));
-            calf.position.set(side === 'left' ? -0.25 : 0.25, 0.1, 0);
-            this.mesh.add(calf);
-
-            // Fuß - exakte Form
-            const footGeometry = new THREE.BoxGeometry(0.3, 0.2, 0.4);
-            const foot = new THREE.Mesh(footGeometry, this.materials.get('body'));
-            foot.position.set(side === 'left' ? -0.25 : 0.25, 0.1, 0.1);
-            this.mesh.add(foot);
-        });
+    public isLoaded(): boolean {
+        return this.modelLoaded;
     }
 
     public getMesh(): THREE.Group {
@@ -169,6 +103,8 @@ export class BaseCharacter {
     }
 
     public setBodyType(type: 'slim' | 'average' | 'athletic') {
+        if (!this.model) return;
+
         const scale = {
             slim: { x: 0.9, y: 1, z: 0.9 },
             average: { x: 1, y: 1, z: 1 },
@@ -176,42 +112,102 @@ export class BaseCharacter {
         };
         
         const bodyType = scale[type];
-        this.mesh.scale.set(bodyType.x, bodyType.y, bodyType.z);
+        this.model.scale.set(bodyType.x, bodyType.y, bodyType.z);
     }
 
     public setHeight(height: number) {
+        if (!this.model) return;
+
         const baseHeight = 1.75;
         const scale = height / baseHeight;
-        this.mesh.scale.setY(scale);
+        this.model.scale.setY(scale);
     }
 
     public setSkinColor(color: THREE.Color) {
-        const bodyMaterial = this.materials.get('body');
-        if (bodyMaterial instanceof THREE.Material) {
-            (bodyMaterial as THREE.MeshToonMaterial).color = color;
-        }
+        if (!this.model) return;
+
+        this.model.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.material) {
+                if (child.name.includes('skin') || child.name.includes('body')) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(mat => {
+                            if (mat instanceof THREE.MeshStandardMaterial) {
+                                mat.color = color;
+                            }
+                        });
+                    } else if (child.material instanceof THREE.MeshStandardMaterial) {
+                        child.material.color = color;
+                    }
+                }
+            }
+        });
     }
 
     public setEyeColor(color: THREE.Color) {
-        const eyeMaterial = this.materials.get('eyes');
-        if (eyeMaterial instanceof THREE.Material) {
-            (eyeMaterial as THREE.MeshBasicMaterial).color = color;
-        }
+        if (!this.model) return;
+
+        this.model.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.material) {
+                if (child.name.includes('eye')) {
+                    if (child.material instanceof THREE.MeshStandardMaterial) {
+                        child.material.color = color;
+                    }
+                }
+            }
+        });
     }
 
     public setHairStyle(style: string) {
-        // Wird später implementiert, wenn Haare benötigt werden
+        if (!this.model) return;
+        
+        // Aktiviere/Deaktiviere verschiedene Haarteile basierend auf dem Style
+        this.model.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                if (child.name.includes('hair')) {
+                    child.visible = child.name.includes(style);
+                }
+            }
+        });
     }
 
     public setHairColor(color: THREE.Color) {
-        // Wird später implementiert, wenn Haare benötigt werden
+        if (!this.model) return;
+
+        this.model.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.material) {
+                if (child.name.includes('hair')) {
+                    if (child.material instanceof THREE.MeshStandardMaterial) {
+                        child.material.color = color;
+                    }
+                }
+            }
+        });
     }
 
     public setFacialExpression(expression: 'neutral' | 'happy' | 'sad') {
-        // Wird später implementiert, wenn Gesichtsausdrücke benötigt werden
+        if (!this.model) return;
+
+        // Aktiviere/Deaktiviere verschiedene Gesichtsausdrücke
+        this.model.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                if (child.name.includes('expression')) {
+                    child.visible = child.name.includes(expression);
+                }
+            }
+        });
     }
 
     public setClothing(type: string, color: THREE.Color) {
-        // Wird später implementiert, wenn Kleidung benötigt wird
+        if (!this.model) return;
+
+        this.model.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.material) {
+                if (child.name.includes(type)) {
+                    if (child.material instanceof THREE.MeshStandardMaterial) {
+                        child.material.color = color;
+                    }
+                }
+            }
+        });
     }
 } 
