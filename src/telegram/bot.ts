@@ -116,17 +116,26 @@ export class BotManager {
     private async handleHelp(chatId: number) {
         try {
             await this.bot?.sendMessage(chatId,
-                '❓ *G4NG MMO Hilfe*\n\n' +
-                '🎮 *Spielablauf*\n' +
-                'Schreibe einfach Nachrichten in diesen Chat, um mit anderen Spielern zu kommunizieren.\n\n' +
-                '⏳ *Cooldown*\n' +
-                'Nach jeder Nachricht musst du 30 Sekunden warten.\n\n' +
-                '🏰 *Gilden*\n' +
-                'Erstelle oder tritt einer Gilde bei, um gemeinsam stärker zu werden.\n\n' +
-                '📊 *Statistiken*\n' +
-                'Verbessere deinen Charakter durch Kämpfe und Quests.\n\n' +
-                '💬 *Chat*\n' +
-                'Alle Nachrichten werden an alle aktiven Spieler gesendet.',
+                '📖 *G4NG MMO - Spielhilfe*\n\n' +
+                '*🌍 Über das Spiel*\n' +
+                'Spiele auf Unserem Server um Fortschritte zu erzielen\n\n' +
+                '*💬 Chat-System*\n' +
+                '• Nachrichten die du Hier in den Chat schreibst können Alle Aktiven Spieler auch sehen\n' +
+                '• 30 Sekunden Cooldown zwischen Nachrichten\n\n' +
+                '*📊 Charakter*\n' +
+                '• Jeder Spieler hat einen eigenen Charakter\n' +
+                '• Verbessere deine Stats durch Kämpfe und Quests\n' +
+                '• Sammle Ausrüstung und Gold\n\n' +
+                '*🏰 Gilden*\n' +
+                '• Erstelle deine eigene Gilde oder tritt einer bei\n' +
+                '• Kämpfe gemeinsam mit deinen Gildenmitgliedern\n' +
+                '• Erobere Territorien und sammle Ressourcen\n\n' +
+                '*⚔️ Kämpfe*\n' +
+                '• PvP-System für Spieler gegen Spieler\n' +
+                '• Gildenkämpfe für Territorien\n' +
+                '• Spezielle Events und Turniere\n\n' +
+                '*❓ Weitere Hilfe*\n' +
+                'Bei Fragen kannst du jederzeit im Chat andere Spieler um Rat fragen!',
                 { parse_mode: 'Markdown' }
             );
         } catch (error) {
