@@ -121,6 +121,7 @@ export class BotManager {
                 'Spiele auf Unserem Server um Fortschritte zu erzielen\n\n' +
                 '*💬 Chat-System*\n' +
                 '• Nachrichten die du Hier in den Chat schreibst können Alle Aktiven Spieler auch sehen\n' +
+                '• Deine eigene Nachricht wird gelöscht und erscheint neu formatiert für alle (auch für dich)\n' +
                 '• 30 Sekunden Cooldown zwischen Nachrichten\n\n' +
                 '*📊 Charakter*\n' +
                 '• Jeder Spieler hat einen eigenen Charakter\n' +
