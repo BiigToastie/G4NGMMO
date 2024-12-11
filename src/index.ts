@@ -59,8 +59,11 @@ class Game {
 
     private async setupBotHandlers() {
         try {
-            // Entferne alle Standard-Kommandos
-            await bot.setMyCommands([]);
+            // Entferne alle Standard-Kommandos außer /start
+            await bot.setMyCommands([{
+                command: 'start',
+                description: 'Starte den Bot'
+            }]);
 
             // Behandle neue Chat-Nachrichten
             bot.on('message', async (msg: Message) => {
@@ -78,13 +81,15 @@ class Game {
                         this.welcomedUsers.add(userId);
                     }
 
-                    // Ignoriere Kommandos
+                    // Ignoriere alle Kommandos außer /start
                     if (msg.text?.startsWith('/')) {
-                        // Lösche Kommando-Nachricht sofort
-                        try {
-                            await bot.deleteMessage(chatId, msg.message_id);
-                        } catch (error) {
-                            console.error('Fehler beim Löschen des Kommandos:', error);
+                        if (msg.text !== '/start') {
+                            // Lösche alle anderen Kommandos sofort
+                            try {
+                                await bot.deleteMessage(chatId, msg.message_id);
+                            } catch (error) {
+                                console.error('Fehler beim Löschen des Kommandos:', error);
+                            }
                         }
                         return;
                     }
