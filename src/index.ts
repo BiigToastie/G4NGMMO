@@ -46,97 +46,20 @@ class Game {
     private zones: Map<string, Zone> = new Map();
     private activeChats: Set<number> = new Set();
     private userCooldowns: Map<number, number> = new Map();
-    private systemMessages: Map<number, { messageId: number, deleteAt: number }[]> = new Map();
 
     constructor() {
         this.initializeGame();
         this.setupBotHandlers();
-        this.startCleanupInterval();
     }
 
     private initializeGame() {
         console.log('Game initialized');
     }
 
-    private startCleanupInterval() {
-        // Alle 5 Sekunden aufräumen
-        setInterval(() => {
-            const now = Date.now();
-            for (const [chatId, messages] of this.systemMessages.entries()) {
-                const expiredMessages = messages.filter(msg => msg.deleteAt <= now);
-                expiredMessages.forEach(async (msg) => {
-                    try {
-                        await bot.deleteMessage(chatId, msg.messageId);
-                    } catch (error) {
-                        console.error('Fehler beim Löschen der Nachricht:', error);
-                    }
-                });
-                // Aktualisiere die Liste der System-Nachrichten
-                this.systemMessages.set(
-                    chatId,
-                    messages.filter(msg => msg.deleteAt > now)
-                );
-            }
-        }, 5000);
-    }
-
-    private async sendSystemMessage(chatId: number, text: string, replyToMessage?: number, deleteAfter: number = 5000) {
-        try {
-            const msg = await bot.sendMessage(chatId, text, {
-                reply_to_message_id: replyToMessage
-            });
-
-            // Lösche die System-Nachricht nach der angegebenen Zeit
-            setTimeout(async () => {
-                try {
-                    await bot.deleteMessage(chatId, msg.message_id);
-                    if (replyToMessage) {
-                        await bot.deleteMessage(chatId, replyToMessage);
-                    }
-                } catch (error) {
-                    console.error('Fehler beim Löschen der Nachrichten:', error);
-                }
-            }, deleteAfter);
-        } catch (error) {
-            console.error('Fehler beim Senden der System-Nachricht:', error);
-        }
-    }
-
     private async setupBotHandlers() {
         try {
+            // Entferne alle Standard-Kommandos
             await bot.setMyCommands([]);
-            
-            // Behandle /start Kommando
-            bot.onText(/\/start/, async (msg) => {
-                try {
-                    const chatId = msg.chat.id;
-                    
-                    await bot.setChatMenuButton({
-                        chat_id: chatId,
-                        menu_button: {
-                            type: 'web_app',
-                            text: '🎮 Spielen',
-                            web_app: {
-                                url: 'https://g4ngmmo.onrender.com/game'
-                            }
-                        }
-                    });
-
-                    const welcomeMsg = await bot.sendMessage(chatId, 'Willkommen bei G4NG MMO! Der Spielen-Button wurde aktiviert.');
-                    
-                    // Lösche Willkommensnachricht und Start-Kommando nach 5 Sekunden
-                    setTimeout(async () => {
-                        try {
-                            await bot.deleteMessage(chatId, welcomeMsg.message_id);
-                            await bot.deleteMessage(chatId, msg.message_id);
-                        } catch (error) {
-                            console.error('Fehler beim Löschen der Willkommensnachricht:', error);
-                        }
-                    }, 5000);
-                } catch (error) {
-                    console.error('Fehler beim Setzen des Menü-Buttons:', error);
-                }
-            });
 
             // Behandle neue Chat-Nachrichten
             bot.on('message', async (msg: Message) => {
@@ -149,6 +72,12 @@ class Game {
 
                     // Ignoriere Kommandos
                     if (msg.text?.startsWith('/')) {
+                        // Lösche Kommando-Nachricht sofort
+                        try {
+                            await bot.deleteMessage(chatId, msg.message_id);
+                        } catch (error) {
+                            console.error('Fehler beim Löschen des Kommandos:', error);
+                        }
                         return;
                     }
 
@@ -345,7 +274,7 @@ app.get('/game', (req: Request, res: Response) => {
     }
 });
 
-// Error Handler hinzuf��gen
+// Error Handler hinzufügen
 app.use(errorHandler);
 
 // Starte Server
