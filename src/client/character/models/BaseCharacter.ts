@@ -367,7 +367,9 @@ export class BaseCharacter {
     public setHairColor(color: THREE.Color) {
         if (this.hairMesh) {
             this.hairMesh.children.forEach(child => {
-                (child.material as THREE.MeshPhongMaterial).color = color;
+                if (child instanceof THREE.Mesh) {
+                    (child.material as THREE.MeshPhongMaterial).color = color;
+                }
             });
         }
         const leftEyebrow = this.facialFeatures.get('leftEyebrow');
