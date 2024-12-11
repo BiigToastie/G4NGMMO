@@ -1,0 +1,5 @@
+[33mcommit 4dadc5317e99c9f35b6f1cc636bf4d718af00237[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: BiigToastie <ihre.email@example.com>
+Date:   Wed Dec 11 05:16:18 2024 +0100
+
+    fix: TypeScript-Fehler in mehreren Dateien behoben
