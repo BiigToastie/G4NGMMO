@@ -10,8 +10,11 @@ export class CharacterCreator {
     private character: BaseCharacter;
     private lights: THREE.Light[];
     private currentExpression: 'neutral' | 'happy' | 'sad' = 'neutral';
+    private gender: 'male' | 'female' = 'male';
 
-    constructor(container: HTMLElement) {
+    constructor(container: HTMLElement, gender: 'male' | 'female' = 'male') {
+        this.gender = gender;
+        
         // Szene einrichten
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0xf0f0f0);
@@ -43,7 +46,7 @@ export class CharacterCreator {
         this.controls.target.set(0, 1.7, 0);
 
         // Charakter erstellen
-        this.character = new BaseCharacter();
+        this.character = new BaseCharacter(this.gender);
         this.scene.add(this.character.getMesh());
 
         // Beleuchtung einrichten
@@ -55,6 +58,9 @@ export class CharacterCreator {
 
         // Animation starten
         this.animate();
+
+        // Standard-Frisur setzen
+        this.setHairStyle(this.gender === 'male' ? 'spiky' : 'long');
     }
 
     private setupLights() {
@@ -89,7 +95,17 @@ export class CharacterCreator {
         this.renderer.render(this.scene, this.camera);
     }
 
-    // Öffentliche Methoden für Charakter-Anpassung
+    public setGender(gender: 'male' | 'female') {
+        this.gender = gender;
+        // Alten Charakter entfernen
+        this.scene.remove(this.character.getMesh());
+        // Neuen Charakter erstellen
+        this.character = new BaseCharacter(gender);
+        this.scene.add(this.character.getMesh());
+        // Standard-Frisur setzen
+        this.setHairStyle(gender === 'male' ? 'spiky' : 'long');
+    }
+
     public setBodyType(type: 'slim' | 'average' | 'athletic') {
         this.character.setBodyType(type);
     }
@@ -125,21 +141,22 @@ export class CharacterCreator {
 
     public exportCharacter() {
         return {
+            gender: this.gender,
             bodyType: 'average', // TODO: Speichere den aktuellen Körpertyp
             height: 175, // TODO: Speichere die aktuelle Höhe
             skinTone: '#ffdbac', // TODO: Speichere die aktuelle Hautfarbe
-            hairStyle: 'short', // TODO: Speichere den aktuellen Haarstil
-            hairColor: '#4a2f23', // TODO: Speichere die aktuelle Haarfarbe
-            eyeColor: '#634e34', // TODO: Speichere die aktuelle Augenfarbe
+            hairStyle: this.gender === 'male' ? 'spiky' : 'long', // TODO: Speichere den aktuellen Haarstil
+            hairColor: this.gender === 'female' ? '#ffb6c1' : '#4a2f23', // TODO: Speichere die aktuelle Haarfarbe
+            eyeColor: '#87CEEB', // TODO: Speichere die aktuelle Augenfarbe
             expression: this.currentExpression,
             clothing: {
-                shirt: {
-                    style: 't-shirt', // TODO: Speichere den aktuellen Shirt-Stil
-                    color: '#ffffff' // TODO: Speichere die aktuelle Shirt-Farbe
+                [this.gender === 'male' ? 'shirt' : 'dress']: {
+                    style: this.gender === 'male' ? 't-shirt' : 'uniform',
+                    color: '#ffffff'
                 },
-                pants: {
-                    style: 'jeans', // TODO: Speichere den aktuellen Hosen-Stil
-                    color: '#000066' // TODO: Speichere die aktuelle Hosen-Farbe
+                [this.gender === 'male' ? 'pants' : 'bow']: {
+                    style: this.gender === 'male' ? 'pants' : 'ribbon',
+                    color: this.gender === 'male' ? '#000000' : '#ff0000'
                 }
             }
         };
