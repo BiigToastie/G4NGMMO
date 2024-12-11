@@ -31,56 +31,64 @@ async function connectToMongoDB() {
             const password = process.env.MONGODB_PASSWORD || 'OPbz9d7rIMed6tOi';
             const database = process.env.MONGODB_DATABASE || 'mmo-game';
             
-            // Standard MongoDB Atlas SRV URI
-            const mongoUri = `mongodb+srv://${username}:${password}@cluster0.ktz7i.mongodb.net/${database}?retryWrites=true&w=majority`;
-            
-            console.log('Versuche Verbindung mit MongoDB:', mongoUri.replace(/:[^:]*@/, ':****@'));
-
-            const mongooseOptions = {
-                serverSelectionTimeoutMS: 60000,
-                socketTimeoutMS: 45000,
-                connectTimeoutMS: 60000,
-                heartbeatFrequencyMS: 10000,
-                retryWrites: true,
-                retryReads: true,
-                w: 'majority',
-                maxPoolSize: 10,
-                minPoolSize: 5,
-                authSource: 'admin',
-                family: 4,
-                serverApi: {
-                    version: '1',
-                    strict: true,
-                    deprecationErrors: true
-                }
-            } satisfies ConnectOptions;
-
             // DNS-Tests
             try {
                 const { promisify } = require('util');
                 const dns = require('dns');
-                const lookup = promisify(dns.lookup);
                 const resolveSrv = promisify(dns.resolveSrv);
 
                 // Test SRV Record
                 const srvRecords = await resolveSrv('_mongodb._tcp.cluster0.ktz7i.mongodb.net');
                 console.log('MongoDB SRV Records:', srvRecords);
 
-                // Test DNS für Hauptdomain
-                const mainResult = await lookup('cluster0.ktz7i.mongodb.net', { family: 4 });
-                console.log('DNS Lookup für Hauptdomain:', mainResult);
+                // Konstruiere URI basierend auf SRV-Records
+                const hosts = srvRecords
+                    .map(record => `${record.name}:${record.port}`)
+                    .join(',');
+
+                const mongoUri = `mongodb://${username}:${password}@${hosts}/${database}?replicaSet=atlas-wi4lzq-shard-0&tls=true&authSource=admin`;
+                console.log('Versuche Verbindung mit MongoDB:', mongoUri.replace(/:[^:]*@/, ':****@'));
+
+                const mongooseOptions = {
+                    serverSelectionTimeoutMS: 60000,
+                    socketTimeoutMS: 45000,
+                    connectTimeoutMS: 60000,
+                    heartbeatFrequencyMS: 10000,
+                    retryWrites: true,
+                    retryReads: true,
+                    w: 'majority',
+                    maxPoolSize: 10,
+                    minPoolSize: 5,
+                    authSource: 'admin',
+                    family: 4,
+                    serverApi: {
+                        version: '1',
+                        strict: true,
+                        deprecationErrors: true
+                    }
+                } satisfies ConnectOptions;
+
+                await mongoose.connect(mongoUri, mongooseOptions);
+                console.log('Mit MongoDB verbunden');
+                return true;
 
             } catch (error) {
+                retries++;
                 if (error instanceof Error) {
-                    console.error('DNS-Test fehlgeschlagen:', error.message);
+                    console.error(`MongoDB Verbindungsversuch ${retries}/${maxRetries} fehlgeschlagen:`, error.message);
                 } else {
-                    console.error('DNS-Test fehlgeschlagen:', error);
+                    console.error(`MongoDB Verbindungsversuch ${retries}/${maxRetries} fehlgeschlagen:`, error);
                 }
-            }
 
-            await mongoose.connect(mongoUri, mongooseOptions);
-            console.log('Mit MongoDB verbunden');
-            return true;
+                if (retries === maxRetries) {
+                    console.error('Maximale Anzahl an Verbindungsversuchen erreicht');
+                    return false;
+                }
+
+                const backoffTime = Math.pow(2, retries) * 1000 + Math.random() * 1000;
+                console.log(`Warte ${Math.round(backoffTime/1000)} Sekunden vor dem nächsten Versuch...`);
+                await new Promise(resolve => setTimeout(resolve, backoffTime));
+            }
         } catch (error) {
             retries++;
             console.error(`MongoDB Verbindungsversuch ${retries}/${maxRetries} fehlgeschlagen:`, error);
