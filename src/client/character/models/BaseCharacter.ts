@@ -5,6 +5,7 @@ export class BaseCharacter {
     private bodyParts: Map<string, THREE.Mesh> = new Map();
     private facialFeatures: Map<string, THREE.Mesh> = new Map();
     private clothingMeshes: Map<string, THREE.Mesh> = new Map();
+    private hairMesh: THREE.Group | null = null;
 
     constructor() {
         this.mesh = new THREE.Group();
@@ -261,7 +262,114 @@ export class BaseCharacter {
         }
     }
 
+    public setHairStyle(style: string) {
+        // Altes Haar entfernen
+        if (this.hairMesh) {
+            this.mesh.remove(this.hairMesh);
+        }
+
+        this.hairMesh = new THREE.Group();
+
+        const hairMaterial = new THREE.MeshPhongMaterial({
+            color: 0x4a2f23,
+            flatShading: false
+        });
+
+        switch (style) {
+            case 'short': {
+                // Kurzes Haar mit mehreren Ebenen
+                const baseHair = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.16, 32, 32, 0, Math.PI * 2, 0, Math.PI / 3),
+                    hairMaterial
+                );
+                baseHair.position.y = 1.5;
+                this.hairMesh.add(baseHair);
+
+                // Zusätzliche Haardetails
+                const topHair = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.14, 32, 32, 0, Math.PI * 2, 0, Math.PI / 4),
+                    hairMaterial
+                );
+                topHair.position.y = 1.52;
+                this.hairMesh.add(topHair);
+                break;
+            }
+            case 'medium': {
+                // Mittellange Frisur mit Schichten
+                const baseHair = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.17, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2),
+                    hairMaterial
+                );
+                baseHair.position.y = 1.48;
+                this.hairMesh.add(baseHair);
+
+                // Seitliche Haarpartien
+                const sideHairLeft = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.05, 0.03, 0.2, 32),
+                    hairMaterial
+                );
+                sideHairLeft.position.set(0.15, 1.4, 0);
+                sideHairLeft.rotation.z = 0.2;
+                this.hairMesh.add(sideHairLeft);
+
+                const sideHairRight = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.05, 0.03, 0.2, 32),
+                    hairMaterial
+                );
+                sideHairRight.position.set(-0.15, 1.4, 0);
+                sideHairRight.rotation.z = -0.2;
+                this.hairMesh.add(sideHairRight);
+                break;
+            }
+            case 'long': {
+                // Lange Frisur mit fließenden Elementen
+                const baseHair = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.17, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2),
+                    hairMaterial
+                );
+                baseHair.position.y = 1.48;
+                this.hairMesh.add(baseHair);
+
+                // Lange Haarsträhnen
+                const backHair = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.15, 0.08, 0.5, 32),
+                    hairMaterial
+                );
+                backHair.position.set(0, 1.3, -0.05);
+                backHair.rotation.x = 0.2;
+                this.hairMesh.add(backHair);
+
+                // Seitliche Strähnen
+                const sideHairLeft = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.05, 0.03, 0.4, 32),
+                    hairMaterial
+                );
+                sideHairLeft.position.set(0.15, 1.3, 0);
+                sideHairLeft.rotation.z = 0.1;
+                this.hairMesh.add(sideHairLeft);
+
+                const sideHairRight = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.05, 0.03, 0.4, 32),
+                    hairMaterial
+                );
+                sideHairRight.position.set(-0.15, 1.3, 0);
+                sideHairRight.rotation.z = -0.1;
+                this.hairMesh.add(sideHairRight);
+                break;
+            }
+        }
+
+        if (this.hairMesh) {
+            this.mesh.add(this.hairMesh);
+        }
+    }
+
     public setHairColor(color: THREE.Color) {
+        if (this.hairMesh) {
+            this.hairMesh.children.forEach(child => {
+                (child.material as THREE.MeshPhongMaterial).color = color;
+            });
+        }
         const leftEyebrow = this.facialFeatures.get('leftEyebrow');
         const rightEyebrow = this.facialFeatures.get('rightEyebrow');
         if (leftEyebrow) {
