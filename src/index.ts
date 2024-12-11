@@ -84,8 +84,8 @@ async function connectToMongoDB() {
                         socket.end();
                     });
 
-                    socket.on('error', (error) => {
-                        console.error(`TLS-Verbindung zu ${host} fehlgeschlagen:`, error);
+                    socket.on('error', (error: Error) => {
+                        console.error(`TLS-Verbindung zu ${host} fehlgeschlagen:`, error.message);
                     });
 
                     // DNS-Test
@@ -95,7 +95,11 @@ async function connectToMongoDB() {
                     const result = await lookup(host, { family: 4 });
                     console.log(`DNS Lookup für Shard ${host}:`, result);
                 } catch (error) {
-                    console.error(`Test fehlgeschlagen für Shard ${host}:`, error);
+                    if (error instanceof Error) {
+                        console.error(`Test fehlgeschlagen für Shard ${host}:`, error.message);
+                    } else {
+                        console.error(`Test fehlgeschlagen für Shard ${host}:`, error);
+                    }
                 }
             }
 
