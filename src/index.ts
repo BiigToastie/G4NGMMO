@@ -60,13 +60,27 @@ class Game {
         try {
             // Setze den Menü-Button für alle Chats
             await bot.setMyCommands([]);
-            await bot.setChatMenuButton({
-                menu_button: {
-                    type: 'web_app',
-                    text: '🎮 Spielen',
-                    web_app: {
-                        url: 'https://g4ngmmo.onrender.com/game'
-                    }
+            
+            // Behandle /start Kommando
+            bot.onText(/\/start/, async (msg) => {
+                try {
+                    const chatId = msg.chat.id;
+                    
+                    // Setze den Menü-Button für diesen Chat
+                    await bot.setChatMenuButton({
+                        chat_id: chatId,
+                        menu_button: {
+                            type: 'web_app',
+                            text: '🎮 Spielen',
+                            web_app: {
+                                url: 'https://g4ngmmo.onrender.com/game'
+                            }
+                        }
+                    });
+
+                    await bot.sendMessage(chatId, 'Willkommen bei G4NG MMO! Der Spielen-Button wurde aktiviert.');
+                } catch (error) {
+                    console.error('Fehler beim Setzen des Menü-Buttons:', error);
                 }
             });
 
@@ -80,8 +94,8 @@ class Game {
                     // Füge Chat zur Liste aktiver Chats hinzu
                     this.activeChats.add(chatId);
 
-                    // Wenn es eine Textnachricht ist
-                    if (msg.text && userId) {
+                    // Wenn es eine Textnachricht ist und nicht mit / beginnt
+                    if (msg.text && userId && !msg.text.startsWith('/')) {
                         // Prüfe Cooldown
                         const lastMessageTime = this.userCooldowns.get(userId) || 0;
                         const currentTime = Date.now();
@@ -91,11 +105,13 @@ class Game {
                             // Aktualisiere Cooldown
                             this.userCooldowns.set(userId, currentTime);
 
-                            // Sende Nachricht an alle aktiven Chats
+                            // Formatiere die Nachricht
                             const messageText = `👤 ${username}:\n${msg.text}`;
                             
+                            // Sende Nachricht an alle aktiven Chats
                             for (const activeChatId of this.activeChats) {
                                 try {
+                                    // Sende die Nachricht immer, auch an den Absender
                                     await bot.sendMessage(activeChatId, messageText);
                                 } catch (error) {
                                     console.error(`Fehler beim Senden an Chat ${activeChatId}:`, error);
@@ -113,6 +129,9 @@ class Game {
                                 { reply_to_message_id: msg.message_id }
                             );
                         }
+                    } else if (msg.text?.startsWith('/')) {
+                        // Ignoriere Kommandos
+                        return;
                     } else if (!msg.text) {
                         // Wenn es keine Textnachricht ist (z.B. Bilder, Sticker etc.)
                         await bot.sendMessage(chatId, 
