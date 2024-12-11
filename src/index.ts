@@ -16,7 +16,7 @@ async function connectToMongoDB() {
     // IP-Adresse des Servers ausgeben
     try {
         const response = await fetch('https://api.ipify.org?format=json');
-        const data = await response.json();
+        const data = await response.json() as { ip: string };
         console.log('Server IP-Adresse:', data.ip);
     } catch (error) {
         console.error('Fehler beim Abrufen der IP-Adresse:', error);
