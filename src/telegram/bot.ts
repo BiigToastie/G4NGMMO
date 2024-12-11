@@ -5,22 +5,8 @@ export class BotManager {
     private bot: TelegramBot | null = null;
     private isInitializing: boolean = false;
     private shutdownRequested: boolean = false;
-    private readonly WELCOME_MESSAGE = `
-🎮 Willkommen bei G4NG MMO! 🎮
-
-Ein spannendes MMO-Abenteuer erwartet dich! Hier sind deine Optionen:
-
-🎯 /start - Starte dein Abenteuer
-👤 /character - Erstelle oder bearbeite deinen Charakter
-🌍 /world - Erkunde die Spielwelt
-📜 /quests - Verfügbare Quests
-⚔️ /fight - PvP-Kampfsystem
-🏰 /guild - Gilden-Management
-💰 /shop - Händler und Gegenstände
-❓ /help - Hilfe und Befehle
-
-Viel Spaß beim Spielen! 🚀
-    `;
+    private activeChats: Set<number> = new Set(); // Speichert aktive Chat-IDs
+    private userCooldowns: Map<number, number> = new Map(); // Speichert User-Cooldowns
 
     private constructor() {}
 
@@ -29,6 +15,24 @@ Viel Spaß beim Spielen! 🚀
             BotManager.instance = new BotManager();
         }
         return BotManager.instance;
+    }
+
+    private isUserInCooldown(userId: number): boolean {
+        const lastMessageTime = this.userCooldowns.get(userId);
+        if (!lastMessageTime) return false;
+
+        const cooldownTime = 30 * 1000; // 30 Sekunden in Millisekunden
+        const timeSinceLastMessage = Date.now() - lastMessageTime;
+        return timeSinceLastMessage < cooldownTime;
+    }
+
+    private getRemainingCooldown(userId: number): number {
+        const lastMessageTime = this.userCooldowns.get(userId);
+        if (!lastMessageTime) return 0;
+
+        const cooldownTime = 30 * 1000;
+        const timeSinceLastMessage = Date.now() - lastMessageTime;
+        return Math.ceil((cooldownTime - timeSinceLastMessage) / 1000);
     }
 
     public async initialize() {
@@ -48,116 +52,83 @@ Viel Spaß beim Spielen! 🚀
                 polling: true
             });
 
-            // Willkommensnachricht
+            // Start-Befehl Handler
             this.bot.onText(/\/start/, async (msg) => {
                 const chatId = msg.chat.id;
-                const userId = msg.from?.id.toString();
-                const username = msg.from?.username || msg.from?.first_name || 'Abenteurer';
+                
+                // Füge Chat zur Liste aktiver Chats hinzu
+                this.activeChats.add(chatId);
 
-                try {
-                    // Lösche vorherige Nachrichten
-                    const messages = await this.bot?.getUpdates();
-                    messages?.forEach(async (update) => {
-                        if (update.message?.chat.id === chatId) {
-                            try {
-                                await this.bot?.deleteMessage(chatId, update.message.message_id);
-                            } catch (error) {
-                                // Ignoriere Fehler beim Löschen alter Nachrichten
-                            }
-                        }
-                    });
-
-                    // Sende Willkommensnachricht
-                    await this.bot?.sendMessage(chatId, 
-                        `Hallo ${username}! ${this.WELCOME_MESSAGE}`, 
-                        {
-                            parse_mode: 'Markdown',
-                            reply_markup: {
-                                inline_keyboard: [
-                                    [
-                                        { text: '👤 Charakter erstellen', callback_data: 'create_character' },
-                                        { text: '🌍 Welt erkunden', callback_data: 'explore_world' }
-                                    ],
-                                    [
-                                        { text: '⚔️ PvP', callback_data: 'pvp' },
-                                        { text: '🏰 Gilde', callback_data: 'guild' }
-                                    ]
-                                ]
-                            }
-                        }
-                    );
-                } catch (error) {
-                    console.error('Fehler beim Senden der Willkommensnachricht:', error);
-                    await this.bot?.sendMessage(chatId, 'Es gab einen Fehler. Bitte versuche es später erneut.');
-                }
+                // Sende Willkommensnachricht
+                await this.bot?.sendMessage(chatId, 'Willkommen bei G4NGMMO ⚔️');
             });
 
-            // Callback Query Handler
-            this.bot.on('callback_query', async (callbackQuery) => {
-                const chatId = callbackQuery.message?.chat.id;
-                const messageId = callbackQuery.message?.message_id;
-                const action = callbackQuery.data;
-
-                if (!chatId || !messageId || !action) return;
-
-                try {
-                    switch (action) {
-                        case 'create_character':
-                            await this.bot?.editMessageText('🎨 Charakter-Editor wird geladen...', {
-                                chat_id: chatId,
-                                message_id: messageId
-                            });
-                            // Hier später die Charaktererstellung implementieren
-                            break;
-
-                        case 'explore_world':
-                            await this.bot?.editMessageText('🗺️ Lade Weltkarte...', {
-                                chat_id: chatId,
-                                message_id: messageId
-                            });
-                            // Hier später die Weltexploration implementieren
-                            break;
-
-                        case 'pvp':
-                            await this.bot?.editMessageText('⚔️ Suche nach Gegnern...', {
-                                chat_id: chatId,
-                                message_id: messageId
-                            });
-                            // Hier später das PvP-System implementieren
-                            break;
-
-                        case 'guild':
-                            await this.bot?.editMessageText('🏰 Lade Gilden-Informationen...', {
-                                chat_id: chatId,
-                                message_id: messageId
-                            });
-                            // Hier später das Gilden-System implementieren
-                            break;
-                    }
-                } catch (error) {
-                    console.error('Fehler bei Callback-Verarbeitung:', error);
-                    await this.bot?.sendMessage(chatId, 'Es gab einen Fehler. Bitte versuche es später erneut.');
-                }
-            });
-
-            // Allgemeiner Nachrichten-Handler
+            // Globaler Nachrichten-Handler
             this.bot.on('message', async (msg) => {
                 const chatId = msg.chat.id;
+                const userId = msg.from?.id;
                 const messageId = msg.message_id;
                 const text = msg.text;
 
-                // Ignoriere Befehle
-                if (text?.startsWith('/')) return;
+                // Ignoriere Start-Befehl
+                if (text === '/start') return;
+
+                // Prüfe ob es eine gültige Nachricht ist
+                if (!userId || !text) return;
 
                 try {
-                    // Lösche Nachricht nach kurzer Verzögerung
-                    setTimeout(async () => {
-                        try {
-                            await this.bot?.deleteMessage(chatId, messageId);
-                        } catch (error) {
-                            // Ignoriere Fehler beim Löschen
+                    // Prüfe Cooldown
+                    if (this.isUserInCooldown(userId)) {
+                        const remainingTime = this.getRemainingCooldown(userId);
+                        const cooldownMsg = await this.bot?.sendMessage(chatId, 
+                            `⏳ Bitte warte noch ${remainingTime} Sekunden bevor du wieder eine Nachricht sendest.`
+                        );
+
+                        // Lösche Cooldown-Nachricht nach 5 Sekunden
+                        if (cooldownMsg) {
+                            setTimeout(async () => {
+                                try {
+                                    await this.bot?.deleteMessage(chatId, cooldownMsg.message_id);
+                                    await this.bot?.deleteMessage(chatId, messageId);
+                                } catch (error) {
+                                    // Ignoriere Fehler beim Löschen
+                                }
+                            }, 5000);
                         }
-                    }, 5000);
+                        return;
+                    }
+
+                    // Aktualisiere Cooldown
+                    this.userCooldowns.set(userId, Date.now());
+
+                    // Formatiere Benutzernamen
+                    const username = msg.from.username || msg.from.first_name || 'Unbekannt';
+
+                    // Sende Nachricht an alle aktiven Chats
+                    const promises = Array.from(this.activeChats).map(async (activeChatId) => {
+                        try {
+                            return await this.bot?.sendMessage(activeChatId, 
+                                `${username}: ${text}`,
+                                { parse_mode: 'Markdown' }
+                            );
+                        } catch (error) {
+                            if (error.response?.statusCode === 403) {
+                                // Bot wurde blockiert oder Chat wurde beendet
+                                this.activeChats.delete(activeChatId);
+                            }
+                            return null;
+                        }
+                    });
+
+                    // Warte auf alle Sendevorgänge
+                    await Promise.all(promises);
+
+                    // Lösche ursprüngliche Nachricht
+                    try {
+                        await this.bot?.deleteMessage(chatId, messageId);
+                    } catch (error) {
+                        // Ignoriere Fehler beim Löschen
+                    }
 
                 } catch (error) {
                     console.error('Fehler bei Nachrichtenverarbeitung:', error);
