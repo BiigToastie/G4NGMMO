@@ -356,46 +356,98 @@ app.get('/game', (req: Request, res: Response) => {
 });
 
 // Telegram Bot
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN!, { polling: true });
+let bot: TelegramBot | null = null;
 
-// Bot-Befehle
-bot.onText(/\/start/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from?.id.toString();
-
-    if (!userId) {
-        bot.sendMessage(chatId, 'Fehler: Benutzer-ID nicht gefunden');
-        return;
-    }
-
+function initializeBot() {
     try {
-        // Prüfen, ob bereits ein Charakter existiert
-        const response = await fetch(`${process.env.BASE_URL}/api/character/${userId}`);
-        
-        if (response.ok) {
-            // Charakter existiert bereits
-            bot.sendMessage(chatId, 'Willkommen zurück! Dein Charakter ist bereits erstellt.');
-        } else {
-            // Neuer Spieler - Charaktererstellung starten
-            const gameUrl = `${process.env.BASE_URL}/game`;
-            bot.sendMessage(chatId, 
-                'Willkommen bei G4NG MMO! Lass uns deinen Charakter erstellen.',
-                {
-                    reply_markup: {
-                        inline_keyboard: [[
-                            {
-                                text: 'Charakter erstellen',
-                                web_app: { url: gameUrl }
-                            }
-                        ]]
-                    }
-                }
-            );
+        if (bot) {
+            bot.stopPolling();
+            bot = null;
         }
+
+        bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN!, { 
+            polling: true,
+            // Polling-Optionen für bessere Stabilität
+            polling_interval: 300,
+            timeout: 10
+        });
+
+        // Error Handler für Polling-Fehler
+        bot.on('polling_error', (error) => {
+            if (error.code === 'ETELEGRAM' && error.message.includes('terminated by other getUpdates')) {
+                console.log('Bot-Instanz wurde durch eine andere ersetzt. Starte neu...');
+                setTimeout(initializeBot, 1000);
+                return;
+            }
+            console.error('Polling-Fehler:', error);
+        });
+
+        // Bot-Befehle
+        bot.onText(/\/start/, async (msg) => {
+            const chatId = msg.chat.id;
+            const userId = msg.from?.id.toString();
+
+            if (!userId) {
+                bot?.sendMessage(chatId, 'Fehler: Benutzer-ID nicht gefunden');
+                return;
+            }
+
+            try {
+                // Prüfen, ob bereits ein Charakter existiert
+                const response = await fetch(`${process.env.BASE_URL}/api/character/${userId}`);
+                
+                if (response.ok) {
+                    // Charakter existiert bereits
+                    bot?.sendMessage(chatId, 'Willkommen zurück! Dein Charakter ist bereits erstellt.');
+                } else {
+                    // Neuer Spieler - Charaktererstellung starten
+                    const gameUrl = `${process.env.BASE_URL}/game`;
+                    bot?.sendMessage(chatId, 
+                        'Willkommen bei G4NG MMO! Lass uns deinen Charakter erstellen.',
+                        {
+                            reply_markup: {
+                                inline_keyboard: [[
+                                    {
+                                        text: 'Charakter erstellen',
+                                        web_app: { url: gameUrl }
+                                    }
+                                ]]
+                            }
+                        }
+                    );
+                }
+            } catch (error) {
+                console.error('Fehler beim Prüfen des Charakters:', error);
+                bot?.sendMessage(chatId, 'Es ist ein Fehler aufgetreten. Bitte versuche es später erneut.');
+            }
+        });
+
+        console.log('Bot erfolgreich initialisiert');
     } catch (error) {
-        console.error('Fehler beim Prüfen des Charakters:', error);
-        bot.sendMessage(chatId, 'Es ist ein Fehler aufgetreten. Bitte versuche es später erneut.');
+        console.error('Fehler beim Initialisieren des Bots:', error);
+        // Versuche nach 5 Sekunden erneut zu initialisieren
+        setTimeout(initializeBot, 5000);
     }
+}
+
+// Initialisiere den Bot
+initializeBot();
+
+// Prozess-Beendigung behandeln
+process.on('SIGTERM', () => {
+    console.log('SIGTERM Signal empfangen. Beende Bot...');
+    if (bot) {
+        bot.stopPolling();
+    }
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    console.log('SIGINT Signal empfangen. Beende Bot...');
+    if (bot) {
+        bot.stopPolling();
+    }
+    process.exit(0);
 });
 
 // Server starten
