@@ -86,25 +86,17 @@ class Game {
                 reply_to_message_id: replyToMessage
             });
 
-            // Speichere die System-Nachricht zum späteren Löschen
-            if (!this.systemMessages.has(chatId)) {
-                this.systemMessages.set(chatId, []);
-            }
-            this.systemMessages.get(chatId)!.push({
-                messageId: msg.message_id,
-                deleteAt: Date.now() + deleteAfter
-            });
-
-            // Optional: Lösche auch die Original-Nachricht, auf die geantwortet wurde
-            if (replyToMessage) {
-                setTimeout(async () => {
-                    try {
+            // Lösche die System-Nachricht nach der angegebenen Zeit
+            setTimeout(async () => {
+                try {
+                    await bot.deleteMessage(chatId, msg.message_id);
+                    if (replyToMessage) {
                         await bot.deleteMessage(chatId, replyToMessage);
-                    } catch (error) {
-                        console.error('Fehler beim Löschen der Original-Nachricht:', error);
                     }
-                }, deleteAfter);
-            }
+                } catch (error) {
+                    console.error('Fehler beim Löschen der Nachrichten:', error);
+                }
+            }, deleteAfter);
         } catch (error) {
             console.error('Fehler beim Senden der System-Nachricht:', error);
         }
@@ -130,7 +122,17 @@ class Game {
                         }
                     });
 
-                    await this.sendSystemMessage(chatId, 'Willkommen bei G4NG MMO! Der Spielen-Button wurde aktiviert.', msg.message_id);
+                    const welcomeMsg = await bot.sendMessage(chatId, 'Willkommen bei G4NG MMO! Der Spielen-Button wurde aktiviert.');
+                    
+                    // Lösche Willkommensnachricht und Start-Kommando nach 5 Sekunden
+                    setTimeout(async () => {
+                        try {
+                            await bot.deleteMessage(chatId, welcomeMsg.message_id);
+                            await bot.deleteMessage(chatId, msg.message_id);
+                        } catch (error) {
+                            console.error('Fehler beim Löschen der Willkommensnachricht:', error);
+                        }
+                    }, 5000);
                 } catch (error) {
                     console.error('Fehler beim Setzen des Menü-Buttons:', error);
                 }
@@ -145,7 +147,13 @@ class Game {
                     
                     this.activeChats.add(chatId);
 
-                    if (msg.text && userId && !msg.text.startsWith('/')) {
+                    // Ignoriere Kommandos
+                    if (msg.text?.startsWith('/')) {
+                        return;
+                    }
+
+                    // Wenn es eine Textnachricht ist
+                    if (msg.text && userId) {
                         const lastMessageTime = this.userCooldowns.get(userId) || 0;
                         const currentTime = Date.now();
                         const timeSinceLastMessage = currentTime - lastMessageTime;
@@ -154,43 +162,56 @@ class Game {
                             this.userCooldowns.set(userId, currentTime);
                             const messageText = `👤 ${username}:\n${msg.text}`;
                             
+                            // Lösche die Original-Nachricht sofort
+                            try {
+                                await bot.deleteMessage(chatId, msg.message_id);
+                            } catch (error) {
+                                console.error('Fehler beim Löschen der Original-Nachricht:', error);
+                            }
+
+                            // Sende die formatierte Nachricht an alle Chats
                             for (const activeChatId of this.activeChats) {
                                 try {
                                     await bot.sendMessage(activeChatId, messageText);
                                 } catch (error) {
-                                    console.error(`Fehler beim Senden an Chat ${activeChatId}:`, error);
                                     if ((error as any).code === 403) {
                                         this.activeChats.delete(activeChatId);
                                     }
                                 }
                             }
-
-                            // Lösche die Original-Nachricht nach einer kurzen Verzögerung
-                            setTimeout(async () => {
-                                try {
-                                    await bot.deleteMessage(chatId, msg.message_id);
-                                } catch (error) {
-                                    console.error('Fehler beim Löschen der Original-Nachricht:', error);
-                                }
-                            }, 500);
                         } else {
                             const remainingTime = Math.ceil((30000 - timeSinceLastMessage) / 1000);
-                            await this.sendSystemMessage(
-                                chatId,
+                            const cooldownMsg = await bot.sendMessage(chatId, 
                                 `⏳ Bitte warte noch ${remainingTime} Sekunden, bevor du eine weitere Nachricht sendest.`,
-                                msg.message_id,
-                                5000
+                                { reply_to_message_id: msg.message_id }
                             );
+
+                            // Lösche Cooldown-Nachricht und Original-Nachricht nach 5 Sekunden
+                            setTimeout(async () => {
+                                try {
+                                    await bot.deleteMessage(chatId, cooldownMsg.message_id);
+                                    await bot.deleteMessage(chatId, msg.message_id);
+                                } catch (error) {
+                                    console.error('Fehler beim Löschen der Cooldown-Nachricht:', error);
+                                }
+                            }, 5000);
                         }
-                    } else if (msg.text?.startsWith('/')) {
-                        return;
                     } else if (!msg.text) {
-                        await this.sendSystemMessage(
-                            chatId,
+                        // Wenn es keine Textnachricht ist
+                        const errorMsg = await bot.sendMessage(chatId, 
                             '❌ Nur Textnachrichten sind im globalen Chat erlaubt.',
-                            msg.message_id,
-                            5000
+                            { reply_to_message_id: msg.message_id }
                         );
+
+                        // Lösche Fehlermeldung und Original-Nachricht nach 5 Sekunden
+                        setTimeout(async () => {
+                            try {
+                                await bot.deleteMessage(chatId, errorMsg.message_id);
+                                await bot.deleteMessage(chatId, msg.message_id);
+                            } catch (error) {
+                                console.error('Fehler beim Löschen der Fehlermeldung:', error);
+                            }
+                        }, 5000);
                     }
                 } catch (error) {
                     console.error('Fehler beim Verarbeiten der Nachricht:', error);
@@ -204,7 +225,16 @@ class Game {
                     const parsedData = JSON.parse(data);
                     console.log('Web App Data received:', parsedData);
                     
-                    await this.sendSystemMessage(msg.chat.id, 'Spieldaten empfangen!', undefined, 3000);
+                    const confirmMsg = await bot.sendMessage(msg.chat.id, 'Spieldaten empfangen!');
+                    
+                    // Lösche Bestätigungsnachricht nach 3 Sekunden
+                    setTimeout(async () => {
+                        try {
+                            await bot.deleteMessage(msg.chat.id, confirmMsg.message_id);
+                        } catch (error) {
+                            console.error('Fehler beim Löschen der Bestätigungsnachricht:', error);
+                        }
+                    }, 3000);
                 } catch (error) {
                     console.error('Fehler beim Verarbeiten der Web App Daten:', error);
                 }
@@ -315,7 +345,7 @@ app.get('/game', (req: Request, res: Response) => {
     }
 });
 
-// Error Handler hinzufügen
+// Error Handler hinzuf��gen
 app.use(errorHandler);
 
 // Starte Server
