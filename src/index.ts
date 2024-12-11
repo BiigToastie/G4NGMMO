@@ -25,13 +25,18 @@ async function connectToMongoDB() {
     while (retries < maxRetries) {
         try {
             await mongoose.connect(process.env.MONGODB_URI!, {
-                serverSelectionTimeoutMS: 5000,
+                serverSelectionTimeoutMS: 10000,
                 socketTimeoutMS: 45000,
+                connectTimeoutMS: 10000,
                 retryWrites: true,
-                w: 'majority',
                 retryReads: true,
+                w: 'majority',
                 maxPoolSize: 10,
-                minPoolSize: 5
+                minPoolSize: 5,
+                keepAlive: true,
+                keepAliveInitialDelay: 300000,
+                autoIndex: true,
+                authSource: 'admin'
             });
             console.log('Mit MongoDB verbunden');
             return true;
