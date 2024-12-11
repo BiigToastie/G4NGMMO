@@ -52,6 +52,42 @@ export class BotManager {
         return message;
     }
 
+    private async addTempMessage(chatId: number, messageId: number) {
+        const messages = this.tempMessages.get(chatId) || [];
+        messages.push(messageId);
+        this.tempMessages.set(chatId, messages);
+    }
+
+    private async clearTempMessages(chatId: number) {
+        const messages = this.tempMessages.get(chatId) || [];
+        for (const messageId of messages) {
+            try {
+                await this.bot?.deleteMessage(chatId, messageId);
+            } catch (error) {
+                // Ignoriere Fehler beim Löschen
+            }
+        }
+        this.tempMessages.delete(chatId);
+    }
+
+    private isUserInCooldown(userId: number): boolean {
+        const lastMessageTime = this.userCooldowns.get(userId);
+        if (!lastMessageTime) return false;
+
+        const cooldownTime = 30 * 1000; // 30 Sekunden in Millisekunden
+        const timeSinceLastMessage = Date.now() - lastMessageTime;
+        return timeSinceLastMessage < cooldownTime;
+    }
+
+    private getRemainingCooldown(userId: number): number {
+        const lastMessageTime = this.userCooldowns.get(userId);
+        if (!lastMessageTime) return 0;
+
+        const cooldownTime = 30 * 1000;
+        const timeSinceLastMessage = Date.now() - lastMessageTime;
+        return Math.ceil((cooldownTime - timeSinceLastMessage) / 1000);
+    }
+
     private async handleCharacterMenu(chatId: number, userId: number) {
         try {
             await this.sendNewMenu(chatId,
