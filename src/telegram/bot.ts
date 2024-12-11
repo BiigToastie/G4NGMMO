@@ -14,6 +14,7 @@ export class BotManager {
     private activeChats: Set<number> = new Set(); // Speichert aktive Chat-IDs
     private userCooldowns: Map<number, number> = new Map(); // Speichert User-Cooldowns
     private menuMessages: Map<number, number> = new Map(); // Speichert aktive Menü-Nachrichten pro Chat
+    private tempMessages: Map<number, number[]> = new Map(); // Speichert temporäre Nachrichten-IDs pro Chat
 
     private constructor() {}
 
@@ -113,7 +114,7 @@ export class BotManager {
     private async handleHelp(chatId: number) {
         try {
             await this.deleteOldMenu(chatId);
-            await this.bot?.sendMessage(chatId,
+            const helpMessage = await this.bot?.sendMessage(chatId,
                 '📖 *G4NG MMO - Spielhilfe*\n\n' +
                 '*🌍 Über das Spiel*\n' +
                 'Spiele auf Unserem Server um Fortschritte zu erzielen\n\n' +
@@ -129,10 +130,6 @@ export class BotManager {
                 '• Erstelle deine eigene Gilde oder tritt einer bei\n' +
                 '• Kämpfe gemeinsam mit deinen Gildenmitgliedern\n' +
                 '• Erobere Territorien und sammle Ressourcen\n\n' +
-                '*🏰 Gilden*\n' +
-                '• Erstelle deine eigene Gilde oder tritt einer bei\n' +
-                '• Kämpfe gemeinsam mit deinen Gildenmitgliedern\n' +
-                '• Erobere Territorien und sammle Ressourcen\n\n' +
                 '*⚔️ Kämpfe*\n' +
                 '• PvP-System für Spieler gegen Spieler\n' +
                 '• Gildenkämpfe für Territorien\n' +
@@ -141,17 +138,43 @@ export class BotManager {
                 'Bei Fragen kannst du jederzeit im Chat andere Spieler um Rat fragen!',
                 { parse_mode: 'Markdown' }
             );
+
+            if (helpMessage) {
+                await this.addTempMessage(chatId, helpMessage.message_id);
+            }
             
-            // Sende Zurück-Button nach der Hilfe-Nachricht
-            await this.sendNewMenu(chatId, 'Zurück zum Hauptmenü:', [
+            const backButton = await this.sendNewMenu(chatId, 'Zurück zum Hauptmenü:', [
                 [{ text: '↩️ Zurück zum Hauptmenü', callback_data: 'main_menu' }]
             ]);
+
+            if (backButton) {
+                await this.addTempMessage(chatId, backButton.message_id);
+            }
         } catch (error) {
             console.error('Fehler beim Anzeigen der Hilfe:', error);
         }
     }
 
+    private async addTempMessage(chatId: number, messageId: number) {
+        const messages = this.tempMessages.get(chatId) || [];
+        messages.push(messageId);
+        this.tempMessages.set(chatId, messages);
+    }
+
+    private async clearTempMessages(chatId: number) {
+        const messages = this.tempMessages.get(chatId) || [];
+        for (const messageId of messages) {
+            try {
+                await this.bot?.deleteMessage(chatId, messageId);
+            } catch (error) {
+                // Ignoriere Fehler beim Löschen
+            }
+        }
+        this.tempMessages.delete(chatId);
+    }
+
     private async showMainMenu(chatId: number) {
+        await this.clearTempMessages(chatId);
         return await this.sendNewMenu(
             chatId,
             '🎮 *Willkommen bei G4NG MMO!*\n\n' +
@@ -224,14 +247,25 @@ export class BotManager {
                         case 'guild_create':
                         case 'guild_search':
                         case 'guild_battles':
-                            await this.deleteOldMenu(chatId);
-                            await this.bot?.sendMessage(chatId, '🚧 Diese Funktion wird bald verfügbar sein!');
-                            await this.showMainMenu(chatId);
+                            const tempMessage = await this.bot?.sendMessage(chatId, '🚧 Diese Funktion wird bald verfügbar sein!');
+                            if (tempMessage) {
+                                await this.addTempMessage(chatId, tempMessage.message_id);
+                            }
+                            // Warte kurz, damit die Nachricht gelesen werden kann
+                            setTimeout(async () => {
+                                await this.showMainMenu(chatId);
+                            }, 2000);
                             break;
                     }
                 } catch (error) {
                     console.error('Fehler bei Callback-Verarbeitung:', error);
-                    await this.bot?.sendMessage(chatId, 'Es gab einen Fehler. Bitte versuche es später erneut.');
+                    const errorMessage = await this.bot?.sendMessage(chatId, 'Es gab einen Fehler. Bitte versuche es später erneut.');
+                    if (errorMessage) {
+                        await this.addTempMessage(chatId, errorMessage.message_id);
+                    }
+                    setTimeout(async () => {
+                        await this.showMainMenu(chatId);
+                    }, 2000);
                 }
             });
 
