@@ -37,13 +37,20 @@ async function connectToMongoDB() {
                 const dns = require('dns');
                 const resolveSrv = promisify(dns.resolveSrv);
 
+                interface SrvRecord {
+                    name: string;
+                    port: number;
+                    priority: number;
+                    weight: number;
+                }
+
                 // Test SRV Record
-                const srvRecords = await resolveSrv('_mongodb._tcp.cluster0.ktz7i.mongodb.net');
+                const srvRecords = await resolveSrv('_mongodb._tcp.cluster0.ktz7i.mongodb.net') as SrvRecord[];
                 console.log('MongoDB SRV Records:', srvRecords);
 
                 // Konstruiere URI basierend auf SRV-Records
                 const hosts = srvRecords
-                    .map(record => `${record.name}:${record.port}`)
+                    .map((record: SrvRecord) => `${record.name}:${record.port}`)
                     .join(',');
 
                 const mongoUri = `mongodb://${username}:${password}@${hosts}/${database}?replicaSet=atlas-wi4lzq-shard-0&tls=true&authSource=admin`;
