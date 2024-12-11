@@ -86,11 +86,12 @@ async function connectToMongoDB() {
                     type: mongoError.reason?.type,
                     setName: mongoError.reason?.setName,
                     servers: mongoError.reason?.servers ? 
-                        Array.from(mongoError.reason.servers.entries()).map((entry: [string, any]) => ({
-                            host: entry[0],
-                            type: entry[1].type,
-                            error: entry[1].error?.message
-                        })) : []
+                        Array.from(mongoError.reason.servers.entries() as IterableIterator<[string, any]>)
+                            .map(([host, desc]) => ({
+                                host,
+                                type: desc.type,
+                                error: desc.error?.message
+                            })) : []
                 });
             }
 
