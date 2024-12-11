@@ -2,319 +2,204 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>G4NG MMO - Charaktererstellung</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body, html {
+        body {
             margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background: #000;
             font-family: Arial, sans-serif;
-            color: white;
-        }
-        #game-container {
-            width: 100%;
-            height: 100%;
             display: flex;
+            height: 100vh;
+            background-color: #f0f0f0;
         }
-        #character-view {
-            width: 70%;
-            height: 100%;
+
+        #container {
+            flex: 2;
+            height: 100vh;
         }
-        #customization-panel {
-            width: 30%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+
+        #controls {
+            flex: 1;
             padding: 20px;
-            box-sizing: border-box;
+            background-color: white;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
             overflow-y: auto;
         }
-        .slider-container {
-            margin: 15px 0;
+
+        .control-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f8f8;
+            border-radius: 8px;
         }
-        .slider-container label {
+
+        h2 {
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #4CAF50;
+        }
+
+        h3 {
+            color: #4CAF50;
+            margin: 0 0 10px 0;
+        }
+
+        label {
             display: block;
             margin-bottom: 5px;
+            color: #666;
         }
-        .slider-container input[type="range"] {
+
+        select, input[type="range"], input[type="color"] {
             width: 100%;
-            margin: 5px 0;
+            margin-bottom: 10px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
         }
-        .option-container {
-            margin: 15px 0;
-        }
-        .color-picker {
-            width: 100%;
+
+        input[type="color"] {
             height: 40px;
-            margin: 5px 0;
+            padding: 2px;
         }
-        #confirm-button {
-            width: 100%;
-            padding: 15px;
-            background: #4CAF50;
-            border: none;
-            border-radius: 5px;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 20px;
-        }
-        #confirm-button:hover {
-            background: #45a049;
-        }
-        .gender-select {
+
+        .expression-buttons {
             display: flex;
-            justify-content: space-between;
-            margin: 15px 0;
+            gap: 10px;
+            margin-bottom: 10px;
         }
-        .gender-button {
-            width: 48%;
-            padding: 10px;
-            border: 2px solid #4CAF50;
-            background: transparent;
-            color: white;
+
+        .expression-button {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            background-color: #e0e0e0;
             cursor: pointer;
-            border-radius: 5px;
+            transition: background-color 0.3s;
         }
-        .gender-button.selected {
-            background: #4CAF50;
+
+        .expression-button:hover {
+            background-color: #d0d0d0;
         }
-        #name-input {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid #4CAF50;
-            border-radius: 5px;
+
+        .expression-button.active {
+            background-color: #4CAF50;
             color: white;
         }
-        #name-input::placeholder {
-            color: rgba(255, 255, 255, 0.5);
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .height-display {
+            text-align: center;
+            margin-top: 5px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .preview-container {
+            position: relative;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
     </style>
 </head>
 <body>
-    <div id="game-container">
-        <div id="character-view"></div>
-        <div id="customization-panel">
-            <h2>Charaktererstellung</h2>
-            
-            <div class="gender-select">
-                <button class="gender-button selected" onclick="selectGender('male')">Männlich</button>
-                <button class="gender-button" onclick="selectGender('female')">Weiblich</button>
+    <div id="container"></div>
+    <div id="controls">
+        <h2>Charakter-Editor</h2>
+        
+        <div class="control-group">
+            <h3>Körper</h3>
+            <label for="body-type">Körpertyp:</label>
+            <select id="body-type">
+                <option value="average">Normal</option>
+                <option value="slim">Schlank</option>
+                <option value="athletic">Athletisch</option>
+            </select>
+
+            <label for="height">Größe:</label>
+            <input type="range" id="height" min="150" max="200" value="175" step="1">
+            <div class="height-display">
+                <span id="height-value">175</span> cm
             </div>
-
-            <div class="slider-container">
-                <label>Körpergröße</label>
-                <input type="range" min="150" max="200" value="175" oninput="updateCharacter('height', this.value)">
-                <span class="value">175 cm</span>
-            </div>
-
-            <div class="slider-container">
-                <label>Statur</label>
-                <input type="range" min="1" max="100" value="50" oninput="updateCharacter('build', this.value)">
-                <span class="value">Normal</span>
-            </div>
-
-            <div class="option-container">
-                <label>Hautfarbe</label>
-                <input type="color" class="color-picker" value="#ffdbac" oninput="updateCharacter('skinColor', this.value)">
-            </div>
-
-            <div class="slider-container">
-                <label>Gesichtsform</label>
-                <input type="range" min="1" max="5" value="3" oninput="updateCharacter('face', this.value)">
-            </div>
-
-            <div class="option-container">
-                <label>Haarfarbe</label>
-                <input type="color" class="color-picker" value="#4a2f28" oninput="updateCharacter('hairColor', this.value)">
-            </div>
-
-            <div class="slider-container">
-                <label>Frisur</label>
-                <input type="range" min="1" max="10" value="1" oninput="updateCharacter('hairStyle', this.value)">
-            </div>
-
-            <div class="slider-container">
-                <label>Augenform</label>
-                <input type="range" min="1" max="5" value="3" oninput="updateCharacter('eyes', this.value)">
-            </div>
-
-            <div class="option-container">
-                <label>Augenfarbe</label>
-                <input type="color" class="color-picker" value="#4a2f28" oninput="updateCharacter('eyeColor', this.value)">
-            </div>
-
-            <div class="slider-container">
-                <label>Mundform</label>
-                <input type="range" min="1" max="5" value="3" oninput="updateCharacter('mouth', this.value)">
-            </div>
-
-            <input type="text" id="name-input" placeholder="Charaktername" maxlength="20">
-
-            <button id="confirm-button" onclick="confirmCharacter()">Charakter erstellen</button>
         </div>
+
+        <div class="control-group">
+            <h3>Gesicht</h3>
+            <label for="skin-tone">Hautfarbe:</label>
+            <input type="color" id="skin-tone" value="#ffdbac">
+
+            <label for="eye-color">Augenfarbe:</label>
+            <input type="color" id="eye-color" value="#634e34">
+
+            <label>Gesichtsausdruck:</label>
+            <div class="expression-buttons">
+                <button class="expression-button active" data-expression="neutral">Neutral</button>
+                <button class="expression-button" data-expression="happy">Fröhlich</button>
+                <button class="expression-button" data-expression="sad">Traurig</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Haare</h3>
+            <label for="hair-style">Frisur:</label>
+            <select id="hair-style">
+                <option value="short">Kurz</option>
+                <option value="medium">Mittel</option>
+                <option value="long">Lang</option>
+            </select>
+
+            <label for="hair-color">Haarfarbe:</label>
+            <input type="color" id="hair-color" value="#4a2f23">
+        </div>
+
+        <div class="control-group">
+            <h3>Kleidung</h3>
+            <label for="shirt-style">Oberteil-Stil:</label>
+            <select id="shirt-style">
+                <option value="t-shirt">T-Shirt</option>
+                <option value="sweater">Pullover</option>
+                <option value="jacket">Jacke</option>
+            </select>
+
+            <label for="shirt-color">Oberteil-Farbe:</label>
+            <input type="color" id="shirt-color" value="#ffffff">
+
+            <label for="pants-style">Hosen-Stil:</label>
+            <select id="pants-style">
+                <option value="jeans">Jeans</option>
+                <option value="shorts">Shorts</option>
+                <option value="slacks">Stoffhose</option>
+            </select>
+
+            <label for="pants-color">Hosen-Farbe:</label>
+            <input type="color" id="pants-color" value="#000066">
+        </div>
+
+        <button id="save-character">Charakter speichern</button>
     </div>
-    <script>
-        // Telegram WebApp initialisieren
-        const webapp = window.Telegram.WebApp;
-        webapp.expand();
 
-        // Three.js Setup
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, 70 * window.innerWidth / (100 * window.innerHeight), 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(0.7 * window.innerWidth, window.innerHeight);
-        document.getElementById('character-view').appendChild(renderer.domElement);
-
-        // Charakter-Daten
-        let characterData = {
-            gender: 'male',
-            height: 175,
-            build: 50,
-            skinColor: '#ffdbac',
-            face: 3,
-            hairColor: '#4a2f28',
-            hairStyle: 1,
-            eyes: 3,
-            eyeColor: '#4a2f28',
-            mouth: 3,
-            name: ''
-        };
-
-        // Basis-Charakter erstellen
-        function createCharacterMesh() {
-            // Körper
-            const bodyGeometry = new THREE.CylinderGeometry(0.5, 0.5, 2, 32);
-            const bodyMaterial = new THREE.MeshStandardMaterial({ color: characterData.skinColor });
-            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-            
-            // Kopf
-            const headGeometry = new THREE.SphereGeometry(0.4, 32, 32);
-            const headMaterial = new THREE.MeshStandardMaterial({ color: characterData.skinColor });
-            const head = new THREE.Mesh(headGeometry, headMaterial);
-            head.position.y = 1.2;
-
-            // Haare
-            const hairGeometry = new THREE.SphereGeometry(0.42, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2);
-            const hairMaterial = new THREE.MeshStandardMaterial({ color: characterData.hairColor });
-            const hair = new THREE.Mesh(hairGeometry, hairMaterial);
-            hair.position.y = 1.4;
-
-            const character = new THREE.Group();
-            character.add(body);
-            character.add(head);
-            character.add(hair);
-            return character;
-        }
-
-        // Charakter initialisieren
-        let character = createCharacterMesh();
-        scene.add(character);
-
-        // Licht
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-        directionalLight.position.set(5, 5, 5);
-        scene.add(directionalLight);
-
-        // Kamera-Position
-        camera.position.z = 5;
-        camera.position.y = 1;
-
-        // Animation
-        function animate() {
-            requestAnimationFrame(animate);
-            character.rotation.y += 0.01;
-            renderer.render(scene, camera);
-        }
-        animate();
-
-        // Charakter aktualisieren
-        function updateCharacter(property, value) {
-            characterData[property] = value;
-            
-            // Werte-Anzeige aktualisieren
-            const slider = document.querySelector(`input[oninput="updateCharacter('${property}', this.value)"]`);
-            if (slider) {
-                const valueDisplay = slider.nextElementSibling;
-                if (valueDisplay) {
-                    if (property === 'height') {
-                        valueDisplay.textContent = `${value} cm`;
-                    } else if (property === 'build') {
-                        const builds = ['Sehr schlank', 'Schlank', 'Normal', 'Kräftig', 'Sehr kräftig'];
-                        valueDisplay.textContent = builds[Math.floor(value / 20)];
-                    }
-                }
-            }
-
-            // 3D-Modell aktualisieren
-            scene.remove(character);
-            character = createCharacterMesh();
-            scene.add(character);
-        }
-
-        // Geschlecht auswählen
-        function selectGender(gender) {
-            characterData.gender = gender;
-            document.querySelectorAll('.gender-button').forEach(button => {
-                button.classList.remove('selected');
-            });
-            document.querySelector(`[onclick="selectGender('${gender}')"]`).classList.add('selected');
-            updateCharacter('gender', gender);
-        }
-
-        // Charakter bestätigen
-        async function confirmCharacter() {
-            const name = document.getElementById('name-input').value.trim();
-            if (!name) {
-                alert('Bitte gib deinem Charakter einen Namen!');
-                return;
-            }
-            characterData.name = name;
-
-            try {
-                // Sende Charakterdaten an den Server
-                const response = await fetch('/api/character', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        userId: webapp.initDataUnsafe?.user?.id,
-                        character: characterData
-                    })
-                });
-
-                if (response.ok) {
-                    // Sende Bestätigung an Telegram
-                    webapp.sendData(JSON.stringify({
-                        event: 'character_created',
-                        character: characterData
-                    }));
-                    webapp.close();
-                } else {
-                    throw new Error('Fehler beim Speichern des Charakters');
-                }
-            } catch (error) {
-                console.error('Fehler:', error);
-                alert('Fehler beim Erstellen des Charakters. Bitte versuche es erneut.');
-            }
-        }
-
-        // Fenster-Größenänderung
-        window.addEventListener('resize', () => {
-            camera.aspect = 0.7 * window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(0.7 * window.innerWidth, window.innerHeight);
-        });
-    </script>
+    <script src="dist/bundle.js"></script>
 </body>
 </html> 
