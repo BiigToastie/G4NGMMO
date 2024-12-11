@@ -1,37 +1,26 @@
+import { Player, Guild, TelegramCallback, TelegramMessage, TelegramUser } from '../types';
+
 // Telegram-Integration
-interface TelegramBot {
+export interface TelegramBot {
     commands: BotCommand[];
     notifications: NotificationSystem;
     messageHandler: MessageHandler;
 }
 
-interface BotCommand {
+export interface BotCommand {
     command: string;
     description: string;
     handler: CommandHandler;
 }
 
-type CommandHandler = (message: TelegramMessage) => Promise<void>;
+export type CommandHandler = (message: TelegramMessage) => Promise<void>;
 
-interface MessageHandler {
+export interface MessageHandler {
     handleMessage: (message: TelegramMessage) => Promise<void>;
     handleCallback: (callback: TelegramCallback) => Promise<void>;
 }
 
-interface TelegramMessage {
-    id: string;
-    from: TelegramUser;
-    text: string;
-    date: Date;
-}
-
-interface TelegramUser {
-    id: string;
-    username?: string;
-    firstName: string;
-}
-
-interface NotificationSystem {
+export interface NotificationSystem {
     sendToPlayer: (player: Player, message: string) => void;
     sendToGuild: (guild: Guild, message: string) => void;
     sendGlobalEvent: (message: string) => void;

@@ -1,5 +1,7 @@
+import { Player } from '../types';
+
 // Gilden-System
-interface Guild {
+export interface Guild {
     id: string;
     name: string;
     leader: Player;
@@ -11,14 +13,13 @@ interface Guild {
 }
 
 // Erweiterbare Gilden-Berechtigungen
-interface GuildPermissions {
+export interface GuildPermissions {
     canInvite: boolean;
     canKick: boolean;
     canManageResources: boolean;
-    // Leicht erweiterbar für neue Berechtigungen
 }
 
-interface GuildResources {
+export interface GuildResources {
     currency: number;
     materials: { [key: string]: number };
     storage: {
@@ -28,10 +29,10 @@ interface GuildResources {
 }
 
 // Gilden-Ränge
-enum GuildRank {
-    LEADER,
-    OFFICER,
-    VETERAN,
-    MEMBER,
-    RECRUIT
+export enum GuildRank {
+    LEADER = 'LEADER',
+    OFFICER = 'OFFICER',
+    VETERAN = 'VETERAN',
+    MEMBER = 'MEMBER',
+    RECRUIT = 'RECRUIT'
 } 

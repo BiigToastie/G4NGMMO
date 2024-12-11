@@ -1,39 +1,41 @@
+import { Player } from '../types';
+
 // Kampfsystem
-interface Combat {
+export interface Combat {
     participants: Player[];
     status: CombatStatus;
     turns: CombatTurn[];
     rewards: Reward[];
 }
 
-enum CombatStatus {
-    PREPARING,
-    IN_PROGRESS,
-    FINISHED,
-    CANCELLED
+export enum CombatStatus {
+    PREPARING = 'PREPARING',
+    IN_PROGRESS = 'IN_PROGRESS',
+    FINISHED = 'FINISHED',
+    CANCELLED = 'CANCELLED'
 }
 
-interface CombatTurn {
+export interface CombatTurn {
     player: Player;
     action: CombatAction;
     timestamp: Date;
 }
 
-interface CombatAction {
+export interface CombatAction {
     type: CombatActionType;
     target: Player[];
     value: number;
 }
 
-enum CombatActionType {
-    ATTACK,
-    DEFEND,
-    HEAL,
-    USE_ITEM,
-    FLEE
+export enum CombatActionType {
+    ATTACK = 'ATTACK',
+    DEFEND = 'DEFEND',
+    HEAL = 'HEAL',
+    USE_ITEM = 'USE_ITEM',
+    FLEE = 'FLEE'
 }
 
-interface Reward {
+export interface Reward {
     experience: number;
     items: Item[];
     currency: number;
