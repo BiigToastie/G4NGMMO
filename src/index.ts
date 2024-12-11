@@ -48,20 +48,21 @@ class Game {
             const chatId = msg.chat.id;
             
             // Sende Willkommensnachricht mit Spielen-Button
-            const gameUrl = `https://g4ngmmo.onrender.com/game?chatId=${chatId}`;
             bot.sendMessage(chatId, 'Willkommen bei G4NG MMO!', {
                 reply_markup: {
-                    inline_keyboard: [[
-                        {
-                            text: '🎮 Spielen',
-                            url: gameUrl,
-                            web_app: {
-                                url: gameUrl
-                            }
-                        }
-                    ]]
+                    keyboard: [[{
+                        text: '🎮 Spielen',
+                        web_app: { url: `https://g4ngmmo.onrender.com/game?id=${chatId}` }
+                    }]],
+                    resize_keyboard: true,
+                    one_time_keyboard: false
                 }
             });
+        });
+
+        // Behandle Web App Daten
+        bot.on('web_app_data', (msg) => {
+            console.log('Web App Data received:', msg);
         });
     }
 
@@ -77,6 +78,10 @@ class Game {
 // Erstelle Game-Instanz
 const game = new Game();
 
+// Express Middleware
+app.use(express.json());
+app.use(express.static('public'));
+
 // Express Routen
 app.get('/', (req: Request, res: Response) => {
     res.send('MMO Game Server läuft!');
@@ -84,7 +89,7 @@ app.get('/', (req: Request, res: Response) => {
 
 // Game-Route für den Vollbildmodus
 app.get('/game', (req: Request, res: Response) => {
-    const chatId = req.query.chatId;
+    const chatId = req.query.id;
     res.send(`
         <!DOCTYPE html>
         <html lang="de">
@@ -92,6 +97,7 @@ app.get('/game', (req: Request, res: Response) => {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
             <title>G4NG MMO</title>
+            <script src="https://telegram.org/js/telegram-web-app.js"></script>
             <style>
                 body, html {
                     margin: 0;
@@ -132,13 +138,23 @@ app.get('/game', (req: Request, res: Response) => {
                 </div>
             </div>
             <script>
+                // Telegram WebApp initialisieren
+                const webapp = window.Telegram.WebApp;
+                webapp.expand();
+                
                 // Game-Initialisierung
                 window.onload = () => {
                     const canvas = document.getElementById('game-canvas');
                     const chatId = '${chatId}';
                     
-                    // Hier kommt später die Spiel-Logik hin
+                    // Spiel-Logik hier
                     console.log('Game initialized for chat:', chatId);
+                    
+                    // Event an Telegram senden
+                    webapp.sendData(JSON.stringify({
+                        event: 'game_started',
+                        chatId: chatId
+                    }));
                 };
             </script>
         </body>
