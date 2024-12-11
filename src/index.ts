@@ -1,25 +1,17 @@
 import express, { Request, Response, NextFunction } from 'express';
-import TelegramBot, { Message } from 'node-telegram-bot-api';
+import TelegramBot from 'node-telegram-bot-api';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import {
-    BiomeType,
-    ResourceType,
-    Rarity,
-    NPCType,
-    ItemType,
-    EffectType,
-    CharacterClass,
-    Player,
-    Item,
-    Zone,
-    Resource,
-    NPC,
-    Effect
-} from './types';
+import mongoose from 'mongoose';
+import characterRoutes from './routes/character';
 
-// Lade Umgebungsvariablen
+// Umgebungsvariablen laden
 dotenv.config();
+
+// MongoDB Verbindung
+mongoose.connect(process.env.MONGODB_URI!)
+    .then(() => console.log('Mit MongoDB verbunden'))
+    .catch(err => console.error('MongoDB Verbindungsfehler:', err));
 
 // Express Server
 const app = express();
@@ -28,180 +20,10 @@ const port = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.urlencoded({ extended: true }));
 
-// Error Handler
-const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
-    console.error(err.stack);
-    res.status(500).json({ error: 'Ein Fehler ist aufgetreten!' });
-};
-
-// Telegram Bot
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN!, { polling: true });
-
-// Hauptanwendung
-class Game {
-    private players: Map<string, Player> = new Map();
-    private items: Map<string, Item> = new Map();
-    private zones: Map<string, Zone> = new Map();
-    private activeChats: Set<number> = new Set();
-    private userCooldowns: Map<number, number> = new Map();
-    private welcomedUsers: Set<number> = new Set(); // Speichert User, die bereits begrüßt wurden
-
-    constructor() {
-        this.initializeGame();
-        this.setupBotHandlers();
-    }
-
-    private initializeGame() {
-        console.log('Game initialized');
-    }
-
-    private async setupBotHandlers() {
-        try {
-            // Entferne alle Standard-Kommandos außer /start
-            await bot.setMyCommands([{
-                command: 'start',
-                description: 'Starte den Bot'
-            }]);
-
-            // Behandle neue Chat-Nachrichten
-            bot.on('message', async (msg: Message) => {
-                try {
-                    const chatId = msg.chat.id;
-                    const userId = msg.from?.id;
-                    const username = msg.from?.username || msg.from?.first_name || 'Unbekannt';
-                    
-                    // Füge Chat zur Liste aktiver Chats hinzu
-                    this.activeChats.add(chatId);
-
-                    // Sende Willkommensnachricht, wenn der User zum ersten Mal schreibt
-                    if (userId && !this.welcomedUsers.has(userId)) {
-                        await bot.sendMessage(chatId, 'Willkommen bei G4NGMMO ⚔️');
-                        this.welcomedUsers.add(userId);
-                    }
-
-                    // Ignoriere alle Kommandos außer /start
-                    if (msg.text?.startsWith('/')) {
-                        if (msg.text !== '/start') {
-                            // Lösche alle anderen Kommandos sofort
-                            try {
-                                await bot.deleteMessage(chatId, msg.message_id);
-                            } catch (error) {
-                                console.error('Fehler beim Löschen des Kommandos:', error);
-                            }
-                        }
-                        return;
-                    }
-
-                    // Wenn es eine Textnachricht ist
-                    if (msg.text && userId) {
-                        const lastMessageTime = this.userCooldowns.get(userId) || 0;
-                        const currentTime = Date.now();
-                        const timeSinceLastMessage = currentTime - lastMessageTime;
-
-                        if (timeSinceLastMessage >= 30000) {
-                            this.userCooldowns.set(userId, currentTime);
-                            const messageText = `👤 ${username}:\n${msg.text}`;
-                            
-                            // Lösche die Original-Nachricht sofort
-                            try {
-                                await bot.deleteMessage(chatId, msg.message_id);
-                            } catch (error) {
-                                console.error('Fehler beim Löschen der Original-Nachricht:', error);
-                            }
-
-                            // Sende die formatierte Nachricht an alle Chats
-                            for (const activeChatId of this.activeChats) {
-                                try {
-                                    await bot.sendMessage(activeChatId, messageText);
-                                } catch (error) {
-                                    if ((error as any).code === 403) {
-                                        this.activeChats.delete(activeChatId);
-                                    }
-                                }
-                            }
-                        } else {
-                            const remainingTime = Math.ceil((30000 - timeSinceLastMessage) / 1000);
-                            const cooldownMsg = await bot.sendMessage(chatId, 
-                                `⏳ Bitte warte noch ${remainingTime} Sekunden, bevor du eine weitere Nachricht sendest.`,
-                                { reply_to_message_id: msg.message_id }
-                            );
-
-                            // Lösche Cooldown-Nachricht und Original-Nachricht nach 5 Sekunden
-                            setTimeout(async () => {
-                                try {
-                                    await bot.deleteMessage(chatId, cooldownMsg.message_id);
-                                    await bot.deleteMessage(chatId, msg.message_id);
-                                } catch (error) {
-                                    console.error('Fehler beim Löschen der Cooldown-Nachricht:', error);
-                                }
-                            }, 5000);
-                        }
-                    } else if (!msg.text) {
-                        // Wenn es keine Textnachricht ist
-                        const errorMsg = await bot.sendMessage(chatId, 
-                            '❌ Nur Textnachrichten sind im globalen Chat erlaubt.',
-                            { reply_to_message_id: msg.message_id }
-                        );
-
-                        // Lösche Fehlermeldung und Original-Nachricht nach 5 Sekunden
-                        setTimeout(async () => {
-                            try {
-                                await bot.deleteMessage(chatId, errorMsg.message_id);
-                                await bot.deleteMessage(chatId, msg.message_id);
-                            } catch (error) {
-                                console.error('Fehler beim Löschen der Fehlermeldung:', error);
-                            }
-                        }, 5000);
-                    }
-                } catch (error) {
-                    console.error('Fehler beim Verarbeiten der Nachricht:', error);
-                }
-            });
-
-            // Behandle Web App Daten
-            bot.on('web_app_data', async (msg: any) => {
-                try {
-                    const { data } = msg.web_app_data;
-                    const parsedData = JSON.parse(data);
-                    console.log('Web App Data received:', parsedData);
-                    
-                    const confirmMsg = await bot.sendMessage(msg.chat.id, 'Spieldaten empfangen!');
-                    
-                    // Lösche Bestätigungsnachricht nach 3 Sekunden
-                    setTimeout(async () => {
-                        try {
-                            await bot.deleteMessage(msg.chat.id, confirmMsg.message_id);
-                        } catch (error) {
-                            console.error('Fehler beim Löschen der Bestätigungsnachricht:', error);
-                        }
-                    }, 3000);
-                } catch (error) {
-                    console.error('Fehler beim Verarbeiten der Web App Daten:', error);
-                }
-            });
-        } catch (error) {
-            console.error('Fehler beim Setup der Bot-Handler:', error);
-        }
-    }
-
-    public addPlayer(player: Player) {
-        this.players.set(player.id, player);
-    }
-
-    public getPlayer(id: string): Player | undefined {
-        return this.players.get(id);
-    }
-}
-
-// Erstelle Game-Instanz
-const game = new Game();
-
-// Express Routen
-app.get('/', (req: Request, res: Response) => {
-    res.send('MMO Game Server läuft!');
-});
+// Routen
+app.use('/api/character', characterRoutes);
 
 // Game-Route für den Vollbildmodus
 app.get('/game', (req: Request, res: Response) => {
@@ -212,7 +34,7 @@ app.get('/game', (req: Request, res: Response) => {
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-                <title>G4NG MMO</title>
+                <title>G4NG MMO - Charaktererstellung</title>
                 <script src="https://telegram.org/js/telegram-web-app.js"></script>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
                 <style>
@@ -224,157 +46,305 @@ app.get('/game', (req: Request, res: Response) => {
                         overflow: hidden;
                         background: #000;
                         font-family: Arial, sans-serif;
+                        color: white;
                     }
                     #game-container {
                         width: 100%;
                         height: 100%;
                         display: flex;
-                        flex-direction: column;
                     }
-                    #game-canvas {
-                        width: 100%;
+                    #character-view {
+                        width: 70%;
                         height: 100%;
-                        background: #1a1a1a;
                     }
-                    #ui-overlay {
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        width: 100%;
+                    #customization-panel {
+                        width: 30%;
                         height: 100%;
-                        pointer-events: none;
-                        display: flex;
-                        flex-direction: column;
-                        padding: 20px;
-                        box-sizing: border-box;
-                    }
-                    .ui-element {
-                        pointer-events: auto;
-                        background: rgba(0, 0, 0, 0.7);
-                        color: white;
-                        padding: 10px;
-                        margin: 5px;
-                        border-radius: 5px;
-                        backdrop-filter: blur(5px);
-                    }
-                    #player-info {
-                        align-self: flex-start;
-                    }
-                    #chat-box {
-                        margin-top: auto;
-                        width: 100%;
-                        max-height: 150px;
-                        overflow-y: auto;
-                    }
-                    #controls-info {
-                        position: absolute;
-                        top: 50%;
-                        left: 50%;
-                        transform: translate(-50%, -50%);
-                        text-align: center;
                         background: rgba(0, 0, 0, 0.8);
                         padding: 20px;
-                        border-radius: 10px;
+                        box-sizing: border-box;
+                        overflow-y: auto;
+                    }
+                    .slider-container {
+                        margin: 15px 0;
+                    }
+                    .slider-container label {
+                        display: block;
+                        margin-bottom: 5px;
+                    }
+                    .slider-container input[type="range"] {
+                        width: 100%;
+                        margin: 5px 0;
+                    }
+                    .option-container {
+                        margin: 15px 0;
+                    }
+                    .color-picker {
+                        width: 100%;
+                        height: 40px;
+                        margin: 5px 0;
+                    }
+                    #confirm-button {
+                        width: 100%;
+                        padding: 15px;
+                        background: #4CAF50;
+                        border: none;
+                        border-radius: 5px;
                         color: white;
+                        font-size: 16px;
+                        cursor: pointer;
+                        margin-top: 20px;
+                    }
+                    #confirm-button:hover {
+                        background: #45a049;
+                    }
+                    .gender-select {
+                        display: flex;
+                        justify-content: space-between;
+                        margin: 15px 0;
+                    }
+                    .gender-button {
+                        width: 48%;
+                        padding: 10px;
+                        border: 2px solid #4CAF50;
+                        background: transparent;
+                        color: white;
+                        cursor: pointer;
+                        border-radius: 5px;
+                    }
+                    .gender-button.selected {
+                        background: #4CAF50;
+                    }
+                    #name-input {
+                        width: 100%;
+                        padding: 10px;
+                        margin: 10px 0;
+                        background: rgba(255, 255, 255, 0.1);
+                        border: 1px solid #4CAF50;
+                        border-radius: 5px;
+                        color: white;
+                    }
+                    #name-input::placeholder {
+                        color: rgba(255, 255, 255, 0.5);
                     }
                 </style>
             </head>
             <body>
                 <div id="game-container">
-                    <canvas id="game-canvas"></canvas>
-                    <div id="ui-overlay">
-                        <div id="player-info" class="ui-element">
-                            Level: 1 | HP: 100/100 | MP: 100/100
+                    <div id="character-view"></div>
+                    <div id="customization-panel">
+                        <h2>Charaktererstellung</h2>
+                        
+                        <div class="gender-select">
+                            <button class="gender-button selected" onclick="selectGender('male')">Männlich</button>
+                            <button class="gender-button" onclick="selectGender('female')">Weiblich</button>
                         </div>
-                        <div id="chat-box" class="ui-element">
-                            Willkommen in der Welt von G4NG MMO!
+
+                        <div class="slider-container">
+                            <label>Körpergröße</label>
+                            <input type="range" min="150" max="200" value="175" oninput="updateCharacter('height', this.value)">
+                            <span class="value">175 cm</span>
                         </div>
-                    </div>
-                    <div id="controls-info" class="ui-element">
-                        <h2>Steuerung</h2>
-                        <p>WASD - Bewegung</p>
-                        <p>Maus - Umsehen</p>
-                        <p>Leertaste - Springen</p>
-                        <p>E - Interagieren</p>
-                        <p>Klicken Sie irgendwo hin, um zu beginnen</p>
+
+                        <div class="slider-container">
+                            <label>Statur</label>
+                            <input type="range" min="1" max="100" value="50" oninput="updateCharacter('build', this.value)">
+                            <span class="value">Normal</span>
+                        </div>
+
+                        <div class="option-container">
+                            <label>Hautfarbe</label>
+                            <input type="color" class="color-picker" value="#ffdbac" oninput="updateCharacter('skinColor', this.value)">
+                        </div>
+
+                        <div class="slider-container">
+                            <label>Gesichtsform</label>
+                            <input type="range" min="1" max="5" value="3" oninput="updateCharacter('face', this.value)">
+                        </div>
+
+                        <div class="option-container">
+                            <label>Haarfarbe</label>
+                            <input type="color" class="color-picker" value="#4a2f28" oninput="updateCharacter('hairColor', this.value)">
+                        </div>
+
+                        <div class="slider-container">
+                            <label>Frisur</label>
+                            <input type="range" min="1" max="10" value="1" oninput="updateCharacter('hairStyle', this.value)">
+                        </div>
+
+                        <div class="slider-container">
+                            <label>Augenform</label>
+                            <input type="range" min="1" max="5" value="3" oninput="updateCharacter('eyes', this.value)">
+                        </div>
+
+                        <div class="option-container">
+                            <label>Augenfarbe</label>
+                            <input type="color" class="color-picker" value="#4a2f28" oninput="updateCharacter('eyeColor', this.value)">
+                        </div>
+
+                        <div class="slider-container">
+                            <label>Mundform</label>
+                            <input type="range" min="1" max="5" value="3" oninput="updateCharacter('mouth', this.value)">
+                        </div>
+
+                        <input type="text" id="name-input" placeholder="Charaktername" maxlength="20">
+
+                        <button id="confirm-button" onclick="confirmCharacter()">Charakter erstellen</button>
                     </div>
                 </div>
                 <script>
-                    try {
-                        // Telegram WebApp initialisieren
-                        const webapp = window.Telegram.WebApp;
-                        webapp.expand();
+                    // Telegram WebApp initialisieren
+                    const webapp = window.Telegram.WebApp;
+                    webapp.expand();
+
+                    // Three.js Setup
+                    const scene = new THREE.Scene();
+                    const camera = new THREE.PerspectiveCamera(75, 70 * window.innerWidth / (100 * window.innerHeight), 0.1, 1000);
+                    const renderer = new THREE.WebGLRenderer({ antialias: true });
+                    renderer.setSize(0.7 * window.innerWidth, window.innerHeight);
+                    document.getElementById('character-view').appendChild(renderer.domElement);
+
+                    // Charakter-Daten
+                    let characterData = {
+                        gender: 'male',
+                        height: 175,
+                        build: 50,
+                        skinColor: '#ffdbac',
+                        face: 3,
+                        hairColor: '#4a2f28',
+                        hairStyle: 1,
+                        eyes: 3,
+                        eyeColor: '#4a2f28',
+                        mouth: 3,
+                        name: ''
+                    };
+
+                    // Basis-Charakter erstellen
+                    function createCharacterMesh() {
+                        // Körper
+                        const bodyGeometry = new THREE.CylinderGeometry(0.5, 0.5, 2, 32);
+                        const bodyMaterial = new THREE.MeshStandardMaterial({ color: characterData.skinColor });
+                        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
                         
-                        // Three.js Setup
-                        const scene = new THREE.Scene();
-                        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-                        const renderer = new THREE.WebGLRenderer({
-                            canvas: document.getElementById('game-canvas'),
-                            antialias: true
-                        });
-                        renderer.setSize(window.innerWidth, window.innerHeight);
+                        // Kopf
+                        const headGeometry = new THREE.SphereGeometry(0.4, 32, 32);
+                        const headMaterial = new THREE.MeshStandardMaterial({ color: characterData.skinColor });
+                        const head = new THREE.Mesh(headGeometry, headMaterial);
+                        head.position.y = 1.2;
 
-                        // Licht hinzufügen
-                        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-                        scene.add(ambientLight);
-                        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-                        directionalLight.position.set(0, 1, 0);
-                        scene.add(directionalLight);
+                        // Haare
+                        const hairGeometry = new THREE.SphereGeometry(0.42, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+                        const hairMaterial = new THREE.MeshStandardMaterial({ color: characterData.hairColor });
+                        const hair = new THREE.Mesh(hairGeometry, hairMaterial);
+                        hair.position.y = 1.4;
 
-                        // Boden erstellen
-                        const groundGeometry = new THREE.PlaneGeometry(100, 100);
-                        const groundMaterial = new THREE.MeshStandardMaterial({ 
-                            color: 0x3a8c3a,
-                            side: THREE.DoubleSide
-                        });
-                        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-                        ground.rotation.x = Math.PI / 2;
-                        scene.add(ground);
+                        const character = new THREE.Group();
+                        character.add(body);
+                        character.add(head);
+                        character.add(hair);
+                        return character;
+                    }
 
-                        // Spieler (temporär als Würfel)
-                        const playerGeometry = new THREE.BoxGeometry(1, 2, 1);
-                        const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-                        const player = new THREE.Mesh(playerGeometry, playerMaterial);
-                        player.position.y = 1;
-                        scene.add(player);
+                    // Charakter initialisieren
+                    let character = createCharacterMesh();
+                    scene.add(character);
 
-                        // Kamera-Position
-                        camera.position.set(0, 3, 5);
-                        camera.lookAt(player.position);
+                    // Licht
+                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                    scene.add(ambientLight);
+                    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+                    directionalLight.position.set(5, 5, 5);
+                    scene.add(directionalLight);
 
-                        // Animation Loop
-                        function animate() {
-                            requestAnimationFrame(animate);
-                            player.rotation.y += 0.01;
-                            renderer.render(scene, camera);
+                    // Kamera-Position
+                    camera.position.z = 5;
+                    camera.position.y = 1;
+
+                    // Animation
+                    function animate() {
+                        requestAnimationFrame(animate);
+                        character.rotation.y += 0.01;
+                        renderer.render(scene, camera);
+                    }
+                    animate();
+
+                    // Charakter aktualisieren
+                    function updateCharacter(property, value) {
+                        characterData[property] = value;
+                        
+                        // Werte-Anzeige aktualisieren
+                        const slider = document.querySelector(\`input[oninput="updateCharacter('\${property}', this.value)"]\`);
+                        if (slider) {
+                            const valueDisplay = slider.nextElementSibling;
+                            if (valueDisplay) {
+                                if (property === 'height') {
+                                    valueDisplay.textContent = \`\${value} cm\`;
+                                } else if (property === 'build') {
+                                    const builds = ['Sehr schlank', 'Schlank', 'Normal', 'Kräftig', 'Sehr kräftig'];
+                                    valueDisplay.textContent = builds[Math.floor(value / 20)];
+                                }
+                            }
                         }
 
-                        // Fenster-Größenänderung
-                        window.addEventListener('resize', () => {
-                            camera.aspect = window.innerWidth / window.innerHeight;
-                            camera.updateProjectionMatrix();
-                            renderer.setSize(window.innerWidth, window.innerHeight);
-                        });
-
-                        // Steuerungsinfo ausblenden bei Klick
-                        document.addEventListener('click', () => {
-                            const controlsInfo = document.getElementById('controls-info');
-                            if (controlsInfo) {
-                                controlsInfo.style.display = 'none';
-                            }
-                        });
-
-                        // Starte Animation
-                        animate();
-
-                        // Sende Spieldaten an Telegram
-                        webapp.sendData(JSON.stringify({
-                            event: 'game_started',
-                            timestamp: new Date().toISOString()
-                        }));
-                    } catch (error) {
-                        console.error('Fehler beim Initialisieren:', error);
+                        // 3D-Modell aktualisieren
+                        scene.remove(character);
+                        character = createCharacterMesh();
+                        scene.add(character);
                     }
+
+                    // Geschlecht auswählen
+                    function selectGender(gender) {
+                        characterData.gender = gender;
+                        document.querySelectorAll('.gender-button').forEach(button => {
+                            button.classList.remove('selected');
+                        });
+                        document.querySelector(\`[onclick="selectGender('\${gender}')"]\`).classList.add('selected');
+                        updateCharacter('gender', gender);
+                    }
+
+                    // Charakter bestätigen
+                    async function confirmCharacter() {
+                        const name = document.getElementById('name-input').value.trim();
+                        if (!name) {
+                            alert('Bitte gib deinem Charakter einen Namen!');
+                            return;
+                        }
+                        characterData.name = name;
+
+                        try {
+                            // Sende Charakterdaten an den Server
+                            const response = await fetch('/api/character', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    userId: webapp.initDataUnsafe?.user?.id,
+                                    character: characterData
+                                })
+                            });
+
+                            if (response.ok) {
+                                // Sende Bestätigung an Telegram
+                                webapp.sendData(JSON.stringify({
+                                    event: 'character_created',
+                                    character: characterData
+                                }));
+                            } else {
+                                throw new Error('Fehler beim Speichern des Charakters');
+                            }
+                        } catch (error) {
+                            console.error('Fehler:', error);
+                            alert('Fehler beim Erstellen des Charakters. Bitte versuche es erneut.');
+                        }
+                    }
+
+                    // Fenster-Größenänderung
+                    window.addEventListener('resize', () => {
+                        camera.aspect = 0.7 * window.innerWidth / window.innerHeight;
+                        camera.updateProjectionMatrix();
+                        renderer.setSize(0.7 * window.innerWidth, window.innerHeight);
+                    });
                 </script>
             </body>
             </html>
@@ -385,14 +355,50 @@ app.get('/game', (req: Request, res: Response) => {
     }
 });
 
-// Error Handler hinzufügen
-app.use(errorHandler);
+// Telegram Bot
+const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN!, { polling: true });
 
-// Starte Server
-app.listen(port, () => {
-    console.log(`Server läuft auf Port ${port}`);
-}).on('error', (error) => {
-    console.error('Server-Fehler:', error);
+// Bot-Befehle
+bot.onText(/\/start/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from?.id.toString();
+
+    if (!userId) {
+        bot.sendMessage(chatId, 'Fehler: Benutzer-ID nicht gefunden');
+        return;
+    }
+
+    try {
+        // Prüfen, ob bereits ein Charakter existiert
+        const response = await fetch(`http://localhost:${port}/api/character/${userId}`);
+        
+        if (response.ok) {
+            // Charakter existiert bereits
+            bot.sendMessage(chatId, 'Willkommen zurück! Dein Charakter ist bereits erstellt.');
+        } else {
+            // Neuer Spieler - Charaktererstellung starten
+            const gameUrl = `http://localhost:${port}/game`;
+            bot.sendMessage(chatId, 
+                'Willkommen bei G4NG MMO! Lass uns deinen Charakter erstellen.',
+                {
+                    reply_markup: {
+                        inline_keyboard: [[
+                            {
+                                text: 'Charakter erstellen',
+                                web_app: { url: gameUrl }
+                            }
+                        ]]
+                    }
+                }
+            );
+        }
+    } catch (error) {
+        console.error('Fehler beim Prüfen des Charakters:', error);
+        bot.sendMessage(chatId, 'Es ist ein Fehler aufgetreten. Bitte versuche es später erneut.');
+    }
 });
 
-export default Game; 
+// Server starten
+app.listen(port, () => {
+    console.log(`Server läuft auf Port ${port}`);
+}); 
