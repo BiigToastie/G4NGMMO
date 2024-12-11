@@ -371,10 +371,13 @@ function initializeBot() {
         }
 
         bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN!, { 
-            polling: true,
-            // Polling-Optionen für bessere Stabilität
-            pollingInterval: 300,
-            timeout: 10
+            polling: {
+                interval: 300,
+                autoStart: true,
+                params: {
+                    timeout: 10
+                }
+            }
         });
 
         // Error Handler für Polling-Fehler
