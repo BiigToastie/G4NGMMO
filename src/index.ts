@@ -13,6 +13,15 @@ async function connectToMongoDB() {
     const maxRetries = 5;
     let retries = 0;
 
+    // IP-Adresse des Servers ausgeben
+    try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        console.log('Server IP-Adresse:', data.ip);
+    } catch (error) {
+        console.error('Fehler beim Abrufen der IP-Adresse:', error);
+    }
+
     while (retries < maxRetries) {
         try {
             await mongoose.connect(process.env.MONGODB_URI!, {
@@ -33,7 +42,6 @@ async function connectToMongoDB() {
                 console.error('Maximale Anzahl an Verbindungsversuchen erreicht');
                 return false;
             }
-            // Warte exponentiell länger zwischen den Versuchen
             await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000));
         }
     }
