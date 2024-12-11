@@ -26,13 +26,13 @@ async function connectToMongoDB() {
 
     while (retries < maxRetries) {
         try {
-            // Konstruiere direkte URI zu den Shards
+            // Konstruiere MongoDB Atlas URI
             const username = process.env.MONGODB_USERNAME || 'biigtoastie';
             const password = process.env.MONGODB_PASSWORD || 'OPbz9d7rIMed6tOi';
             const database = process.env.MONGODB_DATABASE || 'mmo-game';
             
-            // Direkte Verbindungs-URI mit allen Shards
-            const mongoUri = `mongodb://${username}:${password}@cluster0-shard-00-00.ktz7i.mongodb.net:27017,cluster0-shard-00-01.ktz7i.mongodb.net:27017,cluster0-shard-00-02.ktz7i.mongodb.net:27017/${database}?replicaSet=atlas-wi4lzq-shard-0&tls=true&authSource=admin`;
+            // Standard MongoDB Atlas SRV URI
+            const mongoUri = `mongodb+srv://${username}:${password}@cluster0.ktz7i.mongodb.net/${database}?retryWrites=true&w=majority`;
             
             console.log('Versuche Verbindung mit MongoDB:', mongoUri.replace(/:[^:]*@/, ':****@'));
 
@@ -47,10 +47,6 @@ async function connectToMongoDB() {
                 maxPoolSize: 10,
                 minPoolSize: 5,
                 authSource: 'admin',
-                directConnection: false,
-                replicaSet: 'atlas-wi4lzq-shard-0',
-                tls: true,
-                tlsCAFile: require('path').join(__dirname, 'rds-combined-ca-bundle.pem'),
                 family: 4,
                 serverApi: {
                     version: '1',
@@ -59,47 +55,26 @@ async function connectToMongoDB() {
                 }
             } satisfies ConnectOptions;
 
-            // DNS-Tests für die Shards
-            const shardHosts = [
-                'cluster0-shard-00-00.ktz7i.mongodb.net',
-                'cluster0-shard-00-01.ktz7i.mongodb.net',
-                'cluster0-shard-00-02.ktz7i.mongodb.net'
-            ];
+            // DNS-Tests
+            try {
+                const { promisify } = require('util');
+                const dns = require('dns');
+                const lookup = promisify(dns.lookup);
+                const resolveSrv = promisify(dns.resolveSrv);
 
-            // Teste TLS-Verbindung zu jedem Shard
-            for (const host of shardHosts) {
-                try {
-                    const tls = require('tls');
-                    const socket = tls.connect({
-                        host: host,
-                        port: 27017,
-                        rejectUnauthorized: true,
-                        minVersion: 'TLSv1.2',
-                        maxVersion: 'TLSv1.3'
-                    });
+                // Test SRV Record
+                const srvRecords = await resolveSrv('_mongodb._tcp.cluster0.ktz7i.mongodb.net');
+                console.log('MongoDB SRV Records:', srvRecords);
 
-                    socket.on('secureConnect', () => {
-                        console.log(`TLS-Verbindung zu ${host} erfolgreich`);
-                        console.log(`TLS-Version: ${socket.getProtocol()}`);
-                        socket.end();
-                    });
+                // Test DNS für Hauptdomain
+                const mainResult = await lookup('cluster0.ktz7i.mongodb.net', { family: 4 });
+                console.log('DNS Lookup für Hauptdomain:', mainResult);
 
-                    socket.on('error', (error: Error) => {
-                        console.error(`TLS-Verbindung zu ${host} fehlgeschlagen:`, error.message);
-                    });
-
-                    // DNS-Test
-                    const { promisify } = require('util');
-                    const dns = require('dns');
-                    const lookup = promisify(dns.lookup);
-                    const result = await lookup(host, { family: 4 });
-                    console.log(`DNS Lookup für Shard ${host}:`, result);
-                } catch (error) {
-                    if (error instanceof Error) {
-                        console.error(`Test fehlgeschlagen für Shard ${host}:`, error.message);
-                    } else {
-                        console.error(`Test fehlgeschlagen für Shard ${host}:`, error);
-                    }
+            } catch (error) {
+                if (error instanceof Error) {
+                    console.error('DNS-Test fehlgeschlagen:', error.message);
+                } else {
+                    console.error('DNS-Test fehlgeschlagen:', error);
                 }
             }
 
