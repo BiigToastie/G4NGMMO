@@ -154,21 +154,21 @@ export class CharacterCreator {
     }
 
     private setupLighting(): void {
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        const ambientLight = new AmbientLight(0xffffff, 0.5);
         this.scene.add(ambientLight);
 
-        const keyLight = new THREE.DirectionalLight(0xffffff, 1);
+        const keyLight = new DirectionalLight(0xffffff, 1);
         keyLight.position.set(2, 2, 2);
         keyLight.castShadow = true;
         keyLight.shadow.mapSize.width = 2048;
         keyLight.shadow.mapSize.height = 2048;
         this.scene.add(keyLight);
 
-        const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        const fillLight = new DirectionalLight(0xffffff, 0.5);
         fillLight.position.set(-2, 2, 0);
         this.scene.add(fillLight);
 
-        const backLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        const backLight = new DirectionalLight(0xffffff, 0.5);
         backLight.position.set(0, 2, -2);
         this.scene.add(backLight);
     }
