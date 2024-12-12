@@ -66,8 +66,8 @@ export class CharacterCreator {
             0.1,
             1000
         );
-        this.camera.position.set(0, 2.2, 2.5);
-        this.camera.lookAt(0, 1.5, 0);
+        this.camera.position.set(0, 1.7, 3.0);
+        this.camera.lookAt(0, 1.7, 0);
 
         // Renderer Setup
         const canvas = document.getElementById('character-canvas') as HTMLCanvasElement;
@@ -84,11 +84,11 @@ export class CharacterCreator {
         // Controls Setup
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enablePan = false;
-        this.controls.minDistance = 1.5;
-        this.controls.maxDistance = 3;
+        this.controls.minDistance = 2.0;
+        this.controls.maxDistance = 4.0;
         this.controls.minPolarAngle = Math.PI / 4;
-        this.controls.maxPolarAngle = Math.PI / 1.8;
-        this.controls.target.set(0, 1.5, 0);
+        this.controls.maxPolarAngle = Math.PI / 1.5;
+        this.controls.target.set(0, 1.7, 0);
         this.controls.update();
 
         // Loading Manager
@@ -142,21 +142,21 @@ export class CharacterCreator {
     }
 
     private setupLighting(): void {
-        const ambientLight = new AmbientLight(0xffffff, 0.5);
+        const ambientLight = new AmbientLight(0xffffff, 0.7);
         this.scene.add(ambientLight);
 
-        const keyLight = new DirectionalLight(0xffffff, 1);
+        const keyLight = new DirectionalLight(0xffffff, 1.2);
         keyLight.position.set(2, 2, 2);
         keyLight.castShadow = true;
         keyLight.shadow.mapSize.width = 2048;
         keyLight.shadow.mapSize.height = 2048;
         this.scene.add(keyLight);
 
-        const fillLight = new DirectionalLight(0xffffff, 0.5);
-        fillLight.position.set(-2, 2, 0);
+        const fillLight = new DirectionalLight(0xffffff, 0.6);
+        fillLight.position.set(-2, 1, 0);
         this.scene.add(fillLight);
 
-        const backLight = new DirectionalLight(0xffffff, 0.5);
+        const backLight = new DirectionalLight(0xffffff, 0.6);
         backLight.position.set(0, 2, -2);
         this.scene.add(backLight);
     }
@@ -265,9 +265,9 @@ export class CharacterCreator {
                 });
                 console.log(`Gefundene Meshes: ${meshCount}`);
 
-                // Position und Skalierung anpassen
+                // Angepasste Position und Skalierung
                 this.characterModel.scale.set(1, 1, 1);
-                this.characterModel.position.set(0, 0.8, 0);
+                this.characterModel.position.set(0, 0, 0); // Starte von Basis
 
                 // Berechne Bounding Box für automatische Positionierung
                 const box = new Box3().setFromObject(this.characterModel);
@@ -278,8 +278,10 @@ export class CharacterCreator {
                     zentrum: center
                 });
 
-                // Zentriere das Modell
-                this.characterModel.position.y = -center.y + size.y / 2 + 0.8;
+                // Zentriere das Modell vertikal und horizontal
+                this.characterModel.position.y = -center.y + 1.7; // Positioniere auf Augenhöhe
+                this.characterModel.position.x = -center.x; // Horizontal zentrieren
+                this.characterModel.position.z = -center.z; // In die Tiefe zentrieren
 
                 // Füge das Modell zur Szene hinzu
                 this.scene.add(this.characterModel);
@@ -382,6 +384,12 @@ export class CharacterCreator {
         this.camera.aspect = window.innerWidth / (window.innerHeight * 0.3);
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight * 0.3);
+        
+        // Aktualisiere die Kameraposition beim Resize
+        this.camera.position.set(0, 1.7, 3.0);
+        this.camera.lookAt(0, 1.7, 0);
+        this.controls.target.set(0, 1.7, 0);
+        this.controls.update();
     }
 
     private animate(): void {
