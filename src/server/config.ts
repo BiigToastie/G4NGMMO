@@ -1,8 +1,8 @@
-import * as dotenv from 'dotenv';
+import { config as dotenvConfig } from 'dotenv';
 import { resolve } from 'path';
 
 // Lade Umgebungsvariablen aus .env Datei
-dotenv.config({ path: resolve(__dirname, '../../.env') });
+dotenvConfig({ path: resolve(__dirname, '../../.env') });
 
 interface Config {
     mongoUri: string;
