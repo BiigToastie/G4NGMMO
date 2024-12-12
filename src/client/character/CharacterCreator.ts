@@ -95,12 +95,14 @@ export class CharacterCreator {
         this.welcomeOverlay = document.getElementById('welcome-overlay')!;
         this.acceptButton = document.getElementById('accept-button')!;
         
-        // Extrahiere den Spielernamen aus den Telegram-Daten
+        // Extrahiere den Spielernamen und userId aus den Telegram-Daten
         const initData = WebApp.initData || '';
         const initDataObj = Object.fromEntries(new URLSearchParams(initData));
         this.playerName = initDataObj.user ? JSON.parse(initDataObj.user).first_name : 'Unbekannter Held';
-        
-        this.setupWelcomeScreen();
+        const userId = initDataObj.user ? JSON.parse(initDataObj.user).id : null;
+
+        // Initialisiere die Willkommensansicht
+        this.setupWelcomeScreen(userId);
     }
 
     private getUserName(): void {
@@ -385,28 +387,46 @@ export class CharacterCreator {
         });
     }
 
-    private setupWelcomeScreen(): void {
-        // Zeige den Spielernamen im Willkommenstext
-        const welcomeTitle = document.querySelector('.welcome-title')!;
-        welcomeTitle.textContent = `Willkommen, ${this.playerName}!`;
+    private async setupWelcomeScreen(userId: string | null): Promise<void> {
+        if (!userId) {
+            console.error('Kein Benutzer-ID gefunden');
+            return;
+        }
 
-        this.acceptButton.addEventListener('click', () => {
-            // Speichere die Akzeptanz der Regeln
-            localStorage.setItem('rulesAccepted', 'true');
-            
-            // Blende das Overlay sanft aus
-            this.welcomeOverlay.style.opacity = '0';
-            setTimeout(() => {
+        try {
+            // Prüfe ob der Benutzer bereits einen Charakter hat
+            const response = await fetch(`/api/character/${userId}`);
+            const data = await response.json();
+
+            if (data.character) {
+                // Wenn ein Charakter existiert, überspringe das Willkommensfenster
                 this.welcomeOverlay.style.display = 'none';
-                // Initialisiere die Charaktererstellung
                 this.initializeCharacterCreation();
-            }, 500);
-        });
+            } else {
+                // Zeige den Spielernamen im Willkommenstext
+                const welcomeTitle = document.querySelector('.welcome-title')!;
+                welcomeTitle.textContent = `Willkommen, ${this.playerName}!`;
 
-        // Prüfe, ob die Regeln bereits akzeptiert wurden
-        if (localStorage.getItem('rulesAccepted')) {
-            this.welcomeOverlay.style.display = 'none';
-            this.initializeCharacterCreation();
+                // Event-Listener für den Accept-Button
+                this.acceptButton.addEventListener('click', () => {
+                    // Blende das Overlay sanft aus
+                    this.welcomeOverlay.style.opacity = '0';
+                    setTimeout(() => {
+                        this.welcomeOverlay.style.display = 'none';
+                        // Initialisiere die Charaktererstellung
+                        this.initializeCharacterCreation();
+                    }, 500);
+                });
+
+                // Zeige das Overlay
+                this.welcomeOverlay.style.display = 'flex';
+                this.welcomeOverlay.style.opacity = '1';
+            }
+        } catch (error) {
+            console.error('Fehler beim Prüfen des Charakterstatus:', error);
+            // Im Fehlerfall zeigen wir das Willkommensfenster sicherheitshalber an
+            this.welcomeOverlay.style.display = 'flex';
+            this.welcomeOverlay.style.opacity = '1';
         }
     }
 
