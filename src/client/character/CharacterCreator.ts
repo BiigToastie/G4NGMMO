@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { AnimationMixer, AnimationAction } from 'three';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { WebApp } from '@twa-dev/sdk';
 
 interface CharacterData {
     name: string;
@@ -25,6 +26,9 @@ export class CharacterCreator {
     private mixer: THREE.AnimationMixer | null = null;
     private currentAction: THREE.AnimationAction | null = null;
     private clock: THREE.Clock;
+    private welcomeOverlay: HTMLElement;
+    private acceptButton: HTMLElement;
+    private playerName: string;
 
     constructor() {
         // Scene Setup
@@ -87,6 +91,16 @@ export class CharacterCreator {
 
         // Animation Loop
         this.animate();
+
+        this.welcomeOverlay = document.getElementById('welcome-overlay')!;
+        this.acceptButton = document.getElementById('accept-button')!;
+        
+        // Extrahiere den Spielernamen aus den Telegram-Daten
+        const initData = WebApp.initData || '';
+        const initDataObj = Object.fromEntries(new URLSearchParams(initData));
+        this.playerName = initDataObj.user ? JSON.parse(initDataObj.user).first_name : 'Unbekannter Held';
+        
+        this.setupWelcomeScreen();
     }
 
     private getUserName(): void {
@@ -369,6 +383,41 @@ export class CharacterCreator {
             console.error('Error:', error);
             alert('Fehler beim Speichern des Charakters');
         });
+    }
+
+    private setupWelcomeScreen(): void {
+        // Zeige den Spielernamen im Willkommenstext
+        const welcomeTitle = document.querySelector('.welcome-title')!;
+        welcomeTitle.textContent = `Willkommen, ${this.playerName}!`;
+
+        this.acceptButton.addEventListener('click', () => {
+            // Speichere die Akzeptanz der Regeln
+            localStorage.setItem('rulesAccepted', 'true');
+            
+            // Blende das Overlay sanft aus
+            this.welcomeOverlay.style.opacity = '0';
+            setTimeout(() => {
+                this.welcomeOverlay.style.display = 'none';
+                // Initialisiere die Charaktererstellung
+                this.initializeCharacterCreation();
+            }, 500);
+        });
+
+        // Prüfe, ob die Regeln bereits akzeptiert wurden
+        if (localStorage.getItem('rulesAccepted')) {
+            this.welcomeOverlay.style.display = 'none';
+            this.initializeCharacterCreation();
+        }
+    }
+
+    private initializeCharacterCreation(): void {
+        // Aktualisiere den Spielernamen im UI
+        const nameInput = document.getElementById('character-name') as HTMLInputElement;
+        if (nameInput) {
+            nameInput.value = this.playerName;
+        }
+        
+        // ... rest of initialization code ...
     }
 }
 

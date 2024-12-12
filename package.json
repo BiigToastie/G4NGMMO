@@ -11,6 +11,7 @@
     "postinstall": "tsc && npm install -g webpack-cli"
   },
   "dependencies": {
+    "@twa-dev/sdk": "^8.0.1",
     "@types/cors": "^2.8.13",
     "@types/dotenv": "^8.2.0",
     "@types/express": "^4.17.21",
