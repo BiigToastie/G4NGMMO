@@ -5,9 +5,9 @@
   "main": "dist/index.js",
   "scripts": {
     "start": "node dist/index.js",
-    "build": "tsc && webpack --mode production",
+    "build": "npm install && tsc && webpack --mode production",
     "dev": "tsc && webpack --mode development",
-    "postinstall": "npm install --save-dev @types/dotenv && tsc"
+    "postinstall": "npm install --save-dev @types/dotenv"
   },
   "dependencies": {
     "@twa-dev/sdk": "^6.9.0",
@@ -24,12 +24,12 @@
     "three": "^0.159.0",
     "typescript": "^5.3.3",
     "webpack": "^5.89.0",
-    "webpack-cli": "^5.1.4"
+    "webpack-cli": "^5.1.4",
+    "ts-loader": "^9.5.1"
   },
   "devDependencies": {
     "@types/dotenv": "^8.2.0",
-    "terser-webpack-plugin": "^5.3.9",
-    "ts-loader": "^9.5.1"
+    "terser-webpack-plugin": "^5.3.9"
   },
   "engines": {
     "node": ">=16.0.0"
