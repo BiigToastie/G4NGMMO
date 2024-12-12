@@ -1,7 +1,26 @@
-import * as THREE from 'three';
+import { 
+    Scene, 
+    PerspectiveCamera, 
+    WebGLRenderer, 
+    AmbientLight, 
+    DirectionalLight,
+    Color,
+    LoadingManager,
+    Group,
+    Material,
+    TextureLoader,
+    AnimationMixer,
+    AnimationAction,
+    Clock,
+    Box3,
+    Vector3,
+    Mesh,
+    MeshStandardMaterial,
+    PCFSoftShadowMap,
+    LinearFilter
+} from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { AnimationMixer, AnimationAction } from 'three';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import WebApp from '@twa-dev/sdk';
 
@@ -11,7 +30,24 @@ interface CharacterData {
     class: 'warrior' | 'mage' | 'ranger' | 'rogue';
 }
 
+// Lazy load heavy loaders
+const loadGLTFLoader = async () => {
+    const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+    return GLTFLoader;
+};
+
+const loadDRACOLoader = async () => {
+    const { DRACOLoader } = await import('three/examples/jsm/loaders/DRACOLoader.js');
+    return DRACOLoader;
+};
+
+const loadOrbitControls = async () => {
+    const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
+    return OrbitControls;
+};
+
 export class CharacterCreator {
+    private scene: Scene;
     private scene: THREE.Scene;
     private camera: THREE.PerspectiveCamera;
     private renderer: THREE.WebGLRenderer;
@@ -157,7 +193,7 @@ export class CharacterCreator {
     private loadCharacterModel(): void {
         const loader = new GLTFLoader(this.loadingManager);
         const modelPath = this.selectedGender === 'male' 
-            ? '/models/male_character.glb' 
+            ? '/models/male_all/Animation_Mirror_Viewing_withSkin.glb' 
             : '/models/female_all/Animation_Mirror_Viewing_withSkin.glb';
         
         // Zeitmessung Start
