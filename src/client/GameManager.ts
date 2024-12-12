@@ -8,6 +8,7 @@ export class GameManager {
     private characterCreator: CharacterCreator | null = null;
     private container: HTMLElement;
     private characterCreatorContainer: HTMLElement;
+    private initialized: boolean = false;
 
     private constructor() {
         this.container = document.getElementById('game-container') as HTMLElement;
@@ -22,6 +23,24 @@ export class GameManager {
             GameManager.instance = new GameManager();
         }
         return GameManager.instance;
+    }
+
+    public async initialize(): Promise<void> {
+        if (this.initialized) return;
+
+        try {
+            // Initialisiere grundlegende Ressourcen
+            await this.loadResources();
+            this.initialized = true;
+        } catch (error) {
+            console.error('Fehler bei der GameManager-Initialisierung:', error);
+            throw error;
+        }
+    }
+
+    private async loadResources(): Promise<void> {
+        // Hier können weitere Ressourcen geladen werden
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Simuliere Laden
     }
 
     public async checkExistingCharacter(): Promise<boolean> {
@@ -40,12 +59,16 @@ export class GameManager {
             return false;
         } catch (error) {
             console.error('Fehler beim Prüfen des Charakters:', error);
-            return false;
+            throw error;
         }
     }
 
     public async startCharacterCreation(): Promise<void> {
         try {
+            if (!this.initialized) {
+                await this.initialize();
+            }
+
             // Prüfe zuerst, ob der Spieler bereits einen Charakter hat
             const hasCharacter = await this.checkExistingCharacter();
             if (hasCharacter) {
@@ -104,6 +127,10 @@ export class GameManager {
 
     public async startGame(characterData?: any): Promise<void> {
         try {
+            if (!this.initialized) {
+                await this.initialize();
+            }
+
             if (!characterData) {
                 // Hole Charakterdaten wenn nicht übergeben
                 const response = await fetch('/api/character/check', {
@@ -157,5 +184,6 @@ export class GameManager {
             // Cleanup für das Hauptspiel
             this.game = null;
         }
+        this.initialized = false;
     }
 } 

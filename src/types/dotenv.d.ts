@@ -1,8 +1,20 @@
 declare module 'dotenv' {
-    export function config(options?: {
+    export interface DotenvParseOutput {
+        [key: string]: string;
+    }
+
+    export interface DotenvConfigOptions {
         path?: string;
         encoding?: string;
         debug?: boolean;
         override?: boolean;
-    }): void;
+    }
+
+    export interface DotenvConfigOutput {
+        parsed?: DotenvParseOutput;
+        error?: Error;
+    }
+
+    export function config(options?: DotenvConfigOptions): DotenvConfigOutput;
+    export function parse(src: string | Buffer): DotenvParseOutput;
 } 

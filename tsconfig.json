@@ -16,10 +16,11 @@
     "checkJs": false,
     "baseUrl": "./",
     "paths": {
-      "*": ["node_modules/*"]
+      "*": ["node_modules/*", "src/types/*"]
     },
     "typeRoots": [
-      "./node_modules/@types"
+      "./node_modules/@types",
+      "./src/types"
     ],
     "noImplicitAny": true,
     "strictNullChecks": true,

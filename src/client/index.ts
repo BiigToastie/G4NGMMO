@@ -3,6 +3,26 @@ import WebApp from '@twa-dev/sdk';
 
 async function initializeApp() {
     try {
+        // Warte auf das Laden der Skripte
+        await Promise.all([
+            new Promise<void>((resolve) => {
+                const vendorsScript = document.querySelector('script[src*="vendors.bundle.js"]');
+                if (vendorsScript) {
+                    vendorsScript.addEventListener('load', () => resolve());
+                } else {
+                    resolve();
+                }
+            }),
+            new Promise<void>((resolve) => {
+                const threeScript = document.querySelector('script[src*="threejs.bundle.js"]');
+                if (threeScript) {
+                    threeScript.addEventListener('load', () => resolve());
+                } else {
+                    resolve();
+                }
+            })
+        ]);
+
         // Aktualisiere Ladetext
         const loadingProgress = document.getElementById('loading-progress');
         if (loadingProgress) {
@@ -64,8 +84,13 @@ async function initializeApp() {
             errorMessage.textContent = 'Fehler beim Laden des Spiels. Bitte versuche es erneut.';
             errorMessage.style.display = 'block';
         }
+        // Zeige den Fehler auch in der Konsole für Debugging
+        console.error(error);
     }
 }
 
 // Starte die Initialisierung wenn das DOM geladen ist
-document.addEventListener('DOMContentLoaded', initializeApp); 
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    initializeApp(); 
