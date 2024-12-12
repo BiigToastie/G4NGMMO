@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import { connectToDatabase } from './mongodb';
 import characterRoutes from './routes/character';
 import { port } from './config';
@@ -16,9 +17,9 @@ app.use(express.static('public'));
 // API-Routen
 app.use('/api/character', characterRoutes);
 
-// Startseite
-app.get('/', (_req, res) => {
-    res.sendFile('index.html', { root: 'public' });
+// Alle anderen Routen zur index.html umleiten (für Client-Side Routing)
+app.get('*', (_req, res) => {
+    res.sendFile(path.resolve(__dirname, '../../public/index.html'));
 });
 
 // Starte Server

@@ -8,11 +8,23 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingScreen.style.display = 'none';
     }
 
-    // Initialisiere das Spiel
+    // Initialisiere das Spiel basierend auf der Route
     const gameManager = GameManager.getInstance();
-    
-    // Starte mit der Charaktererstellung
-    gameManager.startCharacterCreation();
+    const path = window.location.pathname;
+
+    if (path === '/game') {
+        // Wenn bereits ein Charakter existiert, starte das Spiel
+        gameManager.checkExistingCharacter().then(exists => {
+            if (exists) {
+                gameManager.startGame();
+            } else {
+                window.location.href = '/';
+            }
+        });
+    } else {
+        // Standardmäßig zur Charaktererstellung
+        gameManager.startCharacterCreation();
+    }
 
     // Event Listener für das Beenden des Spiels
     window.addEventListener('beforeunload', () => {

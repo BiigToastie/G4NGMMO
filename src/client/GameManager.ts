@@ -24,9 +24,8 @@ export class GameManager {
         return GameManager.instance;
     }
 
-    public async startCharacterCreation(): Promise<void> {
+    public async checkExistingCharacter(): Promise<boolean> {
         try {
-            // Prüfe zuerst, ob der Spieler bereits einen Charakter hat
             const response = await fetch('/api/character/check', {
                 method: 'GET',
                 headers: {
@@ -36,11 +35,23 @@ export class GameManager {
 
             if (response.ok) {
                 const data = await response.json();
-                if (data.hasCharacter) {
-                    // Wenn ein Charakter existiert, lade diesen und starte das Spiel
-                    this.startGame(data.character);
-                    return;
-                }
+                return data.hasCharacter;
+            }
+            return false;
+        } catch (error) {
+            console.error('Fehler beim Prüfen des Charakters:', error);
+            return false;
+        }
+    }
+
+    public async startCharacterCreation(): Promise<void> {
+        try {
+            // Prüfe zuerst, ob der Spieler bereits einen Charakter hat
+            const hasCharacter = await this.checkExistingCharacter();
+            if (hasCharacter) {
+                // Wenn ein Charakter existiert, leite zum Spiel weiter
+                window.location.href = '/game';
+                return;
             }
 
             // Verstecke das Hauptspiel falls vorhanden
@@ -59,7 +70,7 @@ export class GameManager {
             document.addEventListener('character-confirmed', async (event: Event) => {
                 const characterData = (event as CustomEvent).detail;
                 await this.saveCharacter(characterData);
-                this.startGame(characterData);
+                window.location.href = '/game';
             });
 
         } catch (error) {
@@ -91,24 +102,50 @@ export class GameManager {
         }
     }
 
-    public startGame(characterData: any): void {
-        // Verstecke Charaktererstellung
-        if (this.characterCreator) {
-            this.characterCreator.dispose();
-            this.characterCreator = null;
-            this.characterCreatorContainer.style.display = 'none';
+    public async startGame(characterData?: any): Promise<void> {
+        try {
+            if (!characterData) {
+                // Hole Charakterdaten wenn nicht übergeben
+                const response = await fetch('/api/character/check', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Fehler beim Laden des Charakters');
+                }
+
+                const data = await response.json();
+                if (!data.hasCharacter) {
+                    window.location.href = '/';
+                    return;
+                }
+                characterData = data.character;
+            }
+
+            // Verstecke Charaktererstellung
+            if (this.characterCreator) {
+                this.characterCreator.dispose();
+                this.characterCreator = null;
+                this.characterCreatorContainer.style.display = 'none';
+            }
+
+            // Zeige Spiel-Container
+            this.container.style.display = 'block';
+
+            // Initialisiere Hauptspiel
+            this.game = new Game(this.container);
+
+            // Spawn Charakter an gespeicherter oder Standard-Position
+            const position = characterData.position || { x: 0, y: 0, z: 0 };
+            const spawnPosition = new THREE.Vector3(position.x, position.y, position.z);
+            this.game.spawnPlayer(characterData.userId, spawnPosition);
+        } catch (error) {
+            console.error('Fehler beim Starten des Spiels:', error);
+            throw error;
         }
-
-        // Zeige Spiel-Container
-        this.container.style.display = 'block';
-
-        // Initialisiere Hauptspiel
-        this.game = new Game(this.container);
-
-        // Spawn Charakter an gespeicherter oder Standard-Position
-        const position = characterData.position || { x: 0, y: 0, z: 0 };
-        const spawnPosition = new THREE.Vector3(position.x, position.y, position.z);
-        this.game.spawnPlayer(characterData.userId, spawnPosition);
     }
 
     public dispose(): void {
