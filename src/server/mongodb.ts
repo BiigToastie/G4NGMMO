@@ -68,7 +68,7 @@ process.on('SIGTERM', async () => {
 });
 
 // Unerwartete Fehler
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason) => {
     console.error('Unbehandelter Promise Rejection:', reason);
 });
 

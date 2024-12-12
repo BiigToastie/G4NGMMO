@@ -17,7 +17,7 @@ app.use(express.static('public'));
 app.use('/api/character', characterRoutes);
 
 // Startseite
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
     res.sendFile('index.html', { root: 'public' });
 });
 

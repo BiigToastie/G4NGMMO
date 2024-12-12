@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { Character } from '../../models/Character';
+import { Character } from '../models/Character';
 
 const router = Router();
 
@@ -14,18 +14,18 @@ router.get('/check', async (req, res) => {
         const character = await Character.findOne({ userId });
         
         if (character) {
-            res.json({
+            return res.json({
                 hasCharacter: true,
                 character: character
             });
         } else {
-            res.json({
+            return res.json({
                 hasCharacter: false
             });
         }
     } catch (error) {
         console.error('Fehler bei der Charakterprüfung:', error);
-        res.status(500).json({ error: 'Serverfehler' });
+        return res.status(500).json({ error: 'Serverfehler' });
     }
 });
 
@@ -54,10 +54,10 @@ router.post('/', async (req, res) => {
         const character = new Character(characterData);
         await character.save();
 
-        res.status(201).json(character);
+        return res.status(201).json(character);
     } catch (error) {
         console.error('Fehler beim Erstellen des Charakters:', error);
-        res.status(500).json({ error: 'Serverfehler' });
+        return res.status(500).json({ error: 'Serverfehler' });
     }
 });
 
@@ -86,10 +86,10 @@ router.put('/position', async (req, res) => {
             return res.status(404).json({ error: 'Charakter nicht gefunden' });
         }
 
-        res.json(character);
+        return res.json(character);
     } catch (error) {
         console.error('Fehler beim Aktualisieren der Position:', error);
-        res.status(500).json({ error: 'Serverfehler' });
+        return res.status(500).json({ error: 'Serverfehler' });
     }
 });
 
