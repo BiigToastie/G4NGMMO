@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { AnimationMixer, AnimationAction } from 'three';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 
 interface CharacterData {
     name: string;
@@ -40,7 +41,8 @@ export class CharacterCreator {
             0.1,
             1000
         );
-        this.camera.position.set(0, 1.7, 3);
+        this.camera.position.set(0, 2.2, 2.5);
+        this.camera.lookAt(0, 1.5, 0);
 
         // Renderer Setup
         const canvas = document.getElementById('character-canvas') as HTMLCanvasElement;
@@ -57,11 +59,11 @@ export class CharacterCreator {
         // Controls Setup
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enablePan = false;
-        this.controls.minDistance = 2;
-        this.controls.maxDistance = 4;
+        this.controls.minDistance = 1.5;
+        this.controls.maxDistance = 3;
         this.controls.minPolarAngle = Math.PI / 4;
-        this.controls.maxPolarAngle = Math.PI / 1.5;
-        this.controls.target.set(0, 1.7, 0);
+        this.controls.maxPolarAngle = Math.PI / 1.8;
+        this.controls.target.set(0, 1.5, 0);
         this.controls.update();
 
         // Loading Manager
@@ -140,7 +142,19 @@ export class CharacterCreator {
         const loader = new GLTFLoader(this.loadingManager);
         const modelPath = this.selectedGender === 'male' ? '/models/male_character.glb' : '/models/female_character.glb';
         
+        // Zeitmessung Start
+        const startTime = performance.now();
+        
+        // Lade das Modell in niedriger Qualität zuerst
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('/draco/');
+        loader.setDRACOLoader(dracoLoader);
+
         loader.load(modelPath, (gltf) => {
+            // Zeitmessung Ende
+            const endTime = performance.now();
+            console.log(`Modell in ${((endTime - startTime)/1000).toFixed(2)} Sekunden geladen`);
+
             if (this.characterModel) {
                 this.scene.remove(this.characterModel);
                 if (this.mixer) {
@@ -151,15 +165,48 @@ export class CharacterCreator {
             this.characterModel = gltf.scene;
             
             if (this.characterModel) {
+                // Optimiere Materialien und Texturen
                 this.characterModel.traverse((child) => {
                     if (child instanceof THREE.Mesh) {
                         child.castShadow = true;
                         child.receiveShadow = true;
+
+                        // Optimiere Materialien
+                        if (child.material) {
+                            const material = child.material as THREE.MeshStandardMaterial;
+                            
+                            // Reduziere Texturqualität
+                            if (material.map) {
+                                material.map.minFilter = THREE.LinearFilter;
+                                material.map.magFilter = THREE.LinearFilter;
+                                material.map.anisotropy = 1;
+                            }
+
+                            // Deaktiviere nicht benötigte Features
+                            material.envMapIntensity = 0;
+                            material.needsUpdate = true;
+                        }
+
+                        // Optimiere Geometrie
+                        if (child.geometry) {
+                            child.geometry.computeBoundingSphere();
+                            child.geometry.computeBoundingBox();
+                        }
                     }
                 });
 
+                // Position und Skalierung anpassen
                 this.characterModel.scale.set(1, 1, 1);
-                this.characterModel.position.set(0, 0, 0);
+                this.characterModel.position.set(0, 0.8, 0); // Modell höher positionieren
+
+                // Berechne Bounding Box für automatische Positionierung
+                const box = new THREE.Box3().setFromObject(this.characterModel);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+
+                // Zentriere das Modell basierend auf seiner tatsächlichen Größe
+                this.characterModel.position.y = -center.y + size.y / 2 + 0.8;
+
                 this.scene.add(this.characterModel);
 
                 // Animation Setup
@@ -178,27 +225,35 @@ export class CharacterCreator {
 
                     if (idleAnimation) {
                         const action = this.mixer.clipAction(idleAnimation);
+                        // Optimiere Animation-Performance
+                        action.clampWhenFinished = true;
+                        action.setLoop(THREE.LoopRepeat, Infinity);
                         action.play();
                         this.currentAction = action;
                         console.log('Spiegelansicht-Animation gestartet:', idleAnimation.name);
                     } else {
                         const defaultAction = this.mixer.clipAction(gltf.animations[0]);
+                        defaultAction.clampWhenFinished = true;
+                        defaultAction.setLoop(THREE.LoopRepeat, Infinity);
                         defaultAction.play();
                         this.currentAction = defaultAction;
                         console.log('Standard-Animation gestartet:', gltf.animations[0].name);
                     }
 
-                    // Automatische Rotation für weibliches Modell
+                    // Optimierte Rotation für weibliches Modell
                     if (this.selectedGender === 'female') {
-                        this.characterModel.rotation.y = Math.PI; // Drehe um 180 Grad
-                        const rotateSpeed = 0.002; // Langsamere Rotation
-                        const animate = () => {
+                        this.characterModel.rotation.y = Math.PI;
+                        const rotateSpeed = 0.002;
+                        let lastTime = 0;
+                        const animate = (time: number) => {
                             if (this.characterModel) {
-                                this.characterModel.rotation.y += rotateSpeed;
+                                const delta = time - lastTime;
+                                this.characterModel.rotation.y += rotateSpeed * (delta / 16.67); // Normalisiert auf 60 FPS
+                                lastTime = time;
+                                requestAnimationFrame(animate);
                             }
-                            requestAnimationFrame(animate);
                         };
-                        animate();
+                        requestAnimationFrame(animate);
                     }
                 } else {
                     console.warn('Keine Animationen im Modell gefunden');
@@ -206,7 +261,8 @@ export class CharacterCreator {
             }
         }, 
         (progress) => {
-            console.log('Ladefortschritt:', (progress.loaded / progress.total * 100).toFixed(2) + '%');
+            const percent = (progress.loaded / progress.total * 100).toFixed(2);
+            console.log(`Ladefortschritt: ${percent}% (${(progress.loaded / 1024 / 1024).toFixed(2)}MB / ${(progress.total / 1024 / 1024).toFixed(2)}MB)`);
         },
         (error) => {
             console.error('Fehler beim Laden des Modells:', error);
