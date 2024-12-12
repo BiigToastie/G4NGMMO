@@ -53,6 +53,9 @@
             margin-top: 20px;
             text-align: center;
             display: none;
+            padding: 10px;
+            background-color: rgba(255, 0, 0, 0.1);
+            border-radius: 5px;
         }
         #character-creator {
             position: absolute;
@@ -76,9 +79,6 @@
             color: white;
         }
     </style>
-    <script src="dist/vendors.bundle.js" defer></script>
-    <script src="dist/threejs.bundle.js" defer></script>
-    <script src="dist/main.bundle.js" defer></script>
 </head>
 <body>
     <div id="loading-screen">
@@ -95,5 +95,32 @@
             <div id="player-info"></div>
         </div>
     </div>
+
+    <script>
+        // Initialisiere Skript-Ladestatus
+        window.scriptsLoaded = {
+            vendors: false,
+            three: false,
+            main: false
+        };
+
+        // Funktion zum Überprüfen, ob alle Skripte geladen sind
+        function checkAllScriptsLoaded() {
+            return Object.values(window.scriptsLoaded).every(loaded => loaded);
+        }
+    </script>
+
+    <script src="dist/vendors.bundle.js" 
+            onload="window.scriptsLoaded.vendors = true; console.log('Vendors geladen');"
+            onerror="console.error('Fehler beim Laden von vendors.bundle.js')"
+            defer></script>
+    <script src="dist/threejs.bundle.js" 
+            onload="window.scriptsLoaded.three = true; console.log('Three.js geladen');"
+            onerror="console.error('Fehler beim Laden von threejs.bundle.js')"
+            defer></script>
+    <script src="dist/main.bundle.js" 
+            onload="window.scriptsLoaded.main = true; console.log('Main geladen');"
+            onerror="console.error('Fehler beim Laden von main.bundle.js')"
+            defer></script>
 </body>
 </html> 
