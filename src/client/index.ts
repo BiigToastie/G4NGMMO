@@ -2,7 +2,7 @@ import { ResourceManager } from './ResourceManager';
 import { CharacterCreator } from './character/CharacterCreator';
 
 class Game {
-    private static instance: Game;
+    private static instance: Game | null = null;
     private characterCreator: CharacterCreator | null = null;
 
     private constructor() {}
@@ -61,7 +61,9 @@ class Game {
             this.characterCreator.dispose();
             this.characterCreator = null;
         }
-        Game.instance = null;
+        if (Game.instance) {
+            Game.instance = null;
+        }
     }
 }
 

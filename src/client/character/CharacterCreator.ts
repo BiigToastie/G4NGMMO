@@ -38,6 +38,7 @@ export class CharacterCreator {
     private isLoading: boolean = false;
     private canvas: HTMLCanvasElement;
     private initialized: boolean = false;
+    private animationFrameId: number | null = null;
 
     private constructor() {
         console.log('CharacterCreator wird initialisiert...');
@@ -96,7 +97,7 @@ export class CharacterCreator {
         this.setupLights();
         this.setupControls();
         this.setupEventListeners();
-        this.animate();
+        this.startAnimation();
 
         // Zeige Lade-Overlay
         this.showLoadingOverlay();
@@ -118,6 +119,25 @@ export class CharacterCreator {
         } finally {
             this.hideLoadingOverlay();
         }
+    }
+
+    private startAnimation(): void {
+        const animate = () => {
+            this.animationFrameId = requestAnimationFrame(animate);
+            const delta = this.clock.getDelta();
+
+            if (this.mixer) {
+                this.mixer.update(delta);
+            }
+
+            if (this.controls) {
+                this.controls.update();
+            }
+
+            this.renderer.render(this.scene, this.camera);
+        };
+
+        animate();
     }
 
     private setupLoadingManager(): void {
@@ -220,22 +240,6 @@ export class CharacterCreator {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    private animate(): void {
-        requestAnimationFrame(this.animate.bind(this));
-
-        const delta = this.clock.getDelta();
-
-        if (this.mixer) {
-            this.mixer.update(delta);
-        }
-
-        if (this.controls) {
-            this.controls.update();
-        }
-
-        this.renderer.render(this.scene, this.camera);
     }
 
     private async loadCharacterModel(gender: 'male' | 'female'): Promise<void> {
@@ -381,8 +385,9 @@ export class CharacterCreator {
         console.log('Räume CharacterCreator auf...');
         
         // Stoppe Animation Loop
-        if (this.renderer) {
-            this.renderer.setAnimationLoop(null);
+        if (this.animationFrameId !== null) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
         }
 
         // Cleanup
@@ -420,6 +425,8 @@ export class CharacterCreator {
 
         // Setze Instanz-Variablen zurück
         this.initialized = false;
-        CharacterCreator.instance = null;
+        if (CharacterCreator.instance) {
+            CharacterCreator.instance = null;
+        }
     }
 } 
