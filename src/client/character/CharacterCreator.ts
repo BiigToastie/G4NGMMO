@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { AnimationMixer, AnimationAction } from 'three';
 
 interface CharacterData {
     name: string;
@@ -20,11 +21,17 @@ export class CharacterCreator {
     private selectedGender: 'male' | 'female' = 'male';
     private selectedClass: string | null = null;
     private userName: string = '';
+    private mixer: THREE.AnimationMixer | null = null;
+    private currentAction: THREE.AnimationAction | null = null;
+    private clock: THREE.Clock;
 
     constructor() {
         // Scene Setup
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x18222d);
+
+        // Clock für Animationen
+        this.clock = new THREE.Clock();
 
         // Camera Setup
         this.camera = new THREE.PerspectiveCamera(
@@ -151,6 +158,29 @@ export class CharacterCreator {
                 this.characterModel.scale.set(1, 1, 1);
                 this.characterModel.position.set(0, 0, 0);
                 this.scene.add(this.characterModel);
+
+                // Animation Setup
+                if (gltf.animations.length > 0) {
+                    this.mixer = new THREE.AnimationMixer(this.characterModel);
+                    
+                    // Spiegelansicht-Animation (Index 0 ist die Idle-Animation)
+                    const idleAction = this.mixer.clipAction(gltf.animations[0]);
+                    idleAction.play();
+                    this.currentAction = idleAction;
+
+                    // Optional: Füge eine automatische Rotation hinzu
+                    if (this.selectedGender === 'female') {
+                        this.characterModel.rotation.y = Math.PI; // Drehe um 180 Grad
+                        const rotateSpeed = 0.005;
+                        const animate = () => {
+                            if (this.characterModel) {
+                                this.characterModel.rotation.y += rotateSpeed;
+                            }
+                            requestAnimationFrame(animate);
+                        };
+                        animate();
+                    }
+                }
             }
         });
     }
@@ -162,7 +192,7 @@ export class CharacterCreator {
         document.querySelectorAll('.selection-button').forEach(button => {
             button.addEventListener('click', (e) => {
                 const target = e.target as HTMLElement;
-                const gender = target.dataset.gender as 'male' | 'female';
+                const gender = target.getAttribute('data-gender') as 'male' | 'female';
                 if (gender) {
                     this.selectedGender = gender;
                     document.querySelectorAll('.selection-button').forEach(btn => {
@@ -178,9 +208,9 @@ export class CharacterCreator {
         document.querySelectorAll('.class-button').forEach(button => {
             button.addEventListener('click', (e) => {
                 const target = e.target as HTMLElement;
-                const classButton = target.closest('.class-button');
+                const classButton = target.closest('.class-button') as HTMLElement;
                 if (classButton) {
-                    const characterClass = classButton.dataset.class;
+                    const characterClass = classButton.getAttribute('data-class');
                     if (characterClass) {
                         this.selectedClass = characterClass;
                         document.querySelectorAll('.class-button').forEach(btn => {
@@ -200,7 +230,7 @@ export class CharacterCreator {
     }
 
     private updateConfirmButton(): void {
-        const confirmButton = document.getElementById('confirm-button');
+        const confirmButton = document.getElementById('confirm-button') as HTMLButtonElement;
         if (confirmButton) {
             confirmButton.disabled = !this.selectedClass;
         }
@@ -214,6 +244,13 @@ export class CharacterCreator {
 
     private animate(): void {
         requestAnimationFrame(this.animate.bind(this));
+
+        // Update Animationen
+        const delta = this.clock.getDelta();
+        if (this.mixer) {
+            this.mixer.update(delta);
+        }
+
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
     }
