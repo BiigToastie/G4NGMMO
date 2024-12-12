@@ -3,13 +3,22 @@ import WebApp from '@twa-dev/sdk';
 
 async function waitForScripts(): Promise<void> {
     return new Promise((resolve) => {
+        const maxAttempts = 50; // 5 Sekunden maximal
+        let attempts = 0;
+
         const checkScripts = () => {
-            const vendorsLoaded = document.querySelector('script[src*="vendors.bundle.js"]')?.hasAttribute('loaded');
-            const threeLoaded = document.querySelector('script[src*="threejs.bundle.js"]')?.hasAttribute('loaded');
+            console.log('Prüfe Skript-Status:', window.scriptsLoaded);
             
-            if (vendorsLoaded && threeLoaded) {
+            if (window.scriptsLoaded.vendors && 
+                window.scriptsLoaded.three && 
+                window.scriptsLoaded.main) {
+                console.log('Alle Skripte geladen');
                 resolve();
+            } else if (attempts >= maxAttempts) {
+                console.warn('Timeout beim Laden der Skripte');
+                resolve(); // Trotzdem fortfahren
             } else {
+                attempts++;
                 setTimeout(checkScripts, 100);
             }
         };
@@ -20,6 +29,9 @@ async function waitForScripts(): Promise<void> {
 async function initializeApp() {
     try {
         console.log('Starte Initialisierung...');
+        
+        // Warte auf das Laden der Skripte
+        await waitForScripts();
         
         // Aktualisiere Ladetext
         const loadingProgress = document.getElementById('loading-progress');
@@ -97,12 +109,16 @@ async function initializeApp() {
     }
 }
 
-// Markiere Skripte als geladen
-document.querySelectorAll('script').forEach(script => {
-    script.addEventListener('load', () => {
-        script.setAttribute('loaded', '');
-    });
-});
+// Deklariere den globalen Typ
+declare global {
+    interface Window {
+        scriptsLoaded: {
+            vendors: boolean;
+            three: boolean;
+            main: boolean;
+        };
+    }
+}
 
 // Starte die Initialisierung wenn das DOM geladen ist
 if (document.readyState === 'loading') {

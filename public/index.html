@@ -108,19 +108,30 @@
         function checkAllScriptsLoaded() {
             return Object.values(window.scriptsLoaded).every(loaded => loaded);
         }
+
+        // Funktion zum Aktualisieren des Ladestatus
+        function updateLoadingProgress() {
+            const progress = document.getElementById('loading-progress');
+            if (progress) {
+                const loadedCount = Object.values(window.scriptsLoaded).filter(loaded => loaded).length;
+                const totalCount = Object.keys(window.scriptsLoaded).length;
+                progress.textContent = `Lade Spiel... (${loadedCount}/${totalCount})`;
+            }
+        }
     </script>
 
+    <!-- Lade Skripte in der richtigen Reihenfolge -->
     <script src="dist/vendors.bundle.js" 
-            onload="window.scriptsLoaded.vendors = true; console.log('Vendors geladen');"
-            onerror="console.error('Fehler beim Laden von vendors.bundle.js')"
-            defer></script>
+            onload="window.scriptsLoaded.vendors = true; console.log('Vendors geladen'); updateLoadingProgress();"
+            onerror="console.error('Fehler beim Laden von vendors.bundle.js'); document.getElementById('error-message').textContent = 'Fehler beim Laden der Ressourcen'; document.getElementById('error-message').style.display = 'block';"
+            async></script>
     <script src="dist/threejs.bundle.js" 
-            onload="window.scriptsLoaded.three = true; console.log('Three.js geladen');"
-            onerror="console.error('Fehler beim Laden von threejs.bundle.js')"
-            defer></script>
+            onload="window.scriptsLoaded.three = true; console.log('Three.js geladen'); updateLoadingProgress();"
+            onerror="console.error('Fehler beim Laden von threejs.bundle.js'); document.getElementById('error-message').textContent = 'Fehler beim Laden der 3D-Engine'; document.getElementById('error-message').style.display = 'block';"
+            async></script>
     <script src="dist/main.bundle.js" 
-            onload="window.scriptsLoaded.main = true; console.log('Main geladen');"
-            onerror="console.error('Fehler beim Laden von main.bundle.js')"
-            defer></script>
+            onload="window.scriptsLoaded.main = true; console.log('Main geladen'); updateLoadingProgress();"
+            onerror="console.error('Fehler beim Laden von main.bundle.js'); document.getElementById('error-message').textContent = 'Fehler beim Laden der Spiellogik'; document.getElementById('error-message').style.display = 'block';"
+            async></script>
 </body>
 </html> 
