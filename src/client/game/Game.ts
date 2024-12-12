@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { GameHUD } from './GameHUD';
+import { ResourceManager } from '../ResourceManager';
 
 export class Game {
     private scene: THREE.Scene;
@@ -10,14 +12,23 @@ export class Game {
     private players: Map<string, THREE.Object3D>;
     private terrain: THREE.Mesh;
     private loader: GLTFLoader;
+    private mixer: THREE.AnimationMixer | null = null;
+    private clock: THREE.Clock;
+    private hud: GameHUD;
+    private playerData: any;
+    private animationFrameId: number | null = null;
 
-    constructor(container: HTMLElement) {
+    constructor(container: HTMLElement, playerData: any) {
+        this.playerData = playerData;
+        this.clock = new THREE.Clock();
+        
         // Initialisiere Three.js-Komponenten
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.players = new Map();
         this.loader = new GLTFLoader();
+        this.hud = new GameHUD();
 
         // Renderer-Setup
         this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -45,8 +56,62 @@ export class Game {
         // Event Listener
         window.addEventListener('resize', this.onWindowResize.bind(this));
 
+        // Initialisiere Spieler
+        this.initializePlayer();
+
         // Starte Render-Loop
         this.animate();
+    }
+
+    private async initializePlayer(): Promise<void> {
+        const resourceManager = ResourceManager.getInstance();
+        const modelKey = this.playerData.gender === 'male' ? 'maleCharacter' : 'femaleCharacter';
+        const gltf = resourceManager.getResource(modelKey);
+
+        if (!gltf) {
+            console.error('Spielermodell nicht gefunden');
+            return;
+        }
+
+        const player = gltf.scene.clone();
+        player.position.set(0, 0, 0);
+        player.castShadow = true;
+        player.receiveShadow = true;
+        this.scene.add(player);
+        this.players.set(this.playerData.userId, player);
+
+        // Setze Animation
+        this.mixer = new THREE.AnimationMixer(player);
+        const idleAnimation = gltf.animations.find(anim => anim.name.toLowerCase().includes('idle'));
+        if (idleAnimation) {
+            const action = this.mixer.clipAction(idleAnimation);
+            action.play();
+        }
+
+        // Aktualisiere HUD
+        this.hud.updatePlayerInfo(
+            this.playerData.name,
+            this.playerData.class
+        );
+
+        // Zentriere Kamera auf Spieler
+        this.centerCameraOnPlayer(player);
+    }
+
+    private centerCameraOnPlayer(player: THREE.Object3D): void {
+        const box = new THREE.Box3().setFromObject(player);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+
+        const distance = Math.max(size.x, size.y, size.z) * 3;
+        this.camera.position.set(
+            center.x + distance,
+            center.y + distance / 2,
+            center.z + distance
+        );
+
+        this.controls.target.copy(center);
+        this.controls.update();
     }
 
     private createTerrain(): THREE.Mesh {
@@ -101,36 +166,6 @@ export class Game {
         return terrain as unknown as THREE.Mesh;
     }
 
-    public spawnPlayer(userId: string, position: THREE.Vector3): void {
-        console.log('Lade Spielermodell...');
-        // Lade das Spielermodell
-        this.loader.load(
-            '/models/male_all/Animation_Mirror_Viewing_withSkin.glb',
-            (gltf) => {
-                console.log('Spielermodell geladen');
-                const player = gltf.scene;
-                player.position.copy(position);
-                player.castShadow = true;
-                player.receiveShadow = true;
-                this.scene.add(player);
-                this.players.set(userId, player);
-            },
-            (progress) => {
-                console.log('Ladefortschritt:', (progress.loaded / progress.total * 100) + '%');
-            },
-            (error) => {
-                console.error('Fehler beim Laden des Spielermodells:', error);
-            }
-        );
-    }
-
-    public updatePlayerPosition(userId: string, position: THREE.Vector3): void {
-        const player = this.players.get(userId);
-        if (player) {
-            player.position.copy(position);
-        }
-    }
-
     private onWindowResize(): void {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
@@ -138,8 +173,43 @@ export class Game {
     }
 
     private animate(): void {
-        requestAnimationFrame(this.animate.bind(this));
+        this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
+        
+        const delta = this.clock.getDelta();
+        if (this.mixer) {
+            this.mixer.update(delta);
+        }
+        
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
+    }
+
+    public dispose(): void {
+        if (this.animationFrameId !== null) {
+            cancelAnimationFrame(this.animationFrameId);
+        }
+
+        this.hud.dispose();
+        
+        // Cleanup Three.js
+        this.scene.traverse((object) => {
+            if (object instanceof THREE.Mesh) {
+                if (object.geometry) {
+                    object.geometry.dispose();
+                }
+                if (object.material) {
+                    if (Array.isArray(object.material)) {
+                        object.material.forEach(material => material.dispose());
+                    } else {
+                        object.material.dispose();
+                    }
+                }
+            }
+        });
+
+        this.renderer.dispose();
+        
+        // Entferne Event Listener
+        window.removeEventListener('resize', this.onWindowResize.bind(this));
     }
 } 

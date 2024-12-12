@@ -1,6 +1,7 @@
 import { Game } from './game/Game';
 import { CharacterCreator } from './character/CharacterCreator';
-import * as THREE from 'three';
+import { ResourceManager } from './ResourceManager';
+import WebApp from '@twa-dev/sdk';
 
 export class GameManager {
     private static instance: GameManager;
@@ -29,26 +30,30 @@ export class GameManager {
         if (this.initialized) return;
 
         try {
-            // Initialisiere grundlegende Ressourcen
-            await this.loadResources();
+            // Initialisiere ResourceManager
+            const resourceManager = ResourceManager.getInstance();
+            await resourceManager.preloadAllResources();
+            
             this.initialized = true;
+            console.log('GameManager erfolgreich initialisiert');
         } catch (error) {
             console.error('Fehler bei der GameManager-Initialisierung:', error);
             throw error;
         }
     }
 
-    private async loadResources(): Promise<void> {
-        // Hier können weitere Ressourcen geladen werden
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Simuliere Laden
-    }
-
     public async checkExistingCharacter(): Promise<boolean> {
         try {
+            const userId = WebApp.initDataUnsafe.user?.id.toString();
+            if (!userId) {
+                throw new Error('Keine Benutzer-ID gefunden');
+            }
+
             const response = await fetch('/api/character/check', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
+                    'user-id': userId
                 }
             });
 
@@ -104,10 +109,16 @@ export class GameManager {
 
     private async saveCharacter(characterData: any): Promise<void> {
         try {
+            const userId = WebApp.initDataUnsafe.user?.id.toString();
+            if (!userId) {
+                throw new Error('Keine Benutzer-ID gefunden');
+            }
+
             const response = await fetch('/api/character', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'user-id': userId
                 },
                 body: JSON.stringify({
                     ...characterData,
@@ -125,31 +136,34 @@ export class GameManager {
         }
     }
 
-    public async startGame(characterData?: any): Promise<void> {
+    public async startGame(): Promise<void> {
         try {
             if (!this.initialized) {
                 await this.initialize();
             }
 
-            if (!characterData) {
-                // Hole Charakterdaten wenn nicht übergeben
-                const response = await fetch('/api/character/check', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
+            const userId = WebApp.initDataUnsafe.user?.id.toString();
+            if (!userId) {
+                throw new Error('Keine Benutzer-ID gefunden');
+            }
 
-                if (!response.ok) {
-                    throw new Error('Fehler beim Laden des Charakters');
+            // Hole Charakterdaten
+            const response = await fetch('/api/character/check', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'user-id': userId
                 }
+            });
 
-                const data = await response.json();
-                if (!data.hasCharacter) {
-                    window.location.href = '/';
-                    return;
-                }
-                characterData = data.character;
+            if (!response.ok) {
+                throw new Error('Fehler beim Laden des Charakters');
+            }
+
+            const data = await response.json();
+            if (!data.hasCharacter) {
+                window.location.href = '/';
+                return;
             }
 
             // Verstecke Charaktererstellung
@@ -162,13 +176,9 @@ export class GameManager {
             // Zeige Spiel-Container
             this.container.style.display = 'block';
 
-            // Initialisiere Hauptspiel
-            this.game = new Game(this.container);
+            // Initialisiere Hauptspiel mit Charakterdaten
+            this.game = new Game(this.container, data.character);
 
-            // Spawn Charakter an gespeicherter oder Standard-Position
-            const position = characterData.position || { x: 0, y: 0, z: 0 };
-            const spawnPosition = new THREE.Vector3(position.x, position.y, position.z);
-            this.game.spawnPlayer(characterData.userId, spawnPosition);
         } catch (error) {
             console.error('Fehler beim Starten des Spiels:', error);
             throw error;
@@ -181,7 +191,7 @@ export class GameManager {
             this.characterCreator = null;
         }
         if (this.game) {
-            // Cleanup für das Hauptspiel
+            this.game.dispose();
             this.game = null;
         }
         this.initialized = false;
