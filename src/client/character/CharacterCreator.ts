@@ -138,7 +138,7 @@ export class CharacterCreator {
 
     private loadCharacterModel(): void {
         const loader = new GLTFLoader(this.loadingManager);
-        const modelPath = this.selectedGender === 'male' ? '/models/male_character.gltf' : '/models/female_character.gltf';
+        const modelPath = this.selectedGender === 'male' ? '/models/male_character.glb' : '/models/female_character.glb';
         
         loader.load(modelPath, (gltf) => {
             if (this.characterModel) {
@@ -172,7 +172,8 @@ export class CharacterCreator {
                     const idleAnimation = gltf.animations.find(anim => 
                         anim.name.toLowerCase().includes('spiegelansicht') ||
                         anim.name.toLowerCase().includes('idle') ||
-                        anim.name.toLowerCase().includes('mirror')
+                        anim.name.toLowerCase().includes('mirror') ||
+                        anim.name.toLowerCase().includes('spiegel')
                     );
 
                     if (idleAnimation) {
@@ -181,7 +182,10 @@ export class CharacterCreator {
                         this.currentAction = action;
                         console.log('Spiegelansicht-Animation gestartet:', idleAnimation.name);
                     } else {
-                        console.warn('Keine passende Animation gefunden');
+                        const defaultAction = this.mixer.clipAction(gltf.animations[0]);
+                        defaultAction.play();
+                        this.currentAction = defaultAction;
+                        console.log('Standard-Animation gestartet:', gltf.animations[0].name);
                     }
 
                     // Automatische Rotation für weibliches Modell
@@ -196,10 +200,14 @@ export class CharacterCreator {
                         };
                         animate();
                     }
+                } else {
+                    console.warn('Keine Animationen im Modell gefunden');
                 }
             }
         }, 
-        undefined,
+        (progress) => {
+            console.log('Ladefortschritt:', (progress.loaded / progress.total * 100).toFixed(2) + '%');
+        },
         (error) => {
             console.error('Fehler beim Laden des Modells:', error);
         });
