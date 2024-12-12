@@ -25,9 +25,9 @@ npm install
 3. Umgebungsvariablen konfigurieren:
 - Kopiere `.env.example` zu `.env`
 - Füge deine Konfigurationswerte ein:
-  - TELEGRAM_BOT_TOKEN
-  - MONGODB_URI
-  - Andere erforderliche Variablen
+  - MONGODB_URI (erforderlich)
+  - TELEGRAM_BOT_TOKEN (erforderlich)
+  - Andere optionale Variablen
 
 4. Entwicklungsserver starten:
 \`\`\`bash
@@ -38,6 +38,21 @@ npm run dev
 \`\`\`bash
 npm run build
 \`\`\`
+
+## Deployment auf Render
+
+1. Verbinde dein GitHub-Repository mit Render
+2. Erstelle einen neuen Web Service
+3. Setze die folgenden Umgebungsvariablen:
+   - `MONGODB_URI` - Deine MongoDB-Verbindungs-URL
+   - `TELEGRAM_BOT_TOKEN` - Dein Bot-Token von @BotFather
+   - `NODE_ENV` - Setze auf "production"
+   - `PORT` - Wird von Render automatisch gesetzt
+   - `BASE_URL` - Deine Render-Service-URL
+
+4. Build-Einstellungen:
+   - Build Command: `npm install && npm run build`
+   - Start Command: `npm start`
 
 ## Technologie-Stack
 

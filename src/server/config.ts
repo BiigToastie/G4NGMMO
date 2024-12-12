@@ -18,34 +18,34 @@ interface Config {
     logLevel: string;
 }
 
-export const config: Config = {
+// Setze Standardwerte für Entwicklungsumgebung
+const defaultConfig = {
     mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017',
     dbName: process.env.DB_NAME || 'mmo_game',
     port: parseInt(process.env.PORT || '3000', 10),
     env: process.env.NODE_ENV || 'development',
     debug: process.env.DEBUG_MODE === 'true',
     version: process.env.GAME_VERSION || '1.0.0',
-    sessionSecret: process.env.SESSION_SECRET || 'default-secret-key',
+    sessionSecret: process.env.SESSION_SECRET || 'default-dev-secret',
     telegramToken: process.env.TELEGRAM_BOT_TOKEN || '',
-    jwtSecret: process.env.JWT_SECRET || '',
+    jwtSecret: process.env.JWT_SECRET || 'default-jwt-secret',
     baseUrl: process.env.BASE_URL || 'http://localhost:3000',
     logLevel: process.env.LOG_LEVEL || 'info'
 };
 
-// Validiere die Konfiguration
+// Validiere nur kritische Umgebungsvariablen
 const requiredEnvVars = [
     'MONGODB_URI',
-    'DB_NAME',
-    'SESSION_SECRET',
-    'TELEGRAM_BOT_TOKEN',
-    'JWT_SECRET'
+    'TELEGRAM_BOT_TOKEN'
 ];
 
 const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
 
 if (missingEnvVars.length > 0) {
-    throw new Error(`Fehlende Umgebungsvariablen: ${missingEnvVars.join(', ')}`);
+    throw new Error(`Fehlende kritische Umgebungsvariablen: ${missingEnvVars.join(', ')}`);
 }
+
+export const config: Config = defaultConfig;
 
 // Exportiere einzelne Konfigurationswerte für einfacheren Zugriff
 export const {
