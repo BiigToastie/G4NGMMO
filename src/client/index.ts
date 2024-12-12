@@ -93,4 +93,5 @@ async function initializeApp() {
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeApp);
 } else {
-    initializeApp(); 
+    initializeApp();
+} 
