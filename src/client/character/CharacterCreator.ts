@@ -180,6 +180,9 @@ export class CharacterCreator {
             ? '/models/male_all/Animation_Mirror_Viewing_withSkin.glb' 
             : '/models/female_all/Animation_Mirror_Viewing_withSkin.glb';
         
+        console.log('Lade Modell:', modelPath);
+        console.log('Aktuelles Geschlecht:', this.selectedGender);
+        
         // Zeitmessung Start
         const startTime = performance.now();
         
@@ -188,95 +191,103 @@ export class CharacterCreator {
         dracoLoader.setDecoderPath('/draco/');
         loader.setDRACOLoader(dracoLoader);
 
-        loader.load(modelPath, (gltf) => {
-            // Zeitmessung Ende
-            const endTime = performance.now();
-            console.log(`Modell in ${((endTime - startTime)/1000).toFixed(2)} Sekunden geladen`);
-
-            if (this.characterModel) {
-                this.scene.remove(this.characterModel);
-                if (this.mixer) {
-                    this.mixer.stopAllAction();
-                }
+        // Entferne zuerst das alte Modell und seine Animationen
+        if (this.characterModel) {
+            if (this.mixer) {
+                this.mixer.stopAllAction();
+                this.mixer.uncacheRoot(this.characterModel);
             }
+            this.scene.remove(this.characterModel);
+            this.characterModel = null;
+            this.mixer = null;
+            this.currentAction = null;
+        }
 
-            this.characterModel = gltf.scene;
-            
-            if (this.characterModel) {
-                // Optimiere Materialien und Texturen
-                this.characterModel.traverse((child) => {
-                    if (child instanceof Mesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
+        loader.load(modelPath, 
+            (gltf) => {
+                // Zeitmessung Ende
+                const endTime = performance.now();
+                console.log(`Modell in ${((endTime - startTime)/1000).toFixed(2)} Sekunden geladen`);
 
-                        // Optimiere Materialien
-                        if (child.material) {
-                            const material = child.material as MeshStandardMaterial;
-                            
-                            // Reduziere Texturqualität
-                            if (material.map) {
-                                material.map.minFilter = LinearFilter;
-                                material.map.magFilter = LinearFilter;
-                                material.map.anisotropy = 1;
+                this.characterModel = gltf.scene;
+                
+                if (this.characterModel) {
+                    console.log('Modell erfolgreich geladen');
+                    
+                    // Optimiere Materialien und Texturen
+                    this.characterModel.traverse((child) => {
+                        if (child instanceof Mesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+
+                            // Optimiere Materialien
+                            if (child.material) {
+                                const material = child.material as MeshStandardMaterial;
+                                
+                                // Reduziere Texturqualität
+                                if (material.map) {
+                                    material.map.minFilter = LinearFilter;
+                                    material.map.magFilter = LinearFilter;
+                                    material.map.anisotropy = 1;
+                                }
+
+                                // Deaktiviere nicht benötigte Features
+                                material.envMapIntensity = 0;
+                                material.needsUpdate = true;
                             }
 
-                            // Deaktiviere nicht benötigte Features
-                            material.envMapIntensity = 0;
-                            material.needsUpdate = true;
+                            // Optimiere Geometrie
+                            if (child.geometry) {
+                                child.geometry.computeBoundingSphere();
+                                child.geometry.computeBoundingBox();
+                            }
                         }
+                    });
 
-                        // Optimiere Geometrie
-                        if (child.geometry) {
-                            child.geometry.computeBoundingSphere();
-                            child.geometry.computeBoundingBox();
-                        }
-                    }
-                });
+                    // Position und Skalierung anpassen
+                    this.characterModel.scale.set(1, 1, 1);
+                    this.characterModel.position.set(0, 0.8, 0);
 
-                // Position und Skalierung anpassen
-                this.characterModel.scale.set(1, 1, 1);
-                this.characterModel.position.set(0, 0.8, 0);
+                    // Berechne Bounding Box für automatische Positionierung
+                    const box = new Box3().setFromObject(this.characterModel);
+                    const center = box.getCenter(new Vector3());
+                    const size = box.getSize(new Vector3());
 
-                // Berechne Bounding Box für automatische Positionierung
-                const box = new Box3().setFromObject(this.characterModel);
-                const center = box.getCenter(new Vector3());
-                const size = box.getSize(new Vector3());
+                    // Zentriere das Modell basierend auf seiner tatsächlichen Größe
+                    this.characterModel.position.y = -center.y + size.y / 2 + 0.8;
 
-                // Zentriere das Modell basierend auf seiner tatsächlichen Größe
-                this.characterModel.position.y = -center.y + size.y / 2 + 0.8;
+                    // Füge das Modell zur Szene hinzu
+                    this.scene.add(this.characterModel);
+                    console.log('Modell zur Szene hinzugefügt');
 
-                this.scene.add(this.characterModel);
-
-                // Animation Setup
-                if (gltf.animations.length > 0) {
-                    console.log('Verfügbare Animationen:', gltf.animations.map(a => a.name));
-                    
-                    this.mixer = new AnimationMixer(this.characterModel);
-                    
-                    // Spiele die erste Animation ab
-                    const action = this.mixer.clipAction(gltf.animations[0]);
-                    action.clampWhenFinished = true;
-                    action.setLoop(LoopRepeat, Infinity);
-                    action.play();
-                    this.currentAction = action;
-                    console.log('Spiegelansicht-Animation gestartet:', gltf.animations[0].name);
-
-                    // Entferne die spezielle Rotation für weibliche Charaktere
-                    if (this.selectedGender === 'female') {
-                        this.characterModel.rotation.y = 0;
+                    // Animation Setup
+                    if (gltf.animations.length > 0) {
+                        console.log('Verfügbare Animationen:', gltf.animations.map(a => a.name));
+                        
+                        this.mixer = new AnimationMixer(this.characterModel);
+                        
+                        // Spiele die erste Animation ab
+                        const action = this.mixer.clipAction(gltf.animations[0]);
+                        action.clampWhenFinished = true;
+                        action.setLoop(LoopRepeat, Infinity);
+                        action.play();
+                        this.currentAction = action;
+                        console.log('Animation gestartet:', gltf.animations[0].name);
+                    } else {
+                        console.warn('Keine Animationen im Modell gefunden');
                     }
                 } else {
-                    console.warn('Keine Animationen im Modell gefunden');
+                    console.error('Modell konnte nicht geladen werden');
                 }
+            }, 
+            (progress) => {
+                const percent = (progress.loaded / progress.total * 100).toFixed(2);
+                console.log(`Ladefortschritt: ${percent}% (${(progress.loaded / 1024 / 1024).toFixed(2)}MB / ${(progress.total / 1024 / 1024).toFixed(2)}MB)`);
+            },
+            (error) => {
+                console.error('Fehler beim Laden des Modells:', error);
             }
-        }, 
-        (progress) => {
-            const percent = (progress.loaded / progress.total * 100).toFixed(2);
-            console.log(`Ladefortschritt: ${percent}% (${(progress.loaded / 1024 / 1024).toFixed(2)}MB / ${(progress.total / 1024 / 1024).toFixed(2)}MB)`);
-        },
-        (error) => {
-            console.error('Fehler beim Laden des Modells:', error);
-        });
+        );
     }
 
     private setupEventListeners(): void {
@@ -288,12 +299,17 @@ export class CharacterCreator {
                 const target = e.target as HTMLElement;
                 const gender = target.getAttribute('data-gender') as 'male' | 'female';
                 if (gender) {
+                    console.log('Geschlecht gewechselt zu:', gender);
                     this.selectedGender = gender;
                     document.querySelectorAll('.selection-button').forEach(btn => {
                         btn.classList.remove('selected');
                     });
                     target.classList.add('selected');
-                    this.loadCharacterModel();
+                    
+                    // Verzögerung hinzufügen, um sicherzustellen, dass die UI aktualisiert wurde
+                    requestAnimationFrame(() => {
+                        this.loadCharacterModel();
+                    });
                 }
             });
         });
