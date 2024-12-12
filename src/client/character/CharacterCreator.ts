@@ -17,7 +17,8 @@ import {
     Mesh,
     MeshStandardMaterial,
     PCFSoftShadowMap,
-    LinearFilter
+    LinearFilter,
+    LoopRepeat
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -30,52 +31,35 @@ interface CharacterData {
     class: 'warrior' | 'mage' | 'ranger' | 'rogue';
 }
 
-// Lazy load heavy loaders
-const loadGLTFLoader = async () => {
-    const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
-    return GLTFLoader;
-};
-
-const loadDRACOLoader = async () => {
-    const { DRACOLoader } = await import('three/examples/jsm/loaders/DRACOLoader.js');
-    return DRACOLoader;
-};
-
-const loadOrbitControls = async () => {
-    const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
-    return OrbitControls;
-};
-
 export class CharacterCreator {
     private scene: Scene;
-    private scene: THREE.Scene;
-    private camera: THREE.PerspectiveCamera;
-    private renderer: THREE.WebGLRenderer;
+    private camera: PerspectiveCamera;
+    private renderer: WebGLRenderer;
     private controls: OrbitControls;
-    private loadingManager: THREE.LoadingManager;
-    private characterModel: THREE.Group | null = null;
-    private textureLoader: THREE.TextureLoader;
-    private materials: { [key: string]: THREE.Material } = {};
+    private loadingManager: LoadingManager;
+    private characterModel: Group | null = null;
+    private textureLoader: TextureLoader;
+    private materials: { [key: string]: Material } = {};
     private selectedGender: 'male' | 'female' = 'male';
     private selectedClass: string | null = null;
     private userName: string = '';
-    private mixer: THREE.AnimationMixer | null = null;
-    private currentAction: THREE.AnimationAction | null = null;
-    private clock: THREE.Clock;
+    private mixer: AnimationMixer | null = null;
+    private currentAction: AnimationAction | null = null;
+    private clock: Clock;
     private welcomeOverlay: HTMLElement;
     private acceptButton: HTMLElement;
     private playerName: string;
 
     constructor() {
         // Scene Setup
-        this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x18222d);
+        this.scene = new Scene();
+        this.scene.background = new Color(0x18222d);
 
         // Clock für Animationen
-        this.clock = new THREE.Clock();
+        this.clock = new Clock();
 
         // Camera Setup
-        this.camera = new THREE.PerspectiveCamera(
+        this.camera = new PerspectiveCamera(
             45,
             window.innerWidth / (window.innerHeight * 0.3),
             0.1,
@@ -86,7 +70,7 @@ export class CharacterCreator {
 
         // Renderer Setup
         const canvas = document.getElementById('character-canvas') as HTMLCanvasElement;
-        this.renderer = new THREE.WebGLRenderer({
+        this.renderer = new WebGLRenderer({
             canvas,
             antialias: true,
             alpha: true
@@ -94,7 +78,7 @@ export class CharacterCreator {
         this.renderer.setSize(window.innerWidth, window.innerHeight * 0.3);
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.shadowMap.type = PCFSoftShadowMap;
 
         // Controls Setup
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -107,11 +91,11 @@ export class CharacterCreator {
         this.controls.update();
 
         // Loading Manager
-        this.loadingManager = new THREE.LoadingManager();
+        this.loadingManager = new LoadingManager();
         this.setupLoadingManager();
 
         // Texture Loader
-        this.textureLoader = new THREE.TextureLoader(this.loadingManager);
+        this.textureLoader = new TextureLoader(this.loadingManager);
 
         // Lighting Setup
         this.setupLighting();
@@ -221,18 +205,18 @@ export class CharacterCreator {
             if (this.characterModel) {
                 // Optimiere Materialien und Texturen
                 this.characterModel.traverse((child) => {
-                    if (child instanceof THREE.Mesh) {
+                    if (child instanceof Mesh) {
                         child.castShadow = true;
                         child.receiveShadow = true;
 
                         // Optimiere Materialien
                         if (child.material) {
-                            const material = child.material as THREE.MeshStandardMaterial;
+                            const material = child.material as MeshStandardMaterial;
                             
                             // Reduziere Texturqualität
                             if (material.map) {
-                                material.map.minFilter = THREE.LinearFilter;
-                                material.map.magFilter = THREE.LinearFilter;
+                                material.map.minFilter = LinearFilter;
+                                material.map.magFilter = LinearFilter;
                                 material.map.anisotropy = 1;
                             }
 
@@ -251,12 +235,12 @@ export class CharacterCreator {
 
                 // Position und Skalierung anpassen
                 this.characterModel.scale.set(1, 1, 1);
-                this.characterModel.position.set(0, 0.8, 0); // Modell höher positionieren
+                this.characterModel.position.set(0, 0.8, 0);
 
                 // Berechne Bounding Box für automatische Positionierung
-                const box = new THREE.Box3().setFromObject(this.characterModel);
-                const center = box.getCenter(new THREE.Vector3());
-                const size = box.getSize(new THREE.Vector3());
+                const box = new Box3().setFromObject(this.characterModel);
+                const center = box.getCenter(new Vector3());
+                const size = box.getSize(new Vector3());
 
                 // Zentriere das Modell basierend auf seiner tatsächlichen Größe
                 this.characterModel.position.y = -center.y + size.y / 2 + 0.8;
@@ -267,18 +251,17 @@ export class CharacterCreator {
                 if (gltf.animations.length > 0) {
                     console.log('Verfügbare Animationen:', gltf.animations.map(a => a.name));
                     
-                    this.mixer = new THREE.AnimationMixer(this.characterModel);
+                    this.mixer = new AnimationMixer(this.characterModel);
                     
-                    // Spiele die erste Animation ab, da es sich um die dedizierte Spiegelansicht-Animation handelt
+                    // Spiele die erste Animation ab
                     const action = this.mixer.clipAction(gltf.animations[0]);
                     action.clampWhenFinished = true;
-                    action.setLoop(THREE.LoopRepeat, Infinity);
+                    action.setLoop(LoopRepeat, Infinity);
                     action.play();
                     this.currentAction = action;
                     console.log('Spiegelansicht-Animation gestartet:', gltf.animations[0].name);
 
-                    // Entferne die spezielle Rotation für weibliche Charaktere, 
-                    // da die neue Animation bereits korrekt ausgerichtet ist
+                    // Entferne die spezielle Rotation für weibliche Charaktere
                     if (this.selectedGender === 'female') {
                         this.characterModel.rotation.y = 0;
                     }
