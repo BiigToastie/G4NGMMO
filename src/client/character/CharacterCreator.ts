@@ -23,6 +23,7 @@ import { MaleCharacter } from './models/MaleCharacter';
 import { FemaleCharacter } from './models/FemaleCharacter';
 
 export class CharacterCreator {
+    private static instance: CharacterCreator | null = null;
     private scene: Scene;
     private camera: PerspectiveCamera;
     private renderer: WebGLRenderer;
@@ -35,9 +36,19 @@ export class CharacterCreator {
     private currentCharacter: BaseCharacter | null = null;
     private selectedGender: 'male' | 'female' = 'male';
     private isLoading: boolean = false;
+    private canvas: HTMLCanvasElement;
 
-    constructor() {
+    private constructor() {
         console.log('CharacterCreator wird initialisiert...');
+        
+        // Canvas erstellen
+        this.canvas = document.createElement('canvas');
+        this.canvas.style.position = 'fixed';
+        this.canvas.style.top = '0';
+        this.canvas.style.left = '0';
+        this.canvas.style.width = '100%';
+        this.canvas.style.height = '100%';
+        document.body.insertBefore(this.canvas, document.body.firstChild);
         
         // Scene Setup
         this.scene = new Scene();
@@ -45,6 +56,7 @@ export class CharacterCreator {
         
         this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.renderer = new WebGLRenderer({ 
+            canvas: this.canvas,
             antialias: true,
             alpha: true
         });
@@ -84,6 +96,13 @@ export class CharacterCreator {
             this.hideLoadingOverlay();
             this.showErrorMessage('Fehler beim Laden der Ressourcen');
         });
+    }
+
+    public static getInstance(): CharacterCreator {
+        if (!CharacterCreator.instance) {
+            CharacterCreator.instance = new CharacterCreator();
+        }
+        return CharacterCreator.instance;
     }
 
     private setupLoadingManager(): void {
@@ -365,5 +384,16 @@ export class CharacterCreator {
                 }
             }
         });
+
+        // Entferne Canvas
+        if (this.canvas && this.canvas.parentNode) {
+            this.canvas.parentNode.removeChild(this.canvas);
+        }
+
+        // Entferne Event-Listener
+        window.removeEventListener('resize', this.onWindowResize.bind(this));
+
+        // Setze Singleton-Instanz zurück
+        CharacterCreator.instance = null;
     }
 } 
