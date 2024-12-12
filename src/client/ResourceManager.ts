@@ -1,5 +1,6 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { TextureLoader, LoadingManager } from 'three';
+import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader';
 
 interface Resource {
     path: string;
@@ -107,7 +108,8 @@ export class ResourceManager {
                                 console.log(`${resource.key} - ${Math.round(percentComplete)}% geladen`);
                             }
                         },
-                        (error: Error) => {
+                        (err: unknown) => {
+                            const error = err instanceof Error ? err : new Error(String(err));
                             console.error(`Fehler beim Laden von ${resource.key}:`, error);
                             reject(error);
                         }
@@ -128,7 +130,8 @@ export class ResourceManager {
                                 console.log(`${resource.key} - ${Math.round(percentComplete)}% geladen`);
                             }
                         },
-                        (error: Error) => {
+                        (err: unknown) => {
+                            const error = err instanceof Error ? err : new Error(String(err));
                             console.error(`Fehler beim Laden von ${resource.key}:`, error);
                             reject(error);
                         }
@@ -147,6 +150,15 @@ export class ResourceManager {
             return null;
         }
         return this.resources.get(key);
+    }
+
+    public getModel(path: string): GLTF | null {
+        const key = this.resourceQueue.find(r => r.path === path)?.key;
+        if (!key) {
+            console.warn(`Kein Model mit Pfad gefunden: ${path}`);
+            return null;
+        }
+        return this.getResource(key) as GLTF;
     }
 
     public isResourceLoaded(key: string): boolean {

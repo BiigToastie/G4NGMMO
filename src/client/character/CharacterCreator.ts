@@ -191,145 +191,38 @@ export class CharacterCreator {
         };
     }
 
-    private async loadCharacterModel(): Promise<void> {
-        const modelPath = this.selectedGender === 'male' 
-            ? '/models/male_all/Animation_Mirror_Viewing_withSkin.glb' 
-            : '/models/female_all/Animation_Mirror_Viewing_withSkin.glb';
-        
-        console.log('=== Starte Charaktermodell-Laden ===');
-        console.log('Details:', {
-            geschlecht: this.selectedGender,
-            pfad: modelPath,
-            existingModel: !!this.characterModel,
-            absoluterPfad: window.location.origin + modelPath
-        });
-        
-        // Zeige Lade-Overlay
-        const loadingOverlay = document.getElementById('loading-overlay');
-        if (loadingOverlay) loadingOverlay.style.display = 'flex';
-        
+    private async loadCharacterModel(gender: 'male' | 'female'): Promise<void> {
         try {
-            // Prüfe ob die Datei existiert
-            try {
-                const response = await fetch(modelPath);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                console.log('Modelldatei existiert und ist zugänglich');
-            } catch (error) {
-                console.error('Fehler beim Prüfen der Modelldatei:', error);
-                throw new Error(`Modelldatei nicht gefunden: ${modelPath}`);
+            const modelPath = gender === 'male' 
+                ? '/models/male_all/Animation_Mirror_Viewing_withSkin.glb'
+                : '/models/female_all/Animation_Mirror_Viewing_withSkin.glb';
+
+            const modelKey = gender === 'male' ? 'maleCharacter' : 'femaleCharacter';
+            const gltf = this.resourceManager.getResource(modelKey);
+
+            if (!gltf) {
+                throw new Error(`Model nicht gefunden: ${modelPath}`);
             }
 
-            // Entferne zuerst das alte Modell und seine Animationen
-            if (this.characterModel) {
-                console.log('Entferne altes Modell');
-                if (this.mixer) {
-                    this.mixer.stopAllAction();
-                    this.mixer.uncacheRoot(this.characterModel);
-                }
-                this.scene.remove(this.characterModel);
-                this.characterModel = null;
-                this.mixer = null;
-                this.currentAction = null;
+            // Entferne das alte Modell, falls vorhanden
+            if (this.currentCharacter) {
+                this.scene.remove(this.currentCharacter.getModel()!);
+                this.currentCharacter.dispose();
             }
 
-            console.log('Lade neues Modell von:', modelPath);
-            const gltf = await ResourceManager.getInstance().getModel(modelPath);
-            console.log('Modell-Daten:', {
-                vorhanden: !!gltf,
-                szeneVorhanden: !!gltf?.scene,
-                animationen: gltf?.animations?.length || 0,
-                szeneKinder: gltf?.scene?.children?.length || 0
-            });
-
-            if (!gltf || !gltf.scene) {
-                throw new Error('Geladenes Modell ist ungültig');
-            }
-
-            this.characterModel = gltf.scene.clone();
-            console.log('Modell geklont:', {
-                vorhanden: !!this.characterModel,
-                kinderAnzahl: this.characterModel?.children?.length || 0
-            });
+            // Erstelle den neuen Charakter
+            this.currentCharacter = new BaseCharacter(this.gltfLoader);
             
-            if (this.characterModel) {
-                console.log('Konfiguriere Modell');
-                
-                // Optimiere Materialien und Texturen
-                let meshCount = 0;
-                this.characterModel.traverse((child: Object3D) => {
-                    if (child instanceof Mesh) {
-                        meshCount++;
-                        child.castShadow = true;
-                        child.receiveShadow = true;
+            // Füge das neue Modell zur Szene hinzu
+            const model = gltf.scene;
+            this.scene.add(model);
 
-                        if (child.material) {
-                            const material = child.material as MeshStandardMaterial;
-                            if (material.map) {
-                                material.map.minFilter = LinearFilter;
-                                material.map.magFilter = LinearFilter;
-                                material.map.anisotropy = 1;
-                            }
-                            material.envMapIntensity = 0;
-                            material.needsUpdate = true;
-                        }
-                    }
-                });
-                console.log(`Gefundene Meshes: ${meshCount}`);
+            // Zentriere die Kamera auf das neue Modell
+            this.centerCameraOnCharacter();
 
-                // Angepasste Position und Skalierung
-                this.characterModel.scale.set(1, 1, 1);
-                this.characterModel.position.set(0, 0, 0); // Starte von Basis
-
-                // Berechne Bounding Box für automatische Positionierung
-                const box = new Box3().setFromObject(this.characterModel);
-                const center = box.getCenter(new Vector3());
-                const size = box.getSize(new Vector3());
-                console.log('Modell-Dimensionen:', {
-                    größe: size,
-                    zentrum: center
-                });
-
-                // Zentriere das Modell vertikal und horizontal
-                this.characterModel.position.y = -center.y + 1.7; // Positioniere auf Augenhöhe
-                this.characterModel.position.x = -center.x; // Horizontal zentrieren
-                this.characterModel.position.z = -center.z; // In die Tiefe zentrieren
-
-                // Füge das Modell zur Szene hinzu
-                this.scene.add(this.characterModel);
-                console.log('Modell zur Szene hinzugefügt');
-
-                // Animation Setup
-                if (gltf.animations && gltf.animations.length > 0) {
-                    console.log('Verfügbare Animationen:', gltf.animations.map((a: { name: string }) => a.name));
-                    
-                    this.mixer = new AnimationMixer(this.characterModel);
-                    const action = this.mixer.clipAction(gltf.animations[0]);
-                    action.clampWhenFinished = true;
-                    action.setLoop(LoopRepeat, Infinity);
-                    action.play();
-                    this.currentAction = action;
-                    console.log('Animation gestartet:', gltf.animations[0].name);
-                } else {
-                    console.warn('Keine Animationen im Modell gefunden');
-                }
-
-                // Geschlechtsspezifische Anpassungen
-                if (this.selectedGender === 'male') {
-                    console.log('Männliche Modellanpassungen');
-                    this.characterModel.rotation.y = Math.PI; // Drehe um 180 Grad
-                }
-
-                // Verstecke Lade-Overlay
-                if (loadingOverlay) loadingOverlay.style.display = 'none';
-            } else {
-                throw new Error('Charaktermodell konnte nicht erstellt werden');
-            }
+            console.log(`${gender}-Charakter erfolgreich geladen`);
         } catch (error) {
-            console.error('Fehler beim Laden des Modells:', error);
-            // Verstecke Lade-Overlay auch im Fehlerfall
-            if (loadingOverlay) loadingOverlay.style.display = 'none';
+            console.error('Fehler beim Laden des Charaktermodells:', error);
             throw error;
         }
     }
