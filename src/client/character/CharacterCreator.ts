@@ -183,13 +183,31 @@ export class CharacterCreator {
             ? '/models/male_all/Animation_Mirror_Viewing_withSkin.glb' 
             : '/models/female_all/Animation_Mirror_Viewing_withSkin.glb';
         
-        console.log('Lade Charaktermodell:', {
+        console.log('=== Starte Charaktermodell-Laden ===');
+        console.log('Details:', {
             geschlecht: this.selectedGender,
             pfad: modelPath,
-            existingModel: !!this.characterModel
+            existingModel: !!this.characterModel,
+            absoluterPfad: window.location.origin + modelPath
         });
         
+        // Zeige Lade-Overlay
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) loadingOverlay.style.display = 'flex';
+        
         try {
+            // Prüfe ob die Datei existiert
+            try {
+                const response = await fetch(modelPath);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                console.log('Modelldatei existiert und ist zugänglich');
+            } catch (error) {
+                console.error('Fehler beim Prüfen der Modelldatei:', error);
+                throw new Error(`Modelldatei nicht gefunden: ${modelPath}`);
+            }
+
             // Entferne zuerst das alte Modell und seine Animationen
             if (this.characterModel) {
                 console.log('Entferne altes Modell');
@@ -205,21 +223,31 @@ export class CharacterCreator {
 
             console.log('Lade neues Modell von:', modelPath);
             const gltf = await ResourceManager.getInstance().getModel(modelPath);
-            console.log('Modell geladen:', gltf);
+            console.log('Modell-Daten:', {
+                vorhanden: !!gltf,
+                szeneVorhanden: !!gltf?.scene,
+                animationen: gltf?.animations?.length || 0,
+                szeneKinder: gltf?.scene?.children?.length || 0
+            });
 
             if (!gltf || !gltf.scene) {
                 throw new Error('Geladenes Modell ist ungültig');
             }
 
             this.characterModel = gltf.scene.clone();
-            console.log('Modell geklont:', this.characterModel);
+            console.log('Modell geklont:', {
+                vorhanden: !!this.characterModel,
+                kinderAnzahl: this.characterModel?.children?.length || 0
+            });
             
             if (this.characterModel) {
                 console.log('Konfiguriere Modell');
                 
                 // Optimiere Materialien und Texturen
+                let meshCount = 0;
                 this.characterModel.traverse((child) => {
                     if (child instanceof Mesh) {
+                        meshCount++;
                         child.castShadow = true;
                         child.receiveShadow = true;
 
@@ -235,6 +263,7 @@ export class CharacterCreator {
                         }
                     }
                 });
+                console.log(`Gefundene Meshes: ${meshCount}`);
 
                 // Position und Skalierung anpassen
                 this.characterModel.scale.set(1, 1, 1);
@@ -244,6 +273,10 @@ export class CharacterCreator {
                 const box = new Box3().setFromObject(this.characterModel);
                 const center = box.getCenter(new Vector3());
                 const size = box.getSize(new Vector3());
+                console.log('Modell-Dimensionen:', {
+                    größe: size,
+                    zentrum: center
+                });
 
                 // Zentriere das Modell
                 this.characterModel.position.y = -center.y + size.y / 2 + 0.8;
@@ -272,11 +305,16 @@ export class CharacterCreator {
                     console.log('Männliche Modellanpassungen');
                     this.characterModel.rotation.y = Math.PI; // Drehe um 180 Grad
                 }
+
+                // Verstecke Lade-Overlay
+                if (loadingOverlay) loadingOverlay.style.display = 'none';
             } else {
                 throw new Error('Charaktermodell konnte nicht erstellt werden');
             }
         } catch (error) {
             console.error('Fehler beim Laden des Modells:', error);
+            // Verstecke Lade-Overlay auch im Fehlerfall
+            if (loadingOverlay) loadingOverlay.style.display = 'none';
             throw error;
         }
     }
