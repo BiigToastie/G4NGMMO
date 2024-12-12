@@ -18,11 +18,12 @@ import {
     MeshStandardMaterial,
     PCFSoftShadowMap,
     LinearFilter,
-    LoopRepeat
+    LoopRepeat,
+    Object3D
 } from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import WebApp from '@twa-dev/sdk';
 import { ResourceManager } from '../ResourceManager';
 
@@ -34,7 +35,7 @@ interface CharacterData {
 
 interface TelegramUser {
     first_name: string;
-    id: string | number;
+    id: string;
 }
 
 interface TelegramInitData {
@@ -257,7 +258,7 @@ export class CharacterCreator {
                 
                 // Optimiere Materialien und Texturen
                 let meshCount = 0;
-                this.characterModel.traverse((child: THREE.Object3D) => {
+                this.characterModel.traverse((child: Object3D) => {
                     if (child instanceof Mesh) {
                         meshCount++;
                         child.castShadow = true;
@@ -301,7 +302,7 @@ export class CharacterCreator {
 
                 // Animation Setup
                 if (gltf.animations && gltf.animations.length > 0) {
-                    console.log('Verfügbare Animationen:', gltf.animations.map(a => a.name));
+                    console.log('Verfügbare Animationen:', gltf.animations.map((a: { name: string }) => a.name));
                     
                     this.mixer = new AnimationMixer(this.characterModel);
                     const action = this.mixer.clipAction(gltf.animations[0]);

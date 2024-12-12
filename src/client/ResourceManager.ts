@@ -22,6 +22,12 @@ interface LoaderCallbacks {
     onError?: (url: string) => void;
 }
 
+interface LoaderProgress extends ProgressEvent {
+    lengthComputable: boolean;
+    loaded: number;
+    total: number;
+}
+
 export class ResourceManager {
     private static instance: ResourceManager;
     private loadingManager: LoadingManager;
@@ -168,7 +174,7 @@ export class ResourceManager {
                         console.log(`Modell erfolgreich geladen: ${path}`);
                         resolve(result);
                     },
-                    (progress: ProgressEvent) => {
+                    (progress: LoaderProgress) => {
                         const percent = (progress.loaded / progress.total * 100).toFixed(2);
                         console.log(`Ladefortschritt für ${path}: ${percent}%`);
                     },
