@@ -6,7 +6,7 @@ module.exports = {
         main: './src/client/index.ts'
     },
     output: {
-        filename: 'bundle.js',
+        filename: '[name].bundle.js',
         path: path.resolve(__dirname, 'public/dist'),
         clean: true
     },
@@ -34,7 +34,7 @@ module.exports = {
                         comments: false,
                     },
                     compress: {
-                        drop_console: true,
+                        drop_console: false,
                         drop_debugger: true
                     }
                 },
@@ -66,10 +66,16 @@ module.exports = {
             }
         }
     },
-    mode: 'production',
+    mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
     performance: {
         maxEntrypointSize: 512000,
         maxAssetSize: 512000,
         hints: 'warning'
+    },
+    stats: {
+        colors: true,
+        modules: true,
+        reasons: true,
+        errorDetails: true
     }
 }; 
