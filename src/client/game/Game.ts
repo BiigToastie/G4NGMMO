@@ -9,6 +9,7 @@ export class Game {
     private controls: OrbitControls;
     private players: Map<string, THREE.Object3D>;
     private terrain: THREE.Mesh;
+    private loader: GLTFLoader;
 
     constructor(container: HTMLElement) {
         // Initialisiere Three.js-Komponenten
@@ -16,10 +17,12 @@ export class Game {
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.players = new Map();
+        this.loader = new GLTFLoader();
 
         // Renderer-Setup
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.renderer.shadowMap.enabled = true;
         container.appendChild(this.renderer.domElement);
 
         // Kamera-Setup
@@ -32,6 +35,7 @@ export class Game {
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
         directionalLight.position.set(0, 10, 0);
+        directionalLight.castShadow = true;
         this.scene.add(ambientLight, directionalLight);
 
         // Erstelle Terrain
@@ -55,6 +59,7 @@ export class Game {
         });
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
 
         // Erstelle Begrenzungswände
         const wallHeight = 5;
@@ -66,20 +71,28 @@ export class Game {
         // Norden
         const northWall = new THREE.Mesh(wallGeometry, wallMaterial);
         northWall.position.set(0, wallHeight/2, -50);
+        northWall.castShadow = true;
+        northWall.receiveShadow = true;
         
         // Süden
         const southWall = new THREE.Mesh(wallGeometry, wallMaterial);
         southWall.position.set(0, wallHeight/2, 50);
+        southWall.castShadow = true;
+        southWall.receiveShadow = true;
         
         // Osten
         const eastWall = new THREE.Mesh(wallGeometry, wallMaterial);
         eastWall.rotation.y = Math.PI / 2;
         eastWall.position.set(50, wallHeight/2, 0);
+        eastWall.castShadow = true;
+        eastWall.receiveShadow = true;
         
         // Westen
         const westWall = new THREE.Mesh(wallGeometry, wallMaterial);
         westWall.rotation.y = Math.PI / 2;
         westWall.position.set(-50, wallHeight/2, 0);
+        westWall.castShadow = true;
+        westWall.receiveShadow = true;
 
         walls.add(northWall, southWall, eastWall, westWall);
 
@@ -89,14 +102,26 @@ export class Game {
     }
 
     public spawnPlayer(userId: string, position: THREE.Vector3): void {
-        const loader = new GLTFLoader();
+        console.log('Lade Spielermodell...');
         // Lade das Spielermodell
-        loader.load('/models/character.glb', (gltf) => {
-            const player = gltf.scene;
-            player.position.copy(position);
-            this.scene.add(player);
-            this.players.set(userId, player);
-        });
+        this.loader.load(
+            '/models/male_all/Animation_Mirror_Viewing_withSkin.glb',
+            (gltf) => {
+                console.log('Spielermodell geladen');
+                const player = gltf.scene;
+                player.position.copy(position);
+                player.castShadow = true;
+                player.receiveShadow = true;
+                this.scene.add(player);
+                this.players.set(userId, player);
+            },
+            (progress) => {
+                console.log('Ladefortschritt:', (progress.loaded / progress.total * 100) + '%');
+            },
+            (error) => {
+                console.error('Fehler beim Laden des Spielermodells:', error);
+            }
+        );
     }
 
     public updatePlayerPosition(userId: string, position: THREE.Vector3): void {

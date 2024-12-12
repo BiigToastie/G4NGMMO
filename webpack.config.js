@@ -25,6 +25,13 @@ module.exports = {
                     }
                 ],
                 exclude: /node_modules/
+            },
+            {
+                test: /\.(glb|gltf)$/,
+                type: 'asset/resource',
+                generator: {
+                    filename: 'models/[name][ext]'
+                }
             }
         ]
     },
@@ -81,6 +88,10 @@ module.exports = {
                 { 
                     from: 'src/client/assets/icons',
                     to: 'icons'
+                },
+                {
+                    from: 'public/models',
+                    to: 'models'
                 }
             ]
         })
