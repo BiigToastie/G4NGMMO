@@ -93,13 +93,13 @@ class Game {
 
     private setupUIEvents(): void {
         // Geschlechterauswahl
-        document.querySelectorAll('.selection-button[data-gender]').forEach(button => {
+        document.querySelectorAll<HTMLButtonElement>('.selection-button[data-gender]').forEach(button => {
             button.addEventListener('click', (e) => {
-                const target = e.currentTarget as HTMLElement;
+                const target = e.currentTarget as HTMLButtonElement;
                 const gender = target.dataset.gender as 'male' | 'female';
                 
                 // Update UI
-                document.querySelectorAll('.selection-button[data-gender]').forEach(btn => {
+                document.querySelectorAll<HTMLButtonElement>('.selection-button[data-gender]').forEach(btn => {
                     btn.classList.remove('selected');
                 });
                 target.classList.add('selected');
@@ -112,13 +112,13 @@ class Game {
         });
 
         // Klassenauswahl
-        document.querySelectorAll('.selection-button[data-class]').forEach(button => {
+        document.querySelectorAll<HTMLButtonElement>('.selection-button[data-class]').forEach(button => {
             button.addEventListener('click', (e) => {
-                const target = e.currentTarget as HTMLElement;
+                const target = e.currentTarget as HTMLButtonElement;
                 const characterClass = target.dataset.class;
                 
                 // Update UI
-                document.querySelectorAll('.selection-button[data-class]').forEach(btn => {
+                document.querySelectorAll<HTMLButtonElement>('.selection-button[data-class]').forEach(btn => {
                     btn.classList.remove('selected');
                 });
                 target.classList.add('selected');
@@ -130,14 +130,14 @@ class Game {
         });
 
         // Bestätigungsbutton
-        const confirmButton = document.getElementById('confirm-button');
+        const confirmButton = document.getElementById('confirm-button') as HTMLButtonElement;
         if (confirmButton) {
             confirmButton.addEventListener('click', () => this.createCharacter());
         }
     }
 
     private updateConfirmButton(): void {
-        const confirmButton = document.getElementById('confirm-button');
+        const confirmButton = document.getElementById('confirm-button') as HTMLButtonElement;
         if (confirmButton) {
             confirmButton.disabled = !this.selectedClass;
         }
