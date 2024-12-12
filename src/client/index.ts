@@ -34,9 +34,11 @@ class Game {
                 this.characterCreator = null;
             }
 
-            // Erstelle neue Instanz
-            this.characterCreator = new CharacterCreator();
+            // Erstelle und initialisiere neue Instanz
+            this.characterCreator = CharacterCreator.getInstance();
+            await this.characterCreator.initialize();
             
+            console.log('Spiel erfolgreich initialisiert');
         } catch (error) {
             console.error('Fehler bei der Initialisierung:', error);
             this.showErrorMessage('Fehler bei der Initialisierung des Spiels');
@@ -52,6 +54,14 @@ class Game {
                 errorElement.style.display = 'none';
             }, 5000);
         }
+    }
+
+    public dispose(): void {
+        if (this.characterCreator) {
+            this.characterCreator.dispose();
+            this.characterCreator = null;
+        }
+        Game.instance = null;
     }
 }
 

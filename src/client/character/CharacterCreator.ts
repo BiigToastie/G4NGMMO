@@ -37,6 +37,7 @@ export class CharacterCreator {
     private selectedGender: 'male' | 'female' = 'male';
     private isLoading: boolean = false;
     private canvas: HTMLCanvasElement;
+    private initialized: boolean = false;
 
     private constructor() {
         console.log('CharacterCreator wird initialisiert...');
@@ -48,7 +49,6 @@ export class CharacterCreator {
         this.canvas.style.left = '0';
         this.canvas.style.width = '100%';
         this.canvas.style.height = '100%';
-        document.body.insertBefore(this.canvas, document.body.firstChild);
         
         // Scene Setup
         this.scene = new Scene();
@@ -68,6 +68,29 @@ export class CharacterCreator {
         
         this.gltfLoader = new GLTFLoader(this.loadingManager);
         this.resourceManager = ResourceManager.getInstance();
+    }
+
+    public static getInstance(): CharacterCreator {
+        if (!CharacterCreator.instance) {
+            CharacterCreator.instance = new CharacterCreator();
+        }
+        return CharacterCreator.instance;
+    }
+
+    public async initialize(): Promise<void> {
+        if (this.initialized) {
+            console.log('CharacterCreator bereits initialisiert');
+            return;
+        }
+
+        console.log('Initialisiere CharacterCreator...');
+
+        // Füge Canvas zum Container hinzu
+        const container = document.getElementById('canvas-container');
+        if (!container) {
+            throw new Error('Canvas-Container nicht gefunden');
+        }
+        container.appendChild(this.canvas);
 
         this.setupScene();
         this.setupLights();
@@ -78,31 +101,23 @@ export class CharacterCreator {
         // Zeige Lade-Overlay
         this.showLoadingOverlay();
 
-        // Lade initial die Ressourcen
-        console.log('Starte Ressourcen-Preload...');
-        this.resourceManager.preloadAllResources().then(() => {
+        try {
+            // Lade initial die Ressourcen
+            console.log('Starte Ressourcen-Preload...');
+            await this.resourceManager.preloadAllResources();
+            
             console.log('Ressourcen erfolgreich geladen, lade initiales Modell...');
-            // Initial Load after resources are preloaded
-            this.loadCharacterModel(this.selectedGender).then(() => {
-                console.log('Initiales Modell geladen');
-                this.hideLoadingOverlay();
-            }).catch(error => {
-                console.error('Fehler beim Laden des initialen Modells:', error);
-                this.hideLoadingOverlay();
-                this.showErrorMessage('Fehler beim Laden des Charaktermodells');
-            });
-        }).catch(error => {
-            console.error('Fehler beim Laden der Ressourcen:', error);
+            await this.loadCharacterModel(this.selectedGender);
+            
+            console.log('Initiales Modell geladen');
+            this.initialized = true;
+        } catch (error) {
+            console.error('Fehler bei der Initialisierung:', error);
+            this.showErrorMessage('Fehler bei der Initialisierung');
+            throw error;
+        } finally {
             this.hideLoadingOverlay();
-            this.showErrorMessage('Fehler beim Laden der Ressourcen');
-        });
-    }
-
-    public static getInstance(): CharacterCreator {
-        if (!CharacterCreator.instance) {
-            CharacterCreator.instance = new CharacterCreator();
         }
-        return CharacterCreator.instance;
     }
 
     private setupLoadingManager(): void {
@@ -364,11 +379,21 @@ export class CharacterCreator {
 
     public dispose(): void {
         console.log('Räume CharacterCreator auf...');
+        
+        // Stoppe Animation Loop
+        if (this.renderer) {
+            this.renderer.setAnimationLoop(null);
+        }
+
         // Cleanup
         if (this.currentCharacter) {
             this.currentCharacter.dispose();
         }
-        this.renderer.dispose();
+
+        if (this.renderer) {
+            this.renderer.dispose();
+        }
+
         this.scene.traverse((object: Object3D) => {
             if (object instanceof Mesh) {
                 if (object.geometry) {
@@ -393,7 +418,8 @@ export class CharacterCreator {
         // Entferne Event-Listener
         window.removeEventListener('resize', this.onWindowResize.bind(this));
 
-        // Setze Singleton-Instanz zurück
+        // Setze Instanz-Variablen zurück
+        this.initialized = false;
         CharacterCreator.instance = null;
     }
 } 
