@@ -3,20 +3,18 @@ import WebApp from '@twa-dev/sdk';
 
 async function waitForScripts(): Promise<void> {
     return new Promise((resolve) => {
-        const maxAttempts = 50; // 5 Sekunden maximal
+        const maxAttempts = 100; // 10 Sekunden maximal
         let attempts = 0;
 
         const checkScripts = () => {
-            console.log('Prüfe Skript-Status:', window.scriptsLoaded);
-            
             if (window.scriptsLoaded.vendors && 
                 window.scriptsLoaded.three && 
                 window.scriptsLoaded.main) {
-                console.log('Alle Skripte geladen');
+                console.log('Alle Skripte erfolgreich geladen');
                 resolve();
             } else if (attempts >= maxAttempts) {
-                console.warn('Timeout beim Laden der Skripte');
-                resolve(); // Trotzdem fortfahren
+                console.warn('Timeout beim Laden der Skripte, versuche trotzdem fortzufahren');
+                resolve();
             } else {
                 attempts++;
                 setTimeout(checkScripts, 100);
@@ -32,6 +30,7 @@ async function initializeApp() {
         
         // Warte auf das Laden der Skripte
         await waitForScripts();
+        console.log('Skripte geladen, fahre fort mit der Initialisierung');
         
         // Aktualisiere Ladetext
         const loadingProgress = document.getElementById('loading-progress');
@@ -45,7 +44,7 @@ async function initializeApp() {
             WebApp.ready();
             WebApp.expand();
         } else {
-            console.warn('Telegram WebApp nicht initialisiert');
+            console.warn('Telegram WebApp nicht initialisiert, fahre trotzdem fort');
         }
 
         if (loadingProgress) {
@@ -62,48 +61,53 @@ async function initializeApp() {
             loadingProgress.textContent = 'Prüfe Charakterstatus...';
         }
 
-        if (path === '/game') {
-            console.log('Prüfe existierenden Charakter...');
-            // Wenn bereits ein Charakter existiert, starte das Spiel
-            const exists = await gameManager.checkExistingCharacter();
-            console.log('Charakter existiert:', exists);
-            
-            if (exists) {
-                if (loadingProgress) {
-                    loadingProgress.textContent = 'Starte Spiel...';
+        try {
+            if (path === '/game') {
+                console.log('Prüfe existierenden Charakter...');
+                // Wenn bereits ein Charakter existiert, starte das Spiel
+                const exists = await gameManager.checkExistingCharacter();
+                console.log('Charakter existiert:', exists);
+                
+                if (exists) {
+                    if (loadingProgress) {
+                        loadingProgress.textContent = 'Starte Spiel...';
+                    }
+                    console.log('Starte Spiel...');
+                    await gameManager.startGame();
+                } else {
+                    console.log('Kein Charakter gefunden, Weiterleitung zur Charaktererstellung...');
+                    window.location.href = '/';
+                    return;
                 }
-                console.log('Starte Spiel...');
-                await gameManager.startGame();
             } else {
-                console.log('Kein Charakter gefunden, Weiterleitung zur Charaktererstellung...');
-                window.location.href = '/';
-                return;
+                // Standardmäßig zur Charaktererstellung
+                if (loadingProgress) {
+                    loadingProgress.textContent = 'Lade Charaktererstellung...';
+                }
+                console.log('Starte Charaktererstellung...');
+                await gameManager.startCharacterCreation();
             }
-        } else {
-            // Standardmäßig zur Charaktererstellung
-            if (loadingProgress) {
-                loadingProgress.textContent = 'Lade Charaktererstellung...';
+
+            // Event Listener für das Beenden des Spiels
+            window.addEventListener('beforeunload', () => {
+                gameManager.dispose();
+            });
+
+            console.log('Initialisierung abgeschlossen');
+            // Verstecke den Ladebildschirm
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                loadingScreen.style.display = 'none';
             }
-            console.log('Starte Charaktererstellung...');
-            await gameManager.startCharacterCreation();
-        }
-
-        // Event Listener für das Beenden des Spiels
-        window.addEventListener('beforeunload', () => {
-            gameManager.dispose();
-        });
-
-        console.log('Initialisierung abgeschlossen');
-        // Verstecke den Ladebildschirm
-        const loadingScreen = document.getElementById('loading-screen');
-        if (loadingScreen) {
-            loadingScreen.style.display = 'none';
+        } catch (error) {
+            console.error('Fehler während der Spielinitialisierung:', error);
+            throw error;
         }
     } catch (error) {
         console.error('Fehler bei der Initialisierung:', error);
         const errorMessage = document.getElementById('error-message');
         if (errorMessage) {
-            errorMessage.textContent = 'Fehler beim Laden des Spiels. Bitte versuche es erneut.';
+            errorMessage.textContent = error instanceof Error ? error.message : 'Unbekannter Fehler beim Laden des Spiels';
             errorMessage.style.display = 'block';
         }
     }

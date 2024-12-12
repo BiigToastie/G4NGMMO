@@ -106,6 +106,9 @@
 
         // Funktion zum Überprüfen, ob alle Skripte geladen sind
         function checkAllScriptsLoaded() {
+            const loadedCount = Object.values(window.scriptsLoaded).filter(loaded => loaded).length;
+            const totalCount = Object.keys(window.scriptsLoaded).length;
+            console.log(`Skripte geladen: ${loadedCount}/${totalCount}`);
             return Object.values(window.scriptsLoaded).every(loaded => loaded);
         }
 
@@ -118,20 +121,57 @@
                 progress.textContent = `Lade Spiel... (${loadedCount}/${totalCount})`;
             }
         }
-    </script>
 
-    <!-- Lade Skripte in der richtigen Reihenfolge -->
-    <script src="dist/vendors.bundle.js" 
-            onload="window.scriptsLoaded.vendors = true; console.log('Vendors geladen'); updateLoadingProgress();"
-            onerror="console.error('Fehler beim Laden von vendors.bundle.js'); document.getElementById('error-message').textContent = 'Fehler beim Laden der Ressourcen'; document.getElementById('error-message').style.display = 'block';"
-            async></script>
-    <script src="dist/threejs.bundle.js" 
-            onload="window.scriptsLoaded.three = true; console.log('Three.js geladen'); updateLoadingProgress();"
-            onerror="console.error('Fehler beim Laden von threejs.bundle.js'); document.getElementById('error-message').textContent = 'Fehler beim Laden der 3D-Engine'; document.getElementById('error-message').style.display = 'block';"
-            async></script>
-    <script src="dist/main.bundle.js" 
-            onload="window.scriptsLoaded.main = true; console.log('Main geladen'); updateLoadingProgress();"
-            onerror="console.error('Fehler beim Laden von main.bundle.js'); document.getElementById('error-message').textContent = 'Fehler beim Laden der Spiellogik'; document.getElementById('error-message').style.display = 'block';"
-            async></script>
+        // Funktion zum Laden der Skripte in der richtigen Reihenfolge
+        function loadScripts() {
+            // Lade vendors.bundle.js
+            const vendorsScript = document.createElement('script');
+            vendorsScript.src = 'dist/vendors.bundle.js';
+            vendorsScript.onload = () => {
+                window.scriptsLoaded.vendors = true;
+                console.log('Vendors geladen');
+                updateLoadingProgress();
+                
+                // Lade threejs.bundle.js nach vendors
+                const threeScript = document.createElement('script');
+                threeScript.src = 'dist/threejs.bundle.js';
+                threeScript.onload = () => {
+                    window.scriptsLoaded.three = true;
+                    console.log('Three.js geladen');
+                    updateLoadingProgress();
+                    
+                    // Lade main.bundle.js nach threejs
+                    const mainScript = document.createElement('script');
+                    mainScript.src = 'dist/main.bundle.js';
+                    mainScript.onload = () => {
+                        window.scriptsLoaded.main = true;
+                        console.log('Main geladen');
+                        updateLoadingProgress();
+                    };
+                    mainScript.onerror = () => {
+                        console.error('Fehler beim Laden von main.bundle.js');
+                        document.getElementById('error-message').textContent = 'Fehler beim Laden der Spiellogik';
+                        document.getElementById('error-message').style.display = 'block';
+                    };
+                    document.body.appendChild(mainScript);
+                };
+                threeScript.onerror = () => {
+                    console.error('Fehler beim Laden von threejs.bundle.js');
+                    document.getElementById('error-message').textContent = 'Fehler beim Laden der 3D-Engine';
+                    document.getElementById('error-message').style.display = 'block';
+                };
+                document.body.appendChild(threeScript);
+            };
+            vendorsScript.onerror = () => {
+                console.error('Fehler beim Laden von vendors.bundle.js');
+                document.getElementById('error-message').textContent = 'Fehler beim Laden der Ressourcen';
+                document.getElementById('error-message').style.display = 'block';
+            };
+            document.body.appendChild(vendorsScript);
+        }
+
+        // Starte das Laden der Skripte
+        loadScripts();
+    </script>
 </body>
 </html> 
