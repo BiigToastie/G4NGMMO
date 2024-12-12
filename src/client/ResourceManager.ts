@@ -70,58 +70,110 @@ export class ResourceManager {
     private setupLoadingManager(): void {
         this.loadingManager.onStart = (url, itemsLoaded, itemsTotal) => {
             console.log(`Started loading: ${url} (${itemsLoaded}/${itemsTotal})`);
+            // Zeige Lade-Overlay
+            const loadingOverlay = document.getElementById('loading-overlay');
+            if (loadingOverlay) loadingOverlay.style.display = 'flex';
         };
 
         this.loadingManager.onLoad = () => {
             console.log('Loading complete!');
+            // Verstecke Lade-Overlay
+            const loadingOverlay = document.getElementById('loading-overlay');
+            if (loadingOverlay) loadingOverlay.style.display = 'none';
         };
 
         this.loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
             const progress = (itemsLoaded / itemsTotal * 100).toFixed(2);
             console.log(`Loading file: ${url} - ${progress}% loaded`);
+            
+            // Update Lade-Fortschritt
+            const progressBar = document.getElementById('loading-progress');
+            if (progressBar) {
+                progressBar.style.width = `${progress}%`;
+            }
         };
 
         this.loadingManager.onError = (url) => {
             console.error('Error loading:', url);
+            // Zeige Fehler im UI
+            const loadingText = document.getElementById('loading-text');
+            if (loadingText) {
+                loadingText.textContent = `Fehler beim Laden von: ${url}`;
+                loadingText.style.color = 'red';
+            }
         };
     }
 
     public async preloadAllResources(): Promise<void> {
         console.log('Starting resource preload...');
+        console.log('Ressourcenliste:', this.resourceList);
         
         try {
             // Lade alle männlichen Modelle
+            console.log('Lade männliche Modelle...');
             for (const modelPath of this.resourceList.models.male) {
-                await this.loadModel(modelPath);
+                console.log(`Lade männliches Modell: ${modelPath}`);
+                const model = await this.loadModel(modelPath);
+                console.log(`Männliches Modell geladen: ${modelPath}`, model);
             }
 
             // Lade alle weiblichen Modelle
+            console.log('Lade weibliche Modelle...');
             for (const modelPath of this.resourceList.models.female) {
-                await this.loadModel(modelPath);
+                console.log(`Lade weibliches Modell: ${modelPath}`);
+                const model = await this.loadModel(modelPath);
+                console.log(`Weibliches Modell geladen: ${modelPath}`, model);
             }
 
             // Lade alle Texturen
+            console.log('Lade Texturen...');
             for (const texturePath of this.resourceList.textures) {
-                await this.loadTexture(texturePath);
+                console.log(`Lade Textur: ${texturePath}`);
+                const texture = await this.loadTexture(texturePath);
+                console.log(`Textur geladen: ${texturePath}`, texture);
             }
 
+            console.log('Cache-Status nach dem Laden:');
+            console.log('Model Cache:', this.modelCache);
+            console.log('Texture Cache:', this.textureCache);
+
             console.log('All resources preloaded successfully!');
-            this.saveToIndexedDB();
+            await this.saveToIndexedDB();
         } catch (error) {
             console.error('Error during resource preload:', error);
+            throw error; // Wichtig: Fehler weiterleiten
         }
     }
 
     private async loadModel(path: string): Promise<GLTF> {
+        console.log(`loadModel aufgerufen für: ${path}`);
+        
         if (this.modelCache.has(path)) {
+            console.log(`Modell aus Cache geladen: ${path}`);
             return this.modelCache.get(path)!;
         }
 
         try {
+            console.log(`Lade Modell von Server: ${path}`);
             const gltf = await new Promise<GLTF>((resolve, reject) => {
-                this.gltfLoader.load(path, resolve, undefined, reject);
+                this.gltfLoader.load(
+                    path,
+                    (result) => {
+                        console.log(`Modell erfolgreich geladen: ${path}`);
+                        resolve(result);
+                    },
+                    (progress) => {
+                        const percent = (progress.loaded / progress.total * 100).toFixed(2);
+                        console.log(`Ladefortschritt für ${path}: ${percent}%`);
+                    },
+                    (error) => {
+                        console.error(`Fehler beim Laden von ${path}:`, error);
+                        reject(error);
+                    }
+                );
             });
             
+            console.log(`Füge Modell zum Cache hinzu: ${path}`);
             this.modelCache.set(path, gltf);
             return gltf;
         } catch (error) {
