@@ -156,7 +156,9 @@ export class CharacterCreator {
 
     private loadCharacterModel(): void {
         const loader = new GLTFLoader(this.loadingManager);
-        const modelPath = this.selectedGender === 'male' ? '/models/male_character.glb' : '/models/female_character.glb';
+        const modelPath = this.selectedGender === 'male' 
+            ? '/models/male_character.glb' 
+            : '/models/female_all/Animation_Mirror_Viewing_withSkin.glb';
         
         // Zeitmessung Start
         const startTime = performance.now();
@@ -231,45 +233,18 @@ export class CharacterCreator {
                     
                     this.mixer = new THREE.AnimationMixer(this.characterModel);
                     
-                    // Suche nach der Spiegelansicht-Animation
-                    const idleAnimation = gltf.animations.find(anim => 
-                        anim.name.toLowerCase().includes('spiegelansicht') ||
-                        anim.name.toLowerCase().includes('idle') ||
-                        anim.name.toLowerCase().includes('mirror') ||
-                        anim.name.toLowerCase().includes('spiegel')
-                    );
+                    // Spiele die erste Animation ab, da es sich um die dedizierte Spiegelansicht-Animation handelt
+                    const action = this.mixer.clipAction(gltf.animations[0]);
+                    action.clampWhenFinished = true;
+                    action.setLoop(THREE.LoopRepeat, Infinity);
+                    action.play();
+                    this.currentAction = action;
+                    console.log('Spiegelansicht-Animation gestartet:', gltf.animations[0].name);
 
-                    if (idleAnimation) {
-                        const action = this.mixer.clipAction(idleAnimation);
-                        // Optimiere Animation-Performance
-                        action.clampWhenFinished = true;
-                        action.setLoop(THREE.LoopRepeat, Infinity);
-                        action.play();
-                        this.currentAction = action;
-                        console.log('Spiegelansicht-Animation gestartet:', idleAnimation.name);
-                    } else {
-                        const defaultAction = this.mixer.clipAction(gltf.animations[0]);
-                        defaultAction.clampWhenFinished = true;
-                        defaultAction.setLoop(THREE.LoopRepeat, Infinity);
-                        defaultAction.play();
-                        this.currentAction = defaultAction;
-                        console.log('Standard-Animation gestartet:', gltf.animations[0].name);
-                    }
-
-                    // Optimierte Rotation für weibliches Modell
+                    // Entferne die spezielle Rotation für weibliche Charaktere, 
+                    // da die neue Animation bereits korrekt ausgerichtet ist
                     if (this.selectedGender === 'female') {
-                        this.characterModel.rotation.y = Math.PI;
-                        const rotateSpeed = 0.002;
-                        let lastTime = 0;
-                        const animate = (time: number) => {
-                            if (this.characterModel) {
-                                const delta = time - lastTime;
-                                this.characterModel.rotation.y += rotateSpeed * (delta / 16.67); // Normalisiert auf 60 FPS
-                                lastTime = time;
-                                requestAnimationFrame(animate);
-                            }
-                        };
-                        requestAnimationFrame(animate);
+                        this.characterModel.rotation.y = 0;
                     }
                 } else {
                     console.warn('Keine Animationen im Modell gefunden');
