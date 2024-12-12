@@ -1,14 +1,22 @@
 # Dependencies
 node_modules/
+package-lock.json
 
 # Build
 dist/
 build/
+public/dist/
 
 # Environment
 .env
 .env.local
 .env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
 
 # Logs
 logs/
@@ -17,22 +25,19 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# OS
+# System Files
 .DS_Store
 Thumbs.db
 
-# Debug
-.debug/
-
-# Test coverage
+# Testing
 coverage/
+.nyc_output/
 
 # Temporary files
-*.tmp
-*.temp 
+*.swp
+*.swo
+*~
+
+# Debug
+.debug/
+debug.log 

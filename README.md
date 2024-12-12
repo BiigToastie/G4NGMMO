@@ -1,21 +1,13 @@
 # MMO Telegram Game
 
-Ein komplexes 3D-MMO-Spiel, das vollständig über einen Telegram Bot läuft.
+Ein 3D-MMO-Spiel, das in Telegram Web Apps läuft.
 
 ## Features
 
-- Charaktererstellung und -anpassung
-- Gilden-System
-- Quest-System
-- Kampf-System
-- Wirtschafts-System
-- Vollständige Telegram-Integration
-
-## Voraussetzungen
-
-- Node.js >= 16.0.0
-- MongoDB
-- Telegram Bot Token (von @BotFather)
+- 3D-Charaktererstellung mit verschiedenen Klassen und Geschlechtern
+- Persistente Spielwelt mit MongoDB-Speicherung
+- Nahtlose Integration in Telegram
+- Echtzeit-Multiplayer-Funktionalität
 
 ## Installation
 
@@ -31,47 +23,51 @@ npm install
 \`\`\`
 
 3. Umgebungsvariablen konfigurieren:
-\`\`\`bash
-cp .env.example .env
-# Bearbeiten Sie .env mit Ihren Werten
-\`\`\`
+- Kopiere `.env.example` zu `.env`
+- Füge deine Konfigurationswerte ein:
+  - TELEGRAM_BOT_TOKEN
+  - MONGODB_URI
+  - Andere erforderliche Variablen
 
 4. Entwicklungsserver starten:
 \`\`\`bash
 npm run dev
 \`\`\`
 
-## Deployment
+5. Für Produktion bauen:
+\`\`\`bash
+npm run build
+\`\`\`
 
-### Render Deployment
+## Technologie-Stack
 
-1. Erstellen Sie ein neues Web Service auf render.com
-2. Verbinden Sie Ihr GitHub Repository
-3. Konfigurieren Sie die Umgebungsvariablen
-4. Build Command: \`npm install && npm run build\`
-5. Start Command: \`npm start\`
-
-## Entwicklung
-
-- \`npm run dev\`: Startet den Entwicklungsserver
-- \`npm run build\`: Erstellt die Production-Build
-- \`npm start\`: Startet den Production-Server
-- \`npm test\`: Führt Tests aus
+- TypeScript
+- Three.js für 3D-Rendering
+- Express.js Backend
+- MongoDB Datenbank
+- Telegram Bot API
+- Webpack für Bundling
 
 ## Projektstruktur
 
 \`\`\`
 src/
-├── index.ts           # Haupteinstiegspunkt
-├── systems/          # Spielsysteme
-│   ├── combat.ts     # Kampfsystem
-│   ├── economy.ts    # Wirtschaftssystem
-│   ├── guild.ts      # Gildensystem
-│   └── quests.ts     # Questsystem
-└── telegram/         # Telegram-Integration
-    └── integration.ts
+├── client/           # Frontend-Code
+│   ├── character/    # Charaktersystem
+│   ├── game/        # Hauptspiel-Logic
+│   └── assets/      # Statische Assets
+├── server/          # Backend-Code
+│   ├── routes/      # API-Routen
+│   └── models/      # Datenmodelle
+└── types/           # TypeScript Definitionen
 \`\`\`
+
+## Entwicklung
+
+- \`npm run dev\` - Startet den Entwicklungsserver
+- \`npm run build\` - Baut das Projekt für Produktion
+- \`npm start\` - Startet den Produktionsserver
 
 ## Lizenz
 
-MIT 
+[Ihre Lizenz hier] 
