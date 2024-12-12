@@ -143,6 +143,9 @@ export class CharacterCreator {
         loader.load(modelPath, (gltf) => {
             if (this.characterModel) {
                 this.scene.remove(this.characterModel);
+                if (this.mixer) {
+                    this.mixer.stopAllAction();
+                }
             }
 
             this.characterModel = gltf.scene;
@@ -161,17 +164,30 @@ export class CharacterCreator {
 
                 // Animation Setup
                 if (gltf.animations.length > 0) {
+                    console.log('Verfügbare Animationen:', gltf.animations.map(a => a.name));
+                    
                     this.mixer = new THREE.AnimationMixer(this.characterModel);
                     
-                    // Spiegelansicht-Animation (Index 0 ist die Idle-Animation)
-                    const idleAction = this.mixer.clipAction(gltf.animations[0]);
-                    idleAction.play();
-                    this.currentAction = idleAction;
+                    // Suche nach der Spiegelansicht-Animation
+                    const idleAnimation = gltf.animations.find(anim => 
+                        anim.name.toLowerCase().includes('spiegelansicht') ||
+                        anim.name.toLowerCase().includes('idle') ||
+                        anim.name.toLowerCase().includes('mirror')
+                    );
 
-                    // Optional: Füge eine automatische Rotation hinzu
+                    if (idleAnimation) {
+                        const action = this.mixer.clipAction(idleAnimation);
+                        action.play();
+                        this.currentAction = action;
+                        console.log('Spiegelansicht-Animation gestartet:', idleAnimation.name);
+                    } else {
+                        console.warn('Keine passende Animation gefunden');
+                    }
+
+                    // Automatische Rotation für weibliches Modell
                     if (this.selectedGender === 'female') {
                         this.characterModel.rotation.y = Math.PI; // Drehe um 180 Grad
-                        const rotateSpeed = 0.005;
+                        const rotateSpeed = 0.002; // Langsamere Rotation
                         const animate = () => {
                             if (this.characterModel) {
                                 this.characterModel.rotation.y += rotateSpeed;
@@ -182,6 +198,10 @@ export class CharacterCreator {
                     }
                 }
             }
+        }, 
+        undefined,
+        (error) => {
+            console.error('Fehler beim Laden des Modells:', error);
         });
     }
 
