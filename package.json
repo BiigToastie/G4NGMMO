@@ -5,9 +5,9 @@
   "main": "dist/index.js",
   "scripts": {
     "start": "node dist/index.js",
-    "build": "npm install && tsc && webpack --mode production",
-    "dev": "tsc && webpack --mode development",
-    "postinstall": "npm install --save-dev @types/dotenv"
+    "build": "webpack --mode production",
+    "dev": "webpack serve --mode development",
+    "postinstall": "webpack-cli -g"
   },
   "dependencies": {
     "@twa-dev/sdk": "^6.9.0",
@@ -29,7 +29,9 @@
   },
   "devDependencies": {
     "@types/dotenv": "^8.2.0",
-    "terser-webpack-plugin": "^5.3.9"
+    "copy-webpack-plugin": "^11.0.0",
+    "terser-webpack-plugin": "^5.3.9",
+    "webpack-dev-server": "^4.15.1"
   },
   "engines": {
     "node": ">=16.0.0"

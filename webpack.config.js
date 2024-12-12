@@ -1,5 +1,6 @@
 const path = require('path');
 const TerserPlugin = require('terser-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
     entry: {
@@ -74,6 +75,16 @@ module.exports = {
             }
         }
     },
+    plugins: [
+        new CopyWebpackPlugin({
+            patterns: [
+                { 
+                    from: 'src/client/assets/icons',
+                    to: 'icons'
+                }
+            ]
+        })
+    ],
     mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
     performance: {
         maxEntrypointSize: 512000,
@@ -85,5 +96,14 @@ module.exports = {
         modules: true,
         reasons: true,
         errorDetails: true
+    },
+    devServer: {
+        static: {
+            directory: path.join(__dirname, 'public'),
+        },
+        compress: true,
+        port: 3000,
+        hot: true,
+        open: true
     }
 }; 
