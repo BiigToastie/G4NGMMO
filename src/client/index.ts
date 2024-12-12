@@ -1,16 +1,22 @@
 import { GameManager } from './GameManager';
 import WebApp from '@twa-dev/sdk';
 
+function logDebug(message: string, ...args: any[]) {
+    console.log(`[DEBUG] ${message}`, ...args);
+}
+
 async function waitForScripts(): Promise<void> {
     return new Promise((resolve) => {
         const maxAttempts = 100; // 10 Sekunden maximal
         let attempts = 0;
 
         const checkScripts = () => {
+            logDebug('Skript-Status:', window.scriptsLoaded);
+            
             if (window.scriptsLoaded.vendors && 
                 window.scriptsLoaded.three && 
                 window.scriptsLoaded.main) {
-                console.log('Alle Skripte erfolgreich geladen');
+                logDebug('Alle Skripte erfolgreich geladen');
                 resolve();
             } else if (attempts >= maxAttempts) {
                 console.warn('Timeout beim Laden der Skripte, versuche trotzdem fortzufahren');
@@ -26,11 +32,14 @@ async function waitForScripts(): Promise<void> {
 
 async function initializeApp() {
     try {
-        console.log('Starte Initialisierung...');
+        logDebug('Starte Initialisierung...');
+
+        // Prüfe ob die Skripte bereits geladen wurden
+        logDebug('Prüfe initiale Skript-Status:', window.scriptsLoaded);
         
         // Warte auf das Laden der Skripte
         await waitForScripts();
-        console.log('Skripte geladen, fahre fort mit der Initialisierung');
+        logDebug('Skripte geladen, fahre fort mit der Initialisierung');
         
         // Aktualisiere Ladetext
         const loadingProgress = document.getElementById('loading-progress');
@@ -39,8 +48,9 @@ async function initializeApp() {
         }
 
         // Telegram WebApp Initialisierung
+        logDebug('WebApp Status:', { isInitialized: WebApp.isInitialized });
         if (WebApp.isInitialized) {
-            console.log('Telegram WebApp initialisiert');
+            logDebug('Telegram WebApp initialisiert');
             WebApp.ready();
             WebApp.expand();
         } else {
@@ -52,10 +62,10 @@ async function initializeApp() {
         }
 
         // Initialisiere das Spiel basierend auf der Route
-        console.log('Erstelle GameManager...');
+        logDebug('Erstelle GameManager...');
         const gameManager = GameManager.getInstance();
         const path = window.location.pathname;
-        console.log('Aktueller Pfad:', path);
+        logDebug('Aktueller Pfad:', path);
 
         if (loadingProgress) {
             loadingProgress.textContent = 'Prüfe Charakterstatus...';
@@ -63,19 +73,19 @@ async function initializeApp() {
 
         try {
             if (path === '/game') {
-                console.log('Prüfe existierenden Charakter...');
+                logDebug('Prüfe existierenden Charakter...');
                 // Wenn bereits ein Charakter existiert, starte das Spiel
                 const exists = await gameManager.checkExistingCharacter();
-                console.log('Charakter existiert:', exists);
+                logDebug('Charakter existiert:', exists);
                 
                 if (exists) {
                     if (loadingProgress) {
                         loadingProgress.textContent = 'Starte Spiel...';
                     }
-                    console.log('Starte Spiel...');
+                    logDebug('Starte Spiel...');
                     await gameManager.startGame();
                 } else {
-                    console.log('Kein Charakter gefunden, Weiterleitung zur Charaktererstellung...');
+                    logDebug('Kein Charakter gefunden, Weiterleitung zur Charaktererstellung...');
                     window.location.href = '/';
                     return;
                 }
@@ -84,7 +94,7 @@ async function initializeApp() {
                 if (loadingProgress) {
                     loadingProgress.textContent = 'Lade Charaktererstellung...';
                 }
-                console.log('Starte Charaktererstellung...');
+                logDebug('Starte Charaktererstellung...');
                 await gameManager.startCharacterCreation();
             }
 
@@ -93,7 +103,7 @@ async function initializeApp() {
                 gameManager.dispose();
             });
 
-            console.log('Initialisierung abgeschlossen');
+            logDebug('Initialisierung abgeschlossen');
             // Verstecke den Ladebildschirm
             const loadingScreen = document.getElementById('loading-screen');
             if (loadingScreen) {
@@ -126,7 +136,11 @@ declare global {
 
 // Starte die Initialisierung wenn das DOM geladen ist
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeApp);
+    document.addEventListener('DOMContentLoaded', () => {
+        logDebug('DOM geladen, starte Initialisierung');
+        initializeApp();
+    });
 } else {
+    logDebug('DOM bereits geladen, starte Initialisierung');
     initializeApp();
 } 
