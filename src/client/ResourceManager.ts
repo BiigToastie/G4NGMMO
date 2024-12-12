@@ -4,8 +4,8 @@ import {
     Texture,
     Cache
 } from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader';
 
 interface ResourceList {
@@ -14,6 +14,12 @@ interface ResourceList {
         female: string[];
     };
     textures: string[];
+}
+
+interface LoaderCallbacks {
+    onStart?: (url: string, itemsLoaded: number, itemsTotal: number) => void;
+    onProgress?: (url: string, itemsLoaded: number, itemsTotal: number) => void;
+    onError?: (url: string) => void;
 }
 
 export class ResourceManager {
@@ -68,7 +74,7 @@ export class ResourceManager {
     }
 
     private setupLoadingManager(): void {
-        this.loadingManager.onStart = (url, itemsLoaded, itemsTotal) => {
+        this.loadingManager.onStart = (url: string, itemsLoaded: number, itemsTotal: number) => {
             console.log(`Started loading: ${url} (${itemsLoaded}/${itemsTotal})`);
             // Zeige Lade-Overlay
             const loadingOverlay = document.getElementById('loading-overlay');
@@ -82,7 +88,7 @@ export class ResourceManager {
             if (loadingOverlay) loadingOverlay.style.display = 'none';
         };
 
-        this.loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
+        this.loadingManager.onProgress = (url: string, itemsLoaded: number, itemsTotal: number) => {
             const progress = (itemsLoaded / itemsTotal * 100).toFixed(2);
             console.log(`Loading file: ${url} - ${progress}% loaded`);
             
@@ -93,7 +99,7 @@ export class ResourceManager {
             }
         };
 
-        this.loadingManager.onError = (url) => {
+        this.loadingManager.onError = (url: string) => {
             console.error('Error loading:', url);
             // Zeige Fehler im UI
             const loadingText = document.getElementById('loading-text');
@@ -141,7 +147,7 @@ export class ResourceManager {
             await this.saveToIndexedDB();
         } catch (error) {
             console.error('Error during resource preload:', error);
-            throw error; // Wichtig: Fehler weiterleiten
+            throw error;
         }
     }
 
@@ -158,15 +164,15 @@ export class ResourceManager {
             const gltf = await new Promise<GLTF>((resolve, reject) => {
                 this.gltfLoader.load(
                     path,
-                    (result) => {
+                    (result: GLTF) => {
                         console.log(`Modell erfolgreich geladen: ${path}`);
                         resolve(result);
                     },
-                    (progress) => {
+                    (progress: ProgressEvent) => {
                         const percent = (progress.loaded / progress.total * 100).toFixed(2);
                         console.log(`Ladefortschritt für ${path}: ${percent}%`);
                     },
-                    (error) => {
+                    (error: ErrorEvent) => {
                         console.error(`Fehler beim Laden von ${path}:`, error);
                         reject(error);
                     }
@@ -180,6 +186,14 @@ export class ResourceManager {
             console.error(`Error loading model ${path}:`, error);
             throw error;
         }
+    }
+
+    public async getModel(path: string): Promise<GLTF> {
+        return this.loadModel(path);
+    }
+
+    public async getTexture(path: string): Promise<Texture> {
+        return this.loadTexture(path);
     }
 
     private async loadTexture(path: string): Promise<Texture> {
@@ -200,22 +214,14 @@ export class ResourceManager {
         }
     }
 
-    public async getModel(path: string): Promise<GLTF> {
-        return this.loadModel(path);
-    }
-
-    public async getTexture(path: string): Promise<Texture> {
-        return this.loadTexture(path);
-    }
-
-    private saveToIndexedDB(): void {
+    private async saveToIndexedDB(): Promise<void> {
         const request = indexedDB.open('GameResources', 1);
 
-        request.onerror = (event) => {
+        request.onerror = (event: Event) => {
             console.error('IndexedDB error:', event);
         };
 
-        request.onupgradeneeded = (event) => {
+        request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
             const db = (event.target as IDBOpenDBRequest).result;
             if (!db.objectStoreNames.contains('models')) {
                 db.createObjectStore('models');
@@ -225,7 +231,7 @@ export class ResourceManager {
             }
         };
 
-        request.onsuccess = (event) => {
+        request.onsuccess = (event: Event) => {
             const db = (event.target as IDBOpenDBRequest).result;
             const transaction = db.transaction(['models', 'textures'], 'readwrite');
             
@@ -245,45 +251,5 @@ export class ResourceManager {
                 console.log('Resources saved to IndexedDB');
             };
         };
-    }
-
-    private async loadFromIndexedDB(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open('GameResources', 1);
-
-            request.onerror = () => reject(new Error('Failed to open IndexedDB'));
-
-            request.onsuccess = (event) => {
-                const db = (event.target as IDBOpenDBRequest).result;
-                const transaction = db.transaction(['models', 'textures'], 'readonly');
-                
-                // Lade Modelle
-                const modelStore = transaction.objectStore('models');
-                modelStore.getAll().onsuccess = (event) => {
-                    const models = (event.target as IDBRequest).result;
-                    models.forEach((model: any, index: number) => {
-                        // Konvertiere JSON zurück zu THREE.js Objekten
-                        // und füge sie zum Cache hinzu
-                        // this.modelCache.set(paths[index], model);
-                    });
-                };
-
-                // Lade Texturen
-                const textureStore = transaction.objectStore('textures');
-                textureStore.getAll().onsuccess = (event) => {
-                    const textures = (event.target as IDBRequest).result;
-                    textures.forEach((texture: any, index: number) => {
-                        // Konvertiere JSON zurück zu THREE.js Texturen
-                        // und füge sie zum Cache hinzu
-                        // this.textureCache.set(paths[index], texture);
-                    });
-                };
-
-                transaction.oncomplete = () => {
-                    console.log('Resources loaded from IndexedDB');
-                    resolve();
-                };
-            };
-        });
     }
 } 

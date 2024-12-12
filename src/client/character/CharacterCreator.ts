@@ -32,6 +32,15 @@ interface CharacterData {
     class: 'warrior' | 'mage' | 'ranger' | 'rogue';
 }
 
+interface TelegramUser {
+    first_name: string;
+    id: string | number;
+}
+
+interface TelegramInitData {
+    user?: TelegramUser;
+}
+
 export class CharacterCreator {
     private scene: Scene;
     private camera: PerspectiveCamera;
@@ -121,9 +130,12 @@ export class CharacterCreator {
         
         // Extrahiere den Spielernamen und userId aus den Telegram-Daten
         const initData = WebApp.initData || '';
-        const initDataObj = Object.fromEntries(new URLSearchParams(initData));
-        this.playerName = initDataObj.user ? JSON.parse(initDataObj.user).first_name : 'Unbekannter Held';
-        const userId = initDataObj.user ? JSON.parse(initDataObj.user).id : null;
+        const params = new URLSearchParams(initData);
+        const userStr = params.get('user');
+        const user: TelegramUser | null = userStr ? JSON.parse(userStr) : null;
+        
+        this.playerName = user?.first_name || 'Unbekannter Held';
+        const userId = user?.id || null;
 
         // Initialisiere die Willkommensansicht
         this.setupWelcomeScreen(userId);
@@ -164,7 +176,7 @@ export class CharacterCreator {
     private setupLoadingManager(): void {
         const loadingOverlay = document.getElementById('loading-overlay');
         
-        this.loadingManager.onStart = () => {
+        this.loadingManager.onStart = (url: string, itemsLoaded: number, itemsTotal: number) => {
             if (loadingOverlay) loadingOverlay.style.display = 'flex';
         };
 
@@ -172,7 +184,7 @@ export class CharacterCreator {
             if (loadingOverlay) loadingOverlay.style.display = 'none';
         };
 
-        this.loadingManager.onError = (url) => {
+        this.loadingManager.onError = (url: string) => {
             console.error('Error loading:', url);
             if (loadingOverlay) loadingOverlay.style.display = 'none';
         };
@@ -245,7 +257,7 @@ export class CharacterCreator {
                 
                 // Optimiere Materialien und Texturen
                 let meshCount = 0;
-                this.characterModel.traverse((child) => {
+                this.characterModel.traverse((child: THREE.Object3D) => {
                     if (child instanceof Mesh) {
                         meshCount++;
                         child.castShadow = true;
