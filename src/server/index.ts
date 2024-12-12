@@ -3,7 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { connectToDatabase } from './mongodb';
 import characterRoutes from './routes/character';
-import { port, env } from './config';
+import { port, env, telegramToken } from './config';
 import BotHandler from './bot/TelegramBot';
 
 const app = express();
@@ -19,9 +19,14 @@ app.use(express.static('public'));
 app.use('/api/character', characterRoutes);
 
 // Webhook für Telegram Bot
-app.post('/webhook', (req, res) => {
-    const bot = BotHandler.getInstance().getBot();
-    bot.handleUpdate(req.body, res);
+app.post(`/bot${telegramToken}`, async (req, res) => {
+    try {
+        await BotHandler.getInstance().processUpdate(req.body);
+        res.sendStatus(200);
+    } catch (error) {
+        console.error('Fehler beim Verarbeiten des Webhook-Updates:', error);
+        res.sendStatus(500);
+    }
 });
 
 // Alle anderen Routen zur index.html umleiten (für Client-Side Routing)
@@ -45,6 +50,7 @@ async function startServer() {
         // Starte Express-Server
         app.listen(port, () => {
             console.log(`Server läuft auf Port ${port}`);
+            console.log(`Webhook URL: ${process.env.BASE_URL}/bot${telegramToken}`);
         });
     } catch (error) {
         console.error('Serverfehler:', error);
