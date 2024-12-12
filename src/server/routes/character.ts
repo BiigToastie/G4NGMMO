@@ -93,4 +93,69 @@ router.put('/position', async (req, res) => {
     }
 });
 
+router.get('/debug/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const character = await Character.findOne({ userId });
+        
+        if (!character) {
+            return res.status(404).json({ 
+                error: 'Kein Charakter gefunden',
+                userId 
+            });
+        }
+
+        res.json({ 
+            character,
+            exists: true,
+            dataComplete: Boolean(
+                character.userId && 
+                character.name && 
+                character.class && 
+                character.gender
+            )
+        });
+    } catch (error) {
+        console.error('Debug-Fehler:', error);
+        res.status(500).json({ 
+            error: 'Serverfehler beim Debug',
+            message: error instanceof Error ? error.message : 'Unbekannter Fehler'
+        });
+    }
+});
+
+// Temporärer Debug-Endpunkt
+router.get('/debug/all/characters', async (_req, res) => {
+    try {
+        const characters = await Character.find({});
+        
+        const debugInfo = {
+            totalCharacters: characters.length,
+            characters: characters.map(char => ({
+                userId: char.userId,
+                name: char.name,
+                class: char.class,
+                gender: char.gender,
+                hasPosition: Boolean(char.position),
+                hasRotation: Boolean(char.rotation),
+                lastLogin: char.lastLogin,
+                isComplete: Boolean(
+                    char.userId && 
+                    char.name && 
+                    char.class && 
+                    char.gender
+                )
+            }))
+        };
+
+        res.json(debugInfo);
+    } catch (error) {
+        console.error('Debug-Fehler:', error);
+        res.status(500).json({ 
+            error: 'Serverfehler beim Debug',
+            message: error instanceof Error ? error.message : 'Unbekannter Fehler'
+        });
+    }
+});
+
 export default router; 
