@@ -105,7 +105,7 @@ router.get('/debug/:userId', async (req, res) => {
             });
         }
 
-        res.json({ 
+        return res.json({ 
             character,
             exists: true,
             dataComplete: Boolean(
@@ -117,7 +117,7 @@ router.get('/debug/:userId', async (req, res) => {
         });
     } catch (error) {
         console.error('Debug-Fehler:', error);
-        res.status(500).json({ 
+        return res.status(500).json({ 
             error: 'Serverfehler beim Debug',
             message: error instanceof Error ? error.message : 'Unbekannter Fehler'
         });
@@ -148,10 +148,10 @@ router.get('/debug/all/characters', async (_req, res) => {
             }))
         };
 
-        res.json(debugInfo);
+        return res.json(debugInfo);
     } catch (error) {
         console.error('Debug-Fehler:', error);
-        res.status(500).json({ 
+        return res.status(500).json({ 
             error: 'Serverfehler beim Debug',
             message: error instanceof Error ? error.message : 'Unbekannter Fehler'
         });
