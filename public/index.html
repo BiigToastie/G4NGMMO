@@ -3,13 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MMO Character Creator</title>
+    <title>G4NG MMO - Charaktererstellung</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             font-family: Arial, sans-serif;
             background-color: #1a1a1a;
+            color: white;
+        }
+
+        #app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        #player-info {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #player-name {
+            font-size: 24px;
+            margin: 10px 0;
+            color: #4CAF50;
+        }
+
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            background-color: #2a2a2a;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
         }
 
         #loading-overlay {
@@ -43,40 +74,55 @@
             transition: width 0.3s ease-in-out;
         }
 
-        #character-selection {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+        .selection-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .selection-group {
             display: flex;
             gap: 10px;
-            z-index: 100;
-            padding: 10px;
-            background-color: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
+            justify-content: center;
         }
 
-        .character-button {
-            padding: 10px 20px;
-            font-size: 16px;
+        .selection-button {
+            flex: 1;
+            padding: 15px;
             border: none;
-            border-radius: 5px;
-            cursor: pointer;
+            border-radius: 8px;
             background-color: #333;
             color: white;
+            cursor: pointer;
             transition: all 0.3s ease;
+            font-size: 16px;
             min-width: 120px;
-            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
         }
 
-        .character-button:hover {
-            background-color: #555;
-            transform: scale(1.05);
+        .selection-button:hover {
+            background-color: #444;
+            transform: translateY(-2px);
         }
 
-        .character-button.selected {
+        .selection-button.selected {
             background-color: #4CAF50;
-            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .selection-button img {
+            width: 32px;
+            height: 32px;
+            margin-bottom: 5px;
+        }
+
+        .selection-button .description {
+            font-size: 12px;
+            opacity: 0.8;
+            text-align: center;
         }
 
         #error-message {
@@ -93,18 +139,81 @@
             box-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
         }
 
-        #canvas-container {
-            position: fixed;
-            top: 0;
-            left: 0;
+        #confirm-button {
+            padding: 15px 30px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
             width: 100%;
-            height: 100%;
-            z-index: 1;
+        }
+
+        #confirm-button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+
+        #confirm-button:disabled {
+            background-color: #666;
+            cursor: not-allowed;
+            transform: none;
         }
     </style>
 </head>
 <body>
-    <div id="canvas-container"></div>
+    <div id="app-container">
+        <div id="player-info">
+            <h1>Charaktererstellung</h1>
+            <div id="player-name">Lade Spielername...</div>
+        </div>
+
+        <div id="canvas-container"></div>
+
+        <div class="selection-container">
+            <div class="selection-group">
+                <button class="selection-button selected" data-gender="male">
+                    <img src="/icons/male.png" alt="Männlich">
+                    Männlich
+                </button>
+                <button class="selection-button" data-gender="female">
+                    <img src="/icons/female.png" alt="Weiblich">
+                    Weiblich
+                </button>
+            </div>
+
+            <div class="selection-group">
+                <button class="selection-button" data-class="warrior">
+                    <img src="/icons/warrior.png" alt="Krieger">
+                    Krieger
+                    <div class="description">Stark im Nahkampf mit hoher Verteidigung</div>
+                </button>
+                <button class="selection-button" data-class="mage">
+                    <img src="/icons/mage.png" alt="Magier">
+                    Magier
+                    <div class="description">Mächtige Zauber und arkanes Wissen</div>
+                </button>
+            </div>
+
+            <div class="selection-group">
+                <button class="selection-button" data-class="ranger">
+                    <img src="/icons/ranger.png" alt="Waldläufer">
+                    Waldläufer
+                    <div class="description">Geschickt mit Pfeil und Bogen</div>
+                </button>
+                <button class="selection-button" data-class="rogue">
+                    <img src="/icons/rogue.png" alt="Schurke">
+                    Schurke
+                    <div class="description">Meister der Heimlichkeit</div>
+                </button>
+            </div>
+
+            <button id="confirm-button" disabled>Charakter erstellen</button>
+        </div>
+    </div>
 
     <div id="loading-overlay">
         <h2>Lade Charaktere...</h2>
@@ -114,11 +223,6 @@
     </div>
 
     <div id="error-message"></div>
-
-    <div id="character-selection">
-        <button id="male-button" class="character-button selected">Männlich</button>
-        <button id="female-button" class="character-button">Weiblich</button>
-    </div>
 
     <script src="dist/vendors.bundle.js"></script>
     <script src="dist/threejs.bundle.js"></script>
