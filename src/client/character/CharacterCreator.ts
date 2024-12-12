@@ -8,18 +8,24 @@ import {
     AnimationMixer,
     Clock,
     Object3D,
-    LoadingManager
+    LoadingManager,
+    Mesh,
+    Material,
+    Box3,
+    Group
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { ResourceManager } from '../ResourceManager';
 import { BaseCharacter } from './models/BaseCharacter';
+import { MaleCharacter } from './models/MaleCharacter';
+import { FemaleCharacter } from './models/FemaleCharacter';
 
 export class CharacterCreator {
     private scene: Scene;
     private camera: PerspectiveCamera;
     private renderer: WebGLRenderer;
-    private controls: OrbitControls;
+    private controls!: OrbitControls;
     private clock: Clock;
     private mixer: AnimationMixer | null = null;
     private resourceManager: ResourceManager;
@@ -145,8 +151,10 @@ export class CharacterCreator {
                 this.currentCharacter.dispose();
             }
 
-            // Erstelle den neuen Charakter
-            this.currentCharacter = new BaseCharacter(this.gltfLoader);
+            // Erstelle den neuen Charakter basierend auf dem Geschlecht
+            this.currentCharacter = gender === 'male' 
+                ? new MaleCharacter(this.gltfLoader)
+                : new FemaleCharacter(this.gltfLoader);
             
             // Füge das neue Modell zur Szene hinzu
             const model = gltf.scene;
@@ -170,7 +178,7 @@ export class CharacterCreator {
         const size = new Vector3();
 
         // Berechne das Zentrum des Modells
-        const box = model.getBoundingBox();
+        const box = new Box3().setFromObject(model);
         box.getCenter(center);
         box.getSize(size);
 
@@ -202,12 +210,15 @@ export class CharacterCreator {
         this.renderer.dispose();
         this.scene.traverse((object: Object3D) => {
             if (object instanceof Mesh) {
-                object.geometry.dispose();
-                if (object.material) {
-                    if (Array.isArray(object.material)) {
-                        object.material.forEach(material => material.dispose());
+                if (object.geometry) {
+                    object.geometry.dispose();
+                }
+                if ((object as Mesh).material) {
+                    const material = (object as Mesh).material;
+                    if (Array.isArray(material)) {
+                        material.forEach((mat: Material) => mat.dispose());
                     } else {
-                        object.material.dispose();
+                        material.dispose();
                     }
                 }
             }
