@@ -183,15 +183,16 @@ export class CharacterCreator {
             ? '/models/male_all/Animation_Mirror_Viewing_withSkin.glb' 
             : '/models/female_all/Animation_Mirror_Viewing_withSkin.glb';
         
-        console.log('Lade Modell:', modelPath);
-        console.log('Aktuelles Geschlecht:', this.selectedGender);
+        console.log('Lade Charaktermodell:', {
+            geschlecht: this.selectedGender,
+            pfad: modelPath,
+            existingModel: !!this.characterModel
+        });
         
-        // Zeitmessung Start
-        const startTime = performance.now();
-
         try {
             // Entferne zuerst das alte Modell und seine Animationen
             if (this.characterModel) {
+                console.log('Entferne altes Modell');
                 if (this.mixer) {
                     this.mixer.stopAllAction();
                     this.mixer.uncacheRoot(this.characterModel);
@@ -202,17 +203,19 @@ export class CharacterCreator {
                 this.currentAction = null;
             }
 
-            // Lade das Modell aus dem ResourceManager
+            console.log('Lade neues Modell von:', modelPath);
             const gltf = await ResourceManager.getInstance().getModel(modelPath);
-            
-            // Zeitmessung Ende
-            const endTime = performance.now();
-            console.log(`Modell in ${((endTime - startTime)/1000).toFixed(2)} Sekunden geladen`);
+            console.log('Modell geladen:', gltf);
 
-            this.characterModel = gltf.scene.clone(); // Clone the cached model
+            if (!gltf || !gltf.scene) {
+                throw new Error('Geladenes Modell ist ungültig');
+            }
+
+            this.characterModel = gltf.scene.clone();
+            console.log('Modell geklont:', this.characterModel);
             
             if (this.characterModel) {
-                console.log('Modell erfolgreich geladen');
+                console.log('Konfiguriere Modell');
                 
                 // Optimiere Materialien und Texturen
                 this.characterModel.traverse((child) => {
@@ -220,18 +223,13 @@ export class CharacterCreator {
                         child.castShadow = true;
                         child.receiveShadow = true;
 
-                        // Optimiere Materialien
                         if (child.material) {
                             const material = child.material as MeshStandardMaterial;
-                            
-                            // Reduziere Texturqualität
                             if (material.map) {
                                 material.map.minFilter = LinearFilter;
                                 material.map.magFilter = LinearFilter;
                                 material.map.anisotropy = 1;
                             }
-
-                            // Deaktiviere nicht benötigte Features
                             material.envMapIntensity = 0;
                             material.needsUpdate = true;
                         }
@@ -247,7 +245,7 @@ export class CharacterCreator {
                 const center = box.getCenter(new Vector3());
                 const size = box.getSize(new Vector3());
 
-                // Zentriere das Modell basierend auf seiner tatsächlichen Größe
+                // Zentriere das Modell
                 this.characterModel.position.y = -center.y + size.y / 2 + 0.8;
 
                 // Füge das Modell zur Szene hinzu
@@ -255,12 +253,10 @@ export class CharacterCreator {
                 console.log('Modell zur Szene hinzugefügt');
 
                 // Animation Setup
-                if (gltf.animations.length > 0) {
+                if (gltf.animations && gltf.animations.length > 0) {
                     console.log('Verfügbare Animationen:', gltf.animations.map(a => a.name));
                     
                     this.mixer = new AnimationMixer(this.characterModel);
-                    
-                    // Spiele die erste Animation ab
                     const action = this.mixer.clipAction(gltf.animations[0]);
                     action.clampWhenFinished = true;
                     action.setLoop(LoopRepeat, Infinity);
@@ -270,11 +266,18 @@ export class CharacterCreator {
                 } else {
                     console.warn('Keine Animationen im Modell gefunden');
                 }
+
+                // Geschlechtsspezifische Anpassungen
+                if (this.selectedGender === 'male') {
+                    console.log('Männliche Modellanpassungen');
+                    this.characterModel.rotation.y = Math.PI; // Drehe um 180 Grad
+                }
             } else {
-                console.error('Modell konnte nicht geladen werden');
+                throw new Error('Charaktermodell konnte nicht erstellt werden');
             }
         } catch (error) {
             console.error('Fehler beim Laden des Modells:', error);
+            throw error;
         }
     }
 
@@ -283,21 +286,24 @@ export class CharacterCreator {
 
         // Gender Selection
         document.querySelectorAll('.selection-button').forEach(button => {
-            button.addEventListener('click', (e) => {
+            button.addEventListener('click', async (e) => {
                 const target = e.target as HTMLElement;
                 const gender = target.getAttribute('data-gender') as 'male' | 'female';
                 if (gender) {
-                    console.log('Geschlecht gewechselt zu:', gender);
+                    console.log('Geschlechterwechsel angefordert:', gender);
                     this.selectedGender = gender;
+                    
+                    // UI aktualisieren
                     document.querySelectorAll('.selection-button').forEach(btn => {
                         btn.classList.remove('selected');
                     });
                     target.classList.add('selected');
                     
-                    // Verzögerung hinzufügen, um sicherzustellen, dass die UI aktualisiert wurde
-                    requestAnimationFrame(() => {
-                        this.loadCharacterModel();
-                    });
+                    try {
+                        await this.loadCharacterModel();
+                    } catch (error) {
+                        console.error('Fehler beim Laden des Charaktermodells:', error);
+                    }
                 }
             });
         });
