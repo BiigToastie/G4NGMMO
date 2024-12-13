@@ -5,7 +5,137 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MMO Game</title>
     <style>
-        /* ... existing styles ... */
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background-color: #17212b;
+            color: white;
+        }
+
+        #character-selection {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .character-slots {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            width: 100%;
+            padding: 20px;
+        }
+
+        .character-slot {
+            width: 150px;
+            height: 200px;
+            border: 2px solid #30475e;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background-color: rgba(48, 71, 94, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .character-slot:hover {
+            border-color: #4a90e2;
+            background-color: rgba(74, 144, 226, 0.1);
+        }
+
+        .character-slot.selected {
+            border-color: #4a90e2;
+            background-color: rgba(74, 144, 226, 0.2);
+        }
+
+        .empty-slot-text {
+            color: #8a9aa9;
+            text-align: center;
+        }
+
+        #character-creator {
+            display: none;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        #character-preview {
+            width: 100%;
+            height: 100%;
+        }
+
+        .button-container {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4a90e2;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .action-button:disabled {
+            background-color: #30475e;
+            cursor: not-allowed;
+        }
+
+        #game-world {
+            display: none;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        #movement-controller {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 100px;
+            background-color: rgba(74, 144, 226, 0.3);
+            border-radius: 50%;
+            border: 2px solid #4a90e2;
+        }
+
+        .gender-buttons {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+
+        .gender-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #30475e;
+            color: white;
+            cursor: pointer;
+        }
+
+        .gender-button.selected {
+            background-color: #4a90e2;
+        }
     </style>
 </head>
 <body>
@@ -40,8 +170,8 @@
         <div id="movement-controller"></div>
     </div>
 
-    <script src="/dist/client/runtime.js"></script>
-    <script src="/dist/client/vendors.js"></script>
-    <script src="/dist/client/main.js"></script>
+    <script src="/runtime.0d42e4c757c582c8cfb1.js"></script>
+    <script src="/vendors.27052bde913ea61b4279.js"></script>
+    <script src="/main.3027ab57c263c72f0893.js"></script>
 </body>
 </html> 

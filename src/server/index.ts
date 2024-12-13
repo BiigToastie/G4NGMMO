@@ -26,24 +26,20 @@ const players = new Map<number, Player>();
 app.use(express.json());
 
 // Statische Dateien
-app.use(express.static(path.join(__dirname, '../client')));
-app.use('/dist', express.static(path.join(__dirname, '../../dist')));
+app.use(express.static(path.join(__dirname, '../../dist/client')));
+app.use('/assets', express.static(path.join(__dirname, '../client/assets')));
 
 // API-Routen
 app.use('/api', characterRoutes);
 
 // Client-Routen
-app.get('/', (_req, res) => {
+const sendIndexHtml = (_req: express.Request, res: express.Response) => {
     res.sendFile(path.join(__dirname, '../client/index.html'));
-});
+};
 
-app.get('/game', (_req, res) => {
-    res.sendFile(path.join(__dirname, '../client/index.html'));
-});
-
-app.get('/character', (_req, res) => {
-    res.sendFile(path.join(__dirname, '../client/index.html'));
-});
+app.get('/', sendIndexHtml);
+app.get('/game', sendIndexHtml);
+app.get('/character', sendIndexHtml);
 
 // Fallback für alle anderen Routen
 app.get('*', (_req, res) => {
@@ -107,6 +103,7 @@ async function startServer() {
         server.listen(PORT, () => {
             console.log(`Server läuft auf Port ${PORT}`);
             console.log(`Client verfügbar unter: http://localhost:${PORT}`);
+            console.log(`Statische Dateien werden von ${path.join(__dirname, '../../dist/client')} serviert`);
         });
     } catch (error) {
         console.error('Fehler beim Serverstart:', error);
