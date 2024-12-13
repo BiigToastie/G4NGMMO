@@ -61,11 +61,11 @@ export class ResourceManager {
         const resources = [
             {
                 key: 'maleCharacter',
-                path: '/dist/models/male_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: '/models/male_all/Animation_Mirror_Viewing_withSkin.glb'
             },
             {
                 key: 'femaleCharacter',
-                path: '/dist/models/female_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: '/models/female_all/Animation_Mirror_Viewing_withSkin.glb'
             }
         ];
 
@@ -88,6 +88,12 @@ export class ResourceManager {
                 this.debugLog(`Vollständiger Pfad: ${fullPath}`);
                 
                 try {
+                    // Prüfe ob die Datei existiert
+                    const response = await fetch(fullPath, { method: 'HEAD' });
+                    if (!response.ok) {
+                        throw new Error(`Datei nicht gefunden (${response.status})`);
+                    }
+                    
                     await this.loadResource(
                         resource.key, 
                         fullPath, 
