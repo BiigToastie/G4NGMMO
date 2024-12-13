@@ -58,14 +58,27 @@ export class ResourceManager {
         this.debugLog('Starte Preload aller Ressourcen...');
         this.updateUI(0, 'Initialisiere Ressourcen...');
         
+        // Teste zuerst die Verfügbarkeit der Verzeichnisse
+        try {
+            const response = await fetch('/models');
+            if (!response.ok) {
+                this.debugLog('Modell-Verzeichnis nicht erreichbar!', true);
+                throw new Error(`Modell-Verzeichnis nicht gefunden (${response.status})`);
+            }
+            this.debugLog('Modell-Verzeichnis gefunden');
+        } catch (error) {
+            this.debugLog('Fehler beim Zugriff auf Modell-Verzeichnis', true);
+            throw error;
+        }
+        
         const resources = [
             {
                 key: 'maleCharacter',
-                path: '/models/male_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: 'models/male_all/Animation_Mirror_Viewing_withSkin.glb'
             },
             {
                 key: 'femaleCharacter',
-                path: '/models/female_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: 'models/female_all/Animation_Mirror_Viewing_withSkin.glb'
             }
         ];
 
@@ -84,15 +97,18 @@ export class ResourceManager {
 
             for (const resource of resources) {
                 this.debugLog(`\nStarte Laden von Ressource: ${resource.key}`);
-                const fullPath = `${window.location.origin}${resource.path}`;
-                this.debugLog(`Vollständiger Pfad: ${fullPath}`);
+                const fullPath = resource.path;
+                this.debugLog(`Lade von Pfad: ${fullPath}`);
                 
                 try {
                     // Prüfe ob die Datei existiert
-                    const response = await fetch(fullPath, { method: 'HEAD' });
-                    if (!response.ok) {
-                        throw new Error(`Datei nicht gefunden (${response.status})`);
+                    const checkResponse = await fetch(fullPath, { method: 'HEAD' });
+                    if (!checkResponse.ok) {
+                        this.debugLog(`Datei nicht gefunden: ${fullPath}`, true);
+                        this.debugLog(`Status: ${checkResponse.status} ${checkResponse.statusText}`, true);
+                        throw new Error(`Datei nicht gefunden (${checkResponse.status})`);
                     }
+                    this.debugLog(`Datei gefunden: ${fullPath}`);
                     
                     await this.loadResource(
                         resource.key, 
@@ -139,6 +155,14 @@ export class ResourceManager {
             const errorMessage = error instanceof Error ? error.message : String(error);
             this.debugLog(`Fehler beim Laden der Ressourcen: ${errorMessage}`, true);
             this.debugLog(`Stack Trace: ${error.stack || 'Nicht verfügbar'}`, true);
+            
+            // Zeige Fehlermeldung im UI
+            const errorElement = document.getElementById('error-message');
+            if (errorElement) {
+                errorElement.textContent = `Fehler beim Laden: ${errorMessage}`;
+                errorElement.style.display = 'block';
+            }
+            
             throw error;
         }
     }
@@ -176,6 +200,7 @@ export class ResourceManager {
                 (progress) => {
                     if (progress.lengthComputable) {
                         const percent = (progress.loaded / progress.total) * 100;
+                        this.debugLog(`Ladefortschritt für ${key}: ${percent}%`);
                         onProgress?.(percent);
                     }
                 },
