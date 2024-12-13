@@ -45,7 +45,7 @@ function setupEventListeners(): void {
         try {
             maleBtn.classList.add('selected');
             femaleBtn.classList.remove('selected');
-            await characterCreator.updateCharacter('male');
+            characterCreator.setGender('male');
         } catch (error) {
             console.error('Fehler beim Laden des männlichen Charakters:', error);
             showError('Fehler beim Laden des Charakters');
@@ -56,7 +56,7 @@ function setupEventListeners(): void {
         try {
             femaleBtn.classList.add('selected');
             maleBtn.classList.remove('selected');
-            await characterCreator.updateCharacter('female');
+            characterCreator.setGender('female');
         } catch (error) {
             console.error('Fehler beim Laden des weiblichen Charakters:', error);
             showError('Fehler beim Laden des Charakters');
