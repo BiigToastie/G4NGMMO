@@ -12,8 +12,48 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Statische Dateien
-app.use(express.static('public'));
+// MIME-Types für GLB/GLTF
+express.static.mime.define({
+    'model/gltf-binary': ['glb'],
+    'model/gltf+json': ['gltf']
+});
+
+// Statische Dateien mit spezifischen Optionen
+app.use(express.static('public', {
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, path) => {
+        if (path.endsWith('.glb')) {
+            res.setHeader('Content-Type', 'model/gltf-binary');
+        }
+        if (path.endsWith('.gltf')) {
+            res.setHeader('Content-Type', 'model/gltf+json');
+        }
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+        res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+    }
+}));
+
+// Debug-Route für Modell-Verzeichnis
+app.get('/debug/models', (req, res) => {
+    const modelsPath = path.join(__dirname, '../../public/models');
+    const fs = require('fs');
+    try {
+        const files = fs.readdirSync(modelsPath, { recursive: true });
+        res.json({
+            success: true,
+            path: modelsPath,
+            files: files
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: String(error)
+        });
+    }
+});
 
 // API-Routen
 app.use('/api/character', characterRoutes);
@@ -51,6 +91,7 @@ async function startServer() {
         app.listen(port, () => {
             console.log(`Server läuft auf Port ${port}`);
             console.log(`Webhook URL: ${process.env.BASE_URL}/bot${telegramToken}`);
+            console.log(`Öffentliches Verzeichnis: ${path.resolve(__dirname, '../../public')}`);
         });
     } catch (error) {
         console.error('Serverfehler:', error);

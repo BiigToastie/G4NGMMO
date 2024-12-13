@@ -58,23 +58,18 @@ export class ResourceManager {
         this.debugLog('Starte Preload aller Ressourcen...');
         this.updateUI(0, 'Initialisiere Ressourcen...');
         
-        // Teste zuerst die Verfügbarkeit der Verzeichnisse
+        // Prüfe Verzeichnisstruktur
         try {
-            const response = await fetch('models/male_all/Animation_Mirror_Viewing_withSkin.glb', {
-                method: 'HEAD',
-                headers: {
-                    'Accept': 'application/octet-stream'
-                }
-            });
+            const response = await fetch('/debug/models');
+            const data = await response.json();
+            this.debugLog('Verfügbare Modelle:');
+            this.debugLog(JSON.stringify(data, null, 2));
             
-            if (!response.ok) {
-                this.debugLog('Test-Modell nicht erreichbar!', true);
-                this.debugLog(`Status: ${response.status} ${response.statusText}`, true);
-                throw new Error(`Test-Modell nicht gefunden (${response.status})`);
+            if (!data.success) {
+                throw new Error('Fehler beim Laden der Verzeichnisstruktur');
             }
-            this.debugLog('Test-Modell gefunden');
         } catch (error) {
-            this.debugLog('Fehler beim Zugriff auf Test-Modell', true);
+            this.debugLog('Fehler beim Prüfen der Verzeichnisstruktur', true);
             if (error instanceof Error) {
                 this.debugLog(`Fehlerdetails: ${error.message}`, true);
             }
@@ -115,20 +110,22 @@ export class ResourceManager {
                     const checkResponse = await fetch(fullPath, {
                         method: 'HEAD',
                         headers: {
-                            'Accept': 'application/octet-stream'
+                            'Accept': 'model/gltf-binary'
                         }
                     });
                     
                     if (!checkResponse.ok) {
                         this.debugLog(`Datei nicht gefunden: ${fullPath}`, true);
                         this.debugLog(`Status: ${checkResponse.status} ${checkResponse.statusText}`, true);
+                        this.debugLog(`Headers: ${JSON.stringify(Object.fromEntries(checkResponse.headers.entries()), null, 2)}`, true);
                         throw new Error(`Datei nicht gefunden (${checkResponse.status})`);
                     }
                     this.debugLog(`Datei gefunden: ${fullPath}`);
+                    this.debugLog(`Content-Type: ${checkResponse.headers.get('content-type')}`);
                     
                     // Konfiguriere GLTFLoader
                     this.loader.setRequestHeader({
-                        'Accept': 'application/octet-stream'
+                        'Accept': 'model/gltf-binary'
                     });
                     
                     await this.loadResource(
