@@ -4,195 +4,100 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MMO Telegram Game</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             margin: 0;
-            overflow: hidden;
+            padding: 0;
             font-family: Arial, sans-serif;
-            background-color: #17212b; /* Telegram Dunkel Theme */
+            background-color: #17212b;
+            color: #f5f5f5;
         }
-        #canvas-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-        #character-selection {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 20px;
-            padding: 15px;
-            background: rgba(35, 46, 60, 0.9); /* Telegram Dunkel Theme */
-            border-radius: 10px;
-            z-index: 1000;
-        }
-        .character-button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            background: #5288c1; /* Telegram Button Color */
-            color: #ffffff;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transition: background 0.3s;
-        }
-        .character-button:hover {
-            background: #6ab3f3; /* Telegram Link Color */
-        }
-        .character-button img {
-            width: 24px;
-            height: 24px;
-            filter: invert(1); /* Macht die SVGs weiß */
-        }
+
         #loading-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: #17212b; /* Telegram Dunkel Theme */
+            background-color: #17212b;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 2000;
-            color: white;
-            flex-direction: column;
+            z-index: 1000;
         }
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid #232e3c; /* Telegram Secondary BG */
-            border-top: 5px solid #5288c1; /* Telegram Button Color */
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+
         #loading-progress {
             font-size: 24px;
             margin-top: 20px;
-            font-weight: bold;
-            color: #f5f5f5; /* Telegram Text Color */
+            color: #6ab2f2;
         }
-        #error-message {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #ec3942; /* Telegram Destructive Color */
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            display: none;
-            z-index: 3000;
-            text-align: center;
-        }
+
         #debug-info {
             position: fixed;
             bottom: 10px;
             left: 10px;
-            background: rgba(35, 46, 60, 0.9); /* Telegram Secondary BG */
-            color: #f5f5f5; /* Telegram Text Color */
+            right: 10px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #f5f5f5;
             padding: 10px;
-            border-radius: 5px;
             font-family: monospace;
             font-size: 12px;
-            z-index: 3000;
-            max-width: 400px;
-            max-height: 200px;
             overflow-y: auto;
+            z-index: 1000;
+            border-radius: 5px;
+            border: 1px solid #5288c1;
         }
-        #debug-info::-webkit-scrollbar {
-            width: 8px;
+
+        #character-selection {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #232e3c;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            z-index: 900;
         }
-        #debug-info::-webkit-scrollbar-track {
-            background: #232e3c;
-            border-radius: 4px;
-        }
-        #debug-info::-webkit-scrollbar-thumb {
-            background: #5288c1;
-            border-radius: 4px;
+
+        .error-message {
+            color: #ec3942;
+            background: rgba(236, 57, 66, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
         }
     </style>
 </head>
 <body>
-    <div id="canvas-container"></div>
-    
-    <div id="character-selection" style="display: none;">
-        <button id="male-button" class="character-button">
-            <img src="./icons/male.svg" alt="Männlich">
-            Männlich
-        </button>
-        <button id="female-button" class="character-button">
-            <img src="./icons/female.svg" alt="Weiblich">
-            Weiblich
-        </button>
-    </div>
-
     <div id="loading-overlay">
-        <div class="loading-spinner"></div>
-        <h2>Lade Spiel...</h2>
+        <h2>Lade Ressourcen...</h2>
         <div id="loading-progress">0%</div>
+        <div id="error-message" class="error-message"></div>
     </div>
 
-    <div id="error-message"></div>
     <div id="debug-info"></div>
 
-    <script>
-        // Debug-Logging
-        const debugInfo = document.getElementById('debug-info');
-        const originalConsoleLog = console.log;
-        const originalConsoleError = console.error;
+    <div id="character-selection">
+        <h2>Wähle deinen Charakter</h2>
+        <div class="gender-selection">
+            <button id="male-btn">Männlich</button>
+            <button id="female-btn">Weiblich</button>
+        </div>
+        <div class="class-selection">
+            <button id="warrior-btn">Krieger</button>
+            <button id="mage-btn">Magier</button>
+            <button id="ranger-btn">Waldläufer</button>
+            <button id="rogue-btn">Schurke</button>
+        </div>
+    </div>
 
-        function formatLogMessage(args) {
-            return args.map(arg => {
-                if (arg instanceof Error) {
-                    return arg.message;
-                }
-                if (typeof arg === 'object') {
-                    try {
-                        return JSON.stringify(arg, null, 2);
-                    } catch (e) {
-                        return String(arg);
-                    }
-                }
-                return String(arg);
-            }).join(' ');
-        }
-
-        console.log = function(...args) {
-            originalConsoleLog.apply(console, args);
-            if (debugInfo) {
-                const message = formatLogMessage(args);
-                const timestamp = new Date().toLocaleTimeString();
-                debugInfo.innerHTML += `<div>[${timestamp}] ${message}</div>`;
-                debugInfo.scrollTop = debugInfo.scrollHeight;
-            }
-        };
-
-        console.error = function(...args) {
-            originalConsoleError.apply(console, args);
-            if (debugInfo) {
-                const message = formatLogMessage(args);
-                const timestamp = new Date().toLocaleTimeString();
-                debugInfo.innerHTML += `<div style="color: #ec3942;">[${timestamp}] ${message}</div>`;
-                debugInfo.scrollTop = debugInfo.scrollHeight;
-            }
-        };
-    </script>
-
-    <script src="./vendors.bundle.js"></script>
-    <script src="./threejs.bundle.js"></script>
-    <script src="./main.bundle.js"></script>
+    <script src="dist/vendors.bundle.js"></script>
+    <script src="dist/threejs.bundle.js"></script>
+    <script src="dist/main.bundle.js"></script>
 </body>
 </html> 
