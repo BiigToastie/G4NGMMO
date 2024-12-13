@@ -1,10 +1,10 @@
-import { Router } from 'express';
-import { Character } from '../models/character';
+import { Router, Request, Response } from 'express';
+import { Character, ICharacter } from '../models/character';
 
 const router = Router();
 
 // Charakter erstellen
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', async (req: Request<any, any, { userId: number; character: any }>, res: Response) => {
     try {
         const { userId, character } = req.body;
 
@@ -48,16 +48,16 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // Charakter abrufen
-router.get('/:userId', async (req: Request, res: Response) => {
+router.get('/:userId', async (req: Request<{ userId: string }>, res: Response) => {
     try {
         const { userId } = req.params;
-        const character = await Character.findOne({ userId });
+        const character = await Character.findOne({ userId: parseInt(userId) });
 
         if (!character) {
             return res.status(404).json({ error: 'Charakter nicht gefunden' });
         }
 
-        res.json(character);
+        res.status(200).json(character);
     } catch (error) {
         console.error('Fehler beim Abrufen des Charakters:', error);
         res.status(500).json({ error: 'Interner Server-Fehler' });
@@ -65,13 +65,13 @@ router.get('/:userId', async (req: Request, res: Response) => {
 });
 
 // Charakter aktualisieren
-router.put('/:userId', async (req: Request, res: Response) => {
+router.put('/:userId', async (req: Request<{ userId: string }, any, Partial<ICharacter>>, res: Response) => {
     try {
         const { userId } = req.params;
         const updateData = req.body;
 
         const character = await Character.findOneAndUpdate(
-            { userId },
+            { userId: parseInt(userId) },
             { $set: updateData },
             { new: true, runValidators: true }
         );
@@ -80,7 +80,7 @@ router.put('/:userId', async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Charakter nicht gefunden' });
         }
 
-        res.json(character);
+        res.status(200).json(character);
     } catch (error) {
         console.error('Fehler beim Aktualisieren des Charakters:', error);
         res.status(500).json({ error: 'Interner Server-Fehler' });
@@ -88,16 +88,16 @@ router.put('/:userId', async (req: Request, res: Response) => {
 });
 
 // Charakter löschen
-router.delete('/:userId', async (req: Request, res: Response) => {
+router.delete('/:userId', async (req: Request<{ userId: string }>, res: Response) => {
     try {
         const { userId } = req.params;
-        const character = await Character.findOneAndDelete({ userId });
+        const character = await Character.findOneAndDelete({ userId: parseInt(userId) });
 
         if (!character) {
             return res.status(404).json({ error: 'Charakter nicht gefunden' });
         }
 
-        res.json({ message: 'Charakter erfolgreich gelöscht' });
+        res.status(200).json({ message: 'Charakter erfolgreich gelöscht' });
     } catch (error) {
         console.error('Fehler beim Löschen des Charakters:', error);
         res.status(500).json({ error: 'Interner Server-Fehler' });
