@@ -19,15 +19,21 @@ export class ResourceManager {
     private loadingManager: LoadingManager;
     private debugElement: HTMLElement | null;
     private resources: Map<string, GLTF>;
+    private loadingPromises: Map<string, Promise<GLTF>>;
+    private totalResources: number = 0;
+    private loadedResources: number = 0;
 
     private constructor() {
         this.debugElement = document.getElementById('debug-info');
         this.resources = new Map();
+        this.loadingPromises = new Map();
+        
         this.loadingManager = new LoadingManager(
             // onLoad
             () => {
                 this.debugLog('Alle Ressourcen geladen', false);
                 this.updateUI(100, 'Laden abgeschlossen');
+                this.showCharacterSelection();
             },
             // onProgress
             (url: string, loaded: number, total: number) => {
@@ -42,6 +48,7 @@ export class ResourceManager {
                 this.updateUI(0, errorMessage);
             }
         );
+        
         this.loader = new GLTFLoader(this.loadingManager);
     }
 
@@ -80,6 +87,29 @@ export class ResourceManager {
         }
     }
 
+    private showCharacterSelection(): void {
+        const characterSelection = document.getElementById('character-selection');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'none';
+        }
+        
+        if (characterSelection) {
+            characterSelection.style.display = 'flex';
+        }
+    }
+
+    private async checkFileExists(url: string): Promise<boolean> {
+        try {
+            const response = await fetch(url, { method: 'HEAD' });
+            return response.ok;
+        } catch (error) {
+            this.debugLog(`Fehler beim Prüfen der Datei ${url}: ${error}`, true);
+            return false;
+        }
+    }
+
     public async preloadAllResources(): Promise<void> {
         try {
             this.debugLog('Starte Ressourcenladung...');
@@ -95,14 +125,32 @@ export class ResourceManager {
             this.debugLog(`Modell-Verzeichnis gefunden: ${data.path}`);
             this.debugLog(`Verfügbare Dateien: ${JSON.stringify(data.files)}`);
 
-            // Lade Modelle
-            const maleModel = await this.loader.loadAsync('models/male_all/Animation_Mirror_Viewing_withSkin.glb');
-            this.resources.set('maleCharacter', maleModel);
-            this.debugLog('Männliches Modell geladen');
+            // Prüfe und lade die Basis-Modelle
+            const modelPaths = {
+                maleCharacter: 'models/male_all/Animation_Mirror_Viewing_withSkin.glb',
+                femaleCharacter: 'models/female_all/Animation_Mirror_Viewing_withSkin.glb'
+            };
 
-            const femaleModel = await this.loader.loadAsync('models/female_all/Animation_Mirror_Viewing_withSkin.glb');
-            this.resources.set('femaleCharacter', femaleModel);
-            this.debugLog('Weibliches Modell geladen');
+            for (const [key, path] of Object.entries(modelPaths)) {
+                if (await this.checkFileExists(path)) {
+                    this.debugLog(`Lade ${key} von ${path}`);
+                    try {
+                        const model = await this.loader.loadAsync(path);
+                        this.resources.set(key, model);
+                        this.debugLog(`${key} erfolgreich geladen`);
+                        this.loadedResources++;
+                        this.updateUI(
+                            (this.loadedResources / Object.keys(modelPaths).length) * 100,
+                            `${key} geladen`
+                        );
+                    } catch (error) {
+                        this.debugLog(`Fehler beim Laden von ${key}: ${error}`, true);
+                        throw error;
+                    }
+                } else {
+                    throw new Error(`Modell nicht gefunden: ${path}`);
+                }
+            }
 
             this.debugLog('Alle Modelle erfolgreich geladen');
 
@@ -115,5 +163,36 @@ export class ResourceManager {
 
     public getResource(key: string): GLTF | undefined {
         return this.resources.get(key);
+    }
+
+    public async loadAdditionalAnimation(modelKey: string, animationPath: string): Promise<GLTF | undefined> {
+        const cacheKey = `${modelKey}_${animationPath}`;
+        
+        if (this.resources.has(cacheKey)) {
+            return this.resources.get(cacheKey);
+        }
+
+        if (this.loadingPromises.has(cacheKey)) {
+            return this.loadingPromises.get(cacheKey);
+        }
+
+        try {
+            const exists = await this.checkFileExists(animationPath);
+            if (!exists) {
+                throw new Error(`Animation nicht gefunden: ${animationPath}`);
+            }
+
+            const loadingPromise = this.loader.loadAsync(animationPath);
+            this.loadingPromises.set(cacheKey, loadingPromise);
+
+            const animation = await loadingPromise;
+            this.resources.set(cacheKey, animation);
+            this.loadingPromises.delete(cacheKey);
+
+            return animation;
+        } catch (error) {
+            this.debugLog(`Fehler beim Laden der Animation ${animationPath}: ${error}`, true);
+            return undefined;
+        }
     }
 } 

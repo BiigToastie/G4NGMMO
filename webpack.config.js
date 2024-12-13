@@ -10,7 +10,8 @@ module.exports = {
         filename: '[name].bundle.js',
         path: path.resolve(__dirname, 'public/dist'),
         clean: true,
-        publicPath: '/dist/'
+        publicPath: '/dist/',
+        chunkFilename: '[name].[chunkhash].js'
     },
     module: {
         rules: [
@@ -46,13 +47,15 @@ module.exports = {
         minimize: false,
         splitChunks: {
             chunks: 'all',
-            minSize: 20000,
-            maxSize: 244000,
+            maxInitialRequests: Infinity,
+            minSize: 0,
             cacheGroups: {
                 vendor: {
                     test: /[\\/]node_modules[\\/]/,
-                    name: 'vendors',
-                    chunks: 'all',
+                    name(module) {
+                        const packageName = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/)[1];
+                        return `vendor.${packageName.replace('@', '')}`;
+                    },
                     priority: -10
                 },
                 threejs: {
@@ -60,6 +63,12 @@ module.exports = {
                     name: 'threejs',
                     chunks: 'all',
                     priority: 20
+                },
+                models: {
+                    test: /\.(glb|gltf)$/,
+                    name: 'models',
+                    chunks: 'async',
+                    priority: 30
                 },
                 default: {
                     minChunks: 2,
