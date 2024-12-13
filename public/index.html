@@ -35,19 +35,33 @@
 
         #debug-info {
             position: fixed;
-            bottom: 10px;
-            left: 10px;
-            right: 10px;
-            height: 150px;
-            background: rgba(0, 0, 0, 0.8);
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 200px;
+            background: rgba(23, 33, 43, 0.95);
             color: #f5f5f5;
             padding: 10px;
             font-family: monospace;
-            font-size: 12px;
+            font-size: 14px;
             overflow-y: auto;
-            z-index: 1000;
+            z-index: 2000;
+            border-top: 2px solid #5288c1;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        #debug-toggle {
+            position: fixed;
+            bottom: 210px;
+            right: 10px;
+            background: #5288c1;
+            color: white;
+            border: none;
+            padding: 5px 10px;
             border-radius: 5px;
-            border: 1px solid #5288c1;
+            cursor: pointer;
+            z-index: 2001;
         }
 
         #character-selection {
@@ -71,6 +85,19 @@
             margin: 10px 0;
             display: none;
         }
+
+        .debug-error {
+            color: #ec3942;
+            font-weight: bold;
+        }
+
+        .debug-warning {
+            color: #ffd700;
+        }
+
+        .debug-success {
+            color: #4caf50;
+        }
     </style>
 </head>
 <body>
@@ -80,6 +107,7 @@
         <div id="error-message" class="error-message"></div>
     </div>
 
+    <button id="debug-toggle" onclick="toggleDebug()">Debug</button>
     <div id="debug-info"></div>
 
     <div id="character-selection">
@@ -95,6 +123,19 @@
             <button id="rogue-btn">Schurke</button>
         </div>
     </div>
+
+    <script>
+        function toggleDebug() {
+            const debugInfo = document.getElementById('debug-info');
+            debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Initialisiere Debug-Anzeige
+        window.addEventListener('DOMContentLoaded', () => {
+            const debugInfo = document.getElementById('debug-info');
+            debugInfo.style.display = 'block';
+        });
+    </script>
 
     <script src="dist/vendors.bundle.js"></script>
     <script src="dist/threejs.bundle.js"></script>

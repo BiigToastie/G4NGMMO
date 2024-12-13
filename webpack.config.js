@@ -9,7 +9,8 @@ module.exports = {
     output: {
         filename: '[name].bundle.js',
         path: path.resolve(__dirname, 'public/dist'),
-        clean: true
+        clean: true,
+        publicPath: '/dist/'
     },
     module: {
         rules: [
@@ -42,21 +43,7 @@ module.exports = {
         }
     },
     optimization: {
-        minimize: true,
-        minimizer: [
-            new TerserPlugin({
-                terserOptions: {
-                    format: {
-                        comments: false,
-                    },
-                    compress: {
-                        drop_console: false,
-                        drop_debugger: true
-                    }
-                },
-                extractComments: false,
-            }),
-        ],
+        minimize: false,
         splitChunks: {
             chunks: 'all',
             minSize: 20000,
@@ -91,12 +78,14 @@ module.exports = {
                 },
                 {
                     from: 'public/models',
-                    to: 'models'
+                    to: 'models',
+                    noErrorOnMissing: true
                 }
             ]
         })
     ],
     mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
+    devtool: 'source-map',
     performance: {
         maxEntrypointSize: 512000,
         maxAssetSize: 512000,
