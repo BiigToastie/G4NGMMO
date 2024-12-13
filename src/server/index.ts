@@ -37,7 +37,7 @@ app.use(express.static('public', {
 }));
 
 // Debug-Route für Modell-Verzeichnis
-app.get('/debug/models', (req, res) => {
+app.get('/debug/models', (_req, res) => {
     const modelsPath = path.join(__dirname, '../../public/models');
     const fs = require('fs');
     try {
