@@ -11,72 +11,51 @@
             font-family: Arial, sans-serif;
             background-color: #17212b;
             color: #f5f5f5;
-        }
-
-        #loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #17212b;
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 1000;
-        }
-
-        #loading-progress {
-            font-size: 24px;
-            margin-top: 20px;
-            color: #6ab2f2;
-        }
-
-        #debug-info {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 200px;
-            background: rgba(23, 33, 43, 0.95);
-            color: #f5f5f5;
-            padding: 10px;
-            font-family: monospace;
-            font-size: 12px;
-            overflow-y: auto;
-            z-index: 2000;
-            border-top: 2px solid #5288c1;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            display: none;
-        }
-
-        #debug-toggle {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background: #5288c1;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            z-index: 2001;
-            font-size: 14px;
+            min-height: 100vh;
         }
 
         #character-selection {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
             background-color: #232e3c;
-            padding: 20px;
-            border-radius: 10px;
+            padding: 30px;
+            border-radius: 15px;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            z-index: 900;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #6ab2f2;
+            margin-bottom: 25px;
+        }
+
+        .gender-selection, .class-selection {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .class-selection {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        button {
+            background-color: #5288c1;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #6ab2f2;
         }
 
         .error-message {
@@ -89,47 +68,9 @@
             text-align: center;
             font-weight: bold;
         }
-
-        .debug-error {
-            color: #ec3942;
-            font-weight: bold;
-        }
-
-        .debug-warning {
-            color: #ffd700;
-        }
-
-        .debug-success {
-            color: #4caf50;
-        }
-
-        .loading-spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #5288c1;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
     </style>
 </head>
 <body>
-    <div id="loading-overlay">
-        <h2>Lade Ressourcen...</h2>
-        <div class="loading-spinner"></div>
-        <div id="loading-progress">0%</div>
-        <div id="error-message" class="error-message"></div>
-    </div>
-
-    <button id="debug-toggle" onclick="toggleDebug()">Debug</button>
-    <div id="debug-info"></div>
-
     <div id="character-selection">
         <h2>Wähle deinen Charakter</h2>
         <div class="gender-selection">
@@ -142,21 +83,8 @@
             <button id="ranger-btn">Waldläufer</button>
             <button id="rogue-btn">Schurke</button>
         </div>
+        <div id="error-message" class="error-message"></div>
     </div>
-
-    <script>
-        function toggleDebug() {
-            const debugInfo = document.getElementById('debug-info');
-            const currentDisplay = debugInfo.style.display;
-            debugInfo.style.display = currentDisplay === 'none' ? 'block' : 'none';
-        }
-
-        // Zeige Debug-Fenster standardmäßig an
-        window.addEventListener('DOMContentLoaded', () => {
-            const debugInfo = document.getElementById('debug-info');
-            debugInfo.style.display = 'block';
-        });
-    </script>
 
     <script src="dist/vendors.bundle.js"></script>
     <script src="dist/threejs.bundle.js"></script>
