@@ -26,11 +26,11 @@ export class ResourceManager {
         const resources = [
             {
                 key: 'maleCharacter',
-                path: '/models/male_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: '/dist/models/male_all/Animation_Mirror_Viewing_withSkin.glb'
             },
             {
                 key: 'femaleCharacter',
-                path: '/models/female_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: '/dist/models/female_all/Animation_Mirror_Viewing_withSkin.glb'
             }
         ];
 
@@ -39,21 +39,27 @@ export class ResourceManager {
             let loadedCount = 0;
             const totalCount = resources.length;
 
-            await Promise.all(
-                resources.map(async resource => {
-                    try {
-                        await this.loadResource(resource.key, resource.path);
-                        loadedCount++;
-                        if (progressElement) {
-                            const progress = (loadedCount / totalCount) * 100;
-                            progressElement.textContent = `${Math.round(progress)}%`;
-                        }
-                    } catch (error) {
-                        console.error(`Fehler beim Laden von ${resource.key}:`, error);
-                        throw error;
-                    }
-                })
-            );
+            const updateProgress = (individualProgress: number) => {
+                if (progressElement) {
+                    // Berechne Gesamtfortschritt (Kombination aus geladenen Ressourcen und individuellem Fortschritt)
+                    const totalProgress = ((loadedCount + individualProgress / 100) / totalCount) * 100;
+                    progressElement.textContent = `${Math.round(totalProgress)}%`;
+                }
+            };
+
+            for (const resource of resources) {
+                try {
+                    console.log(`Starte Laden von ${resource.key}...`);
+                    await this.loadResource(resource.key, resource.path, updateProgress);
+                    loadedCount++;
+                    updateProgress(100); // Aktualisiere für vollständig geladene Ressource
+                    console.log(`${resource.key} erfolgreich geladen (${loadedCount}/${totalCount})`);
+                } catch (error) {
+                    console.error(`Fehler beim Laden von ${resource.key}:`, error);
+                    throw new Error(`Fehler beim Laden von ${resource.key}: ${error.message}`);
+                }
+            }
+
             console.log('Alle Ressourcen erfolgreich geladen');
         } catch (error) {
             console.error('Fehler beim Laden der Ressourcen:', error);
@@ -61,7 +67,11 @@ export class ResourceManager {
         }
     }
 
-    private async loadResource(key: string, path: string): Promise<GLTF> {
+    private async loadResource(
+        key: string, 
+        path: string, 
+        onProgress?: (progress: number) => void
+    ): Promise<GLTF> {
         console.log(`Lade Ressource: ${key} von ${path}`);
         
         // Prüfe ob bereits geladen
@@ -88,12 +98,13 @@ export class ResourceManager {
                     if (progress.lengthComputable) {
                         const percent = (progress.loaded / progress.total) * 100;
                         console.log(`Lade ${key}: ${Math.round(percent)}%`);
+                        onProgress?.(percent);
                     }
                 },
                 (error) => {
                     console.error(`Fehler beim Laden von ${key}:`, error);
                     this.loadingPromises.delete(key);
-                    reject(error);
+                    reject(new Error(`Fehler beim Laden von ${key}: ${error.message}`));
                 }
             );
         });

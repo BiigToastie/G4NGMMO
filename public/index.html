@@ -95,6 +95,21 @@
             z-index: 3000;
             text-align: center;
         }
+        #debug-info {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 3000;
+            max-width: 400px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
@@ -102,11 +117,11 @@
     
     <div id="character-selection" style="display: none;">
         <button id="male-button" class="character-button">
-            <img src="/models/icons/male.svg" alt="Männlich">
+            <img src="/dist/icons/male.svg" alt="Männlich">
             Männlich
         </button>
         <button id="female-button" class="character-button">
-            <img src="/models/icons/female.svg" alt="Weiblich">
+            <img src="/dist/icons/female.svg" alt="Weiblich">
             Weiblich
         </button>
     </div>
@@ -118,6 +133,36 @@
     </div>
 
     <div id="error-message"></div>
+    <div id="debug-info"></div>
+
+    <script>
+        // Debug-Logging
+        const debugInfo = document.getElementById('debug-info');
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            if (debugInfo) {
+                const message = args.map(arg => 
+                    typeof arg === 'object' ? JSON.stringify(arg) : arg
+                ).join(' ');
+                debugInfo.innerHTML += `<div>${message}</div>`;
+                debugInfo.scrollTop = debugInfo.scrollHeight;
+            }
+        };
+
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            if (debugInfo) {
+                const message = args.map(arg => 
+                    typeof arg === 'object' ? JSON.stringify(arg) : arg
+                ).join(' ');
+                debugInfo.innerHTML += `<div style="color: red;">${message}</div>`;
+                debugInfo.scrollTop = debugInfo.scrollHeight;
+            }
+        };
+    </script>
 
     <script src="/dist/vendors.bundle.js"></script>
     <script src="/dist/threejs.bundle.js"></script>
