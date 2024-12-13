@@ -13,8 +13,9 @@ export class CharacterCreator {
     private controls: OrbitControls;
     private currentCharacter: BaseCharacter | null = null;
     private loader: GLTFLoader;
-    private animationFrameId: number | null = null;
+    private animationMixer: THREE.AnimationMixer | null = null;
     private container: HTMLElement | null = null;
+    private clock: THREE.Clock;
 
     private constructor() {
         this.scene = new THREE.Scene();
@@ -22,6 +23,7 @@ export class CharacterCreator {
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         this.loader = new GLTFLoader();
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+        this.clock = new THREE.Clock();
         this.setupScene();
     }
 
@@ -58,6 +60,8 @@ export class CharacterCreator {
 
     public async initialize(): Promise<void> {
         try {
+            console.log('Initialisiere CharacterCreator...');
+            
             // Finde den Container
             this.container = document.getElementById('character-preview');
             if (!this.container) {
@@ -73,11 +77,12 @@ export class CharacterCreator {
             // Event Listener für Größenänderungen
             window.addEventListener('resize', this.onWindowResize.bind(this));
 
-            // Starte Animation
+            // Starte Animation Loop
             this.animate();
 
-            // Lade initiales Modell
+            // Lade initiales Modell (männlich)
             await this.updateCharacter('male', 'warrior');
+            console.log('CharacterCreator erfolgreich initialisiert');
 
         } catch (error) {
             console.error('Fehler bei der CharacterCreator-Initialisierung:', error);
@@ -87,8 +92,13 @@ export class CharacterCreator {
 
     public async updateCharacter(gender: 'male' | 'female', characterClass: string): Promise<void> {
         try {
-            // Entferne aktuelles Modell
+            console.log(`Lade ${gender} Charakter...`);
+
+            // Entferne aktuelles Modell und Animation
             if (this.currentCharacter) {
+                if (this.animationMixer) {
+                    this.animationMixer.stopAllAction();
+                }
                 const model = this.currentCharacter.getModel();
                 if (model) {
                     this.scene.remove(model);
@@ -96,30 +106,54 @@ export class CharacterCreator {
                 this.currentCharacter.dispose();
             }
 
-            // Erstelle neues Modell
-            this.currentCharacter = gender === 'male' 
-                ? new MaleCharacter(this.loader)
-                : new FemaleCharacter(this.loader);
+            // Lade neues Modell
+            const modelPath = gender === 'male' 
+                ? 'models/male_all/Animation_Mirror_Viewing_withSkin.glb'
+                : 'models/female_all/Animation_Mirror_Viewing_withSkin.glb';
 
-            // Lade und füge das Modell hinzu
-            const model = await this.currentCharacter.load();
-            if (model) {
-                model.position.set(0, 0, 0);
-                this.scene.add(model);
-                
-                // Zentriere Kamera auf Modell
-                const box = new THREE.Box3().setFromObject(model);
-                const center = box.getCenter(new THREE.Vector3());
-                const size = box.getSize(new THREE.Vector3());
-                
-                const maxDim = Math.max(size.x, size.y, size.z);
-                const fov = this.camera.fov * (Math.PI / 180);
-                let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-                
-                this.camera.position.set(center.x, center.y + size.y / 3, center.z + cameraZ * 1.5);
-                this.controls.target.set(center.x, center.y + size.y / 3, center.z);
-                this.controls.update();
+            console.log(`Lade Modell von: ${modelPath}`);
+            
+            const gltf = await this.loader.loadAsync(modelPath);
+            const model = gltf.scene;
+
+            // Modell-Setup
+            model.position.set(0, 0, 0);
+            model.traverse((object) => {
+                if ('castShadow' in object) {
+                    object.castShadow = true;
+                    object.receiveShadow = true;
+                }
+            });
+
+            // Animation-Setup
+            if (gltf.animations.length > 0) {
+                this.animationMixer = new THREE.AnimationMixer(model);
+                const animation = gltf.animations[0]; // Mirror_Viewing Animation
+                const action = this.animationMixer.clipAction(animation);
+                action.play();
             }
+
+            // Füge Modell zur Szene hinzu
+            this.scene.add(model);
+
+            // Zentriere Kamera auf Modell
+            const box = new THREE.Box3().setFromObject(model);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = this.camera.fov * (Math.PI / 180);
+            let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+
+            this.camera.position.set(
+                center.x,
+                center.y + size.y / 3,
+                center.z + cameraZ * 1.5
+            );
+            this.controls.target.set(center.x, center.y + size.y / 3, center.z);
+            this.controls.update();
+
+            console.log(`${gender} Charakter erfolgreich geladen`);
 
         } catch (error) {
             console.error('Fehler beim Aktualisieren des Charakters:', error);
@@ -139,13 +173,12 @@ export class CharacterCreator {
     }
 
     private animate(): void {
-        this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
+        requestAnimationFrame(this.animate.bind(this));
         
-        if (this.currentCharacter) {
-            const mixer = this.currentCharacter.getMixer();
-            if (mixer) {
-                mixer.update(0.016); // ~60fps
-            }
+        // Update Animation
+        const delta = this.clock.getDelta();
+        if (this.animationMixer) {
+            this.animationMixer.update(delta);
         }
         
         this.controls.update();
@@ -153,8 +186,8 @@ export class CharacterCreator {
     }
 
     public dispose(): void {
-        if (this.animationFrameId !== null) {
-            cancelAnimationFrame(this.animationFrameId);
+        if (this.animationMixer) {
+            this.animationMixer.stopAllAction();
         }
 
         if (this.currentCharacter) {
