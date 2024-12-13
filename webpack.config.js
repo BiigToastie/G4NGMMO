@@ -1,7 +1,8 @@
 const path = require('path');
+const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = {
-    mode: 'development',
+    mode: 'production',
     entry: './src/client/index.ts',
     module: {
         rules: [
@@ -14,13 +15,18 @@ module.exports = {
     },
     resolve: {
         extensions: ['.tsx', '.ts', '.js'],
+        fallback: {
+            "path": false,
+            "fs": false
+        }
     },
     output: {
         filename: 'bundle.js',
         path: path.resolve(__dirname, 'dist/client'),
     },
-    devtool: 'source-map',
     optimization: {
+        minimize: true,
+        minimizer: [new TerserPlugin()],
         splitChunks: {
             chunks: 'all',
             maxInitialRequests: Infinity,
