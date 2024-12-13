@@ -1,5 +1,6 @@
 const path = require('path');
 const TerserPlugin = require('terser-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
     mode: 'production',
@@ -17,6 +18,13 @@ module.exports = {
                 },
                 exclude: /node_modules/,
             },
+            {
+                test: /\.(png|svg|jpg|jpeg|gif|glb|gltf)$/i,
+                type: 'asset/resource',
+                generator: {
+                    filename: 'assets/[name][ext]'
+                }
+            }
         ],
     },
     resolve: {
@@ -33,8 +41,27 @@ module.exports = {
     output: {
         filename: '[name].[contenthash].js',
         path: path.resolve(__dirname, 'dist/client'),
-        clean: true
+        clean: true,
+        publicPath: '/'
     },
+    plugins: [
+        new CopyWebpackPlugin({
+            patterns: [
+                {
+                    from: 'public/index.html',
+                    to: 'index.html'
+                },
+                {
+                    from: 'src/client/assets',
+                    to: 'assets'
+                },
+                {
+                    from: 'public/models',
+                    to: 'models'
+                }
+            ]
+        })
+    ],
     optimization: {
         minimize: true,
         minimizer: [new TerserPlugin({

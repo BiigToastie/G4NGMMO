@@ -26,15 +26,16 @@ const players = new Map<number, Player>();
 app.use(express.json());
 
 // Statische Dateien
-app.use(express.static(path.join(__dirname, '../../dist/client')));
-app.use('/assets', express.static(path.join(__dirname, '../client/assets')));
+app.use(express.static(path.join(__dirname, '../../../dist/client')));
+app.use('/models', express.static(path.join(__dirname, '../../../dist/client/models')));
+app.use('/assets', express.static(path.join(__dirname, '../../../dist/client/assets')));
 
 // API-Routen
 app.use('/api', characterRoutes);
 
 // Client-Routen
 const sendIndexHtml = (_req: express.Request, res: express.Response) => {
-    res.sendFile(path.join(__dirname, '../client/index.html'));
+    res.sendFile(path.join(__dirname, '../../../dist/client/index.html'));
 };
 
 app.get('/', sendIndexHtml);
@@ -95,15 +96,16 @@ io.on('connection', (socket) => {
 
 // Server starten
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 
 async function startServer() {
     try {
         await db.initialize();
         
-        server.listen(PORT, () => {
-            console.log(`Server läuft auf Port ${PORT}`);
-            console.log(`Client verfügbar unter: http://localhost:${PORT}`);
-            console.log(`Statische Dateien werden von ${path.join(__dirname, '../../dist/client')} serviert`);
+        server.listen(PORT, HOST, () => {
+            console.log(`Server läuft auf ${HOST}:${PORT}`);
+            console.log(`Client verfügbar unter: http://${HOST}:${PORT}`);
+            console.log(`Statische Dateien werden von ${path.join(__dirname, '../../../dist/client')} serviert`);
         });
     } catch (error) {
         console.error('Fehler beim Serverstart:', error);

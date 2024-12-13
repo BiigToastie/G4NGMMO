@@ -1,19 +1,20 @@
 services:
   - type: web
-    name: mmo-telegram-game
+    name: mmo-tg
     env: node
     buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
       - key: MONGODB_URI
         sync: false
-      - key: JWT_SECRET
+      - key: TELEGRAM_BOT_TOKEN
         sync: false
-      - key: PORT
-        value: 3000
-      - key: LOG_LEVEL
-        value: info 
+      - key: BASE_URL
+        fromService:
+          type: web
+          name: mmo-tg
+          property: host
+    healthCheckPath: /
+    autoDeploy: true
