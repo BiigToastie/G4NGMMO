@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MMO Game</title>
+    <style>
+        /* ... existing styles ... */
+    </style>
+</head>
+<body>
+    <div id="character-selection">
+        <h1>Charakterauswahl</h1>
+        <div class="character-slots">
+            <div class="character-slot" data-slot="1">
+                <p class="empty-slot-text">Leerer Slot</p>
+            </div>
+            <div class="character-slot" data-slot="2">
+                <p class="empty-slot-text">Leerer Slot</p>
+            </div>
+        </div>
+        <div class="button-container">
+            <button id="start-game" class="action-button" disabled>Spiel starten</button>
+        </div>
+    </div>
+
+    <div id="character-creator">
+        <div id="character-preview"></div>
+        <div class="gender-buttons">
+            <button id="male-btn" class="gender-button selected">Männlich</button>
+            <button id="female-btn" class="gender-button">Weiblich</button>
+        </div>
+        <div class="button-container">
+            <button id="save-character" class="action-button">Charakter speichern</button>
+            <button id="cancel-creation" class="action-button">Abbrechen</button>
+        </div>
+    </div>
+
+    <div id="game-world">
+        <div id="movement-controller"></div>
+    </div>
+
+    <script src="/dist/client/runtime.js"></script>
+    <script src="/dist/client/vendors.js"></script>
+    <script src="/dist/client/main.js"></script>
+</body>
+</html> 

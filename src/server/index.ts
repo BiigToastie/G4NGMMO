@@ -27,14 +27,27 @@ app.use(express.json());
 
 // Statische Dateien
 app.use(express.static(path.join(__dirname, '../client')));
-app.use('/dist', express.static(path.join(__dirname, '../../dist/client')));
+app.use('/dist', express.static(path.join(__dirname, '../../dist')));
 
 // API-Routen
 app.use('/api', characterRoutes);
 
 // Client-Routen
-app.get('*', (_req, res) => {
+app.get('/', (_req, res) => {
     res.sendFile(path.join(__dirname, '../client/index.html'));
+});
+
+app.get('/game', (_req, res) => {
+    res.sendFile(path.join(__dirname, '../client/index.html'));
+});
+
+app.get('/character', (_req, res) => {
+    res.sendFile(path.join(__dirname, '../client/index.html'));
+});
+
+// Fallback für alle anderen Routen
+app.get('*', (_req, res) => {
+    res.redirect('/');
 });
 
 // Socket.IO Events
@@ -93,6 +106,7 @@ async function startServer() {
         
         server.listen(PORT, () => {
             console.log(`Server läuft auf Port ${PORT}`);
+            console.log(`Client verfügbar unter: http://localhost:${PORT}`);
         });
     } catch (error) {
         console.error('Fehler beim Serverstart:', error);
