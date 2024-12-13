@@ -4,11 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MMO Telegram Game</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             font-family: Arial, sans-serif;
+            background-color: #000;
         }
         #canvas-container {
             position: fixed;
@@ -54,13 +56,31 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+            background: #000;
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 2000;
             color: white;
             flex-direction: column;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #333;
+            border-top: 5px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #loading-progress {
+            font-size: 24px;
+            margin-top: 20px;
+            font-weight: bold;
         }
         #error-message {
             position: fixed;
@@ -73,24 +93,26 @@
             border-radius: 5px;
             display: none;
             z-index: 3000;
+            text-align: center;
         }
     </style>
 </head>
 <body>
     <div id="canvas-container"></div>
     
-    <div id="character-selection">
+    <div id="character-selection" style="display: none;">
         <button id="male-button" class="character-button">
-            <img src="/dist/icons/male.svg" alt="Männlich">
+            <img src="/models/icons/male.svg" alt="Männlich">
             Männlich
         </button>
         <button id="female-button" class="character-button">
-            <img src="/dist/icons/female.svg" alt="Weiblich">
+            <img src="/models/icons/female.svg" alt="Weiblich">
             Weiblich
         </button>
     </div>
 
     <div id="loading-overlay">
+        <div class="loading-spinner"></div>
         <h2>Lade Spiel...</h2>
         <div id="loading-progress">0%</div>
     </div>

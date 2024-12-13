@@ -26,19 +26,33 @@ export class ResourceManager {
         const resources = [
             {
                 key: 'maleCharacter',
-                path: '/dist/models/male_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: '/models/male_all/Animation_Mirror_Viewing_withSkin.glb'
             },
             {
                 key: 'femaleCharacter',
-                path: '/dist/models/female_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: '/models/female_all/Animation_Mirror_Viewing_withSkin.glb'
             }
         ];
 
         try {
+            const progressElement = document.getElementById('loading-progress');
+            let loadedCount = 0;
+            const totalCount = resources.length;
+
             await Promise.all(
-                resources.map(resource => 
-                    this.loadResource(resource.key, resource.path)
-                )
+                resources.map(async resource => {
+                    try {
+                        await this.loadResource(resource.key, resource.path);
+                        loadedCount++;
+                        if (progressElement) {
+                            const progress = (loadedCount / totalCount) * 100;
+                            progressElement.textContent = `${Math.round(progress)}%`;
+                        }
+                    } catch (error) {
+                        console.error(`Fehler beim Laden von ${resource.key}:`, error);
+                        throw error;
+                    }
+                })
             );
             console.log('Alle Ressourcen erfolgreich geladen');
         } catch (error) {
@@ -71,8 +85,10 @@ export class ResourceManager {
                     resolve(gltf);
                 },
                 (progress) => {
-                    const percent = (progress.loaded / progress.total) * 100;
-                    console.log(`Lade ${key}: ${Math.round(percent)}%`);
+                    if (progress.lengthComputable) {
+                        const percent = (progress.loaded / progress.total) * 100;
+                        console.log(`Lade ${key}: ${Math.round(percent)}%`);
+                    }
                 },
                 (error) => {
                     console.error(`Fehler beim Laden von ${key}:`, error);
