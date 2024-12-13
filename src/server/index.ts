@@ -24,10 +24,18 @@ const players = new Map<number, Player>();
 
 // Middleware
 app.use(express.json());
+
+// Statische Dateien
 app.use(express.static(path.join(__dirname, '../client')));
+app.use('/dist', express.static(path.join(__dirname, '../../dist/client')));
 
 // API-Routen
 app.use('/api', characterRoutes);
+
+// Client-Routen
+app.get('*', (_req, res) => {
+    res.sendFile(path.join(__dirname, '../client/index.html'));
+});
 
 // Socket.IO Events
 io.on('connection', (socket) => {
