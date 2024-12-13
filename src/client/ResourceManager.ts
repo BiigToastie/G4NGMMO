@@ -61,15 +61,17 @@ export class ResourceManager {
         const resources = [
             {
                 key: 'maleCharacter',
-                path: 'dist/models/male_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: '/dist/models/male_all/Animation_Mirror_Viewing_withSkin.glb'
             },
             {
                 key: 'femaleCharacter',
-                path: 'dist/models/female_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: '/dist/models/female_all/Animation_Mirror_Viewing_withSkin.glb'
             }
         ];
 
         this.debugLog(`Ressourcen zum Laden: ${JSON.stringify(resources, null, 2)}`);
+        this.debugLog(`Basis-URL: ${window.location.origin}`);
+        this.debugLog(`Aktueller Pfad: ${window.location.pathname}`);
 
         try {
             let loadedCount = 0;
@@ -82,12 +84,13 @@ export class ResourceManager {
 
             for (const resource of resources) {
                 this.debugLog(`\nStarte Laden von Ressource: ${resource.key}`);
-                this.debugLog(`Pfad: ${resource.path}`);
+                const fullPath = `${window.location.origin}${resource.path}`;
+                this.debugLog(`Vollständiger Pfad: ${fullPath}`);
                 
                 try {
                     await this.loadResource(
                         resource.key, 
-                        resource.path, 
+                        fullPath, 
                         (progress) => {
                             this.debugLog(`Ladefortschritt für ${resource.key}: ${progress}%`);
                             updateProgress(progress, resource.key);
@@ -100,6 +103,7 @@ export class ResourceManager {
                 } catch (error: any) {
                     const errorMessage = error instanceof Error ? error.message : String(error);
                     this.debugLog(`Fehler beim Laden von ${resource.key}: ${errorMessage}`, true);
+                    this.debugLog(`Stack Trace: ${error.stack || 'Nicht verfügbar'}`, true);
                     throw error;
                 }
             }
@@ -128,6 +132,7 @@ export class ResourceManager {
         } catch (error: any) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             this.debugLog(`Fehler beim Laden der Ressourcen: ${errorMessage}`, true);
+            this.debugLog(`Stack Trace: ${error.stack || 'Nicht verfügbar'}`, true);
             throw error;
         }
     }
@@ -168,9 +173,10 @@ export class ResourceManager {
                         onProgress?.(percent);
                     }
                 },
-                (error) => {
+                (error: unknown) => {
                     const errorMessage = error instanceof Error ? error.message : String(error);
                     this.debugLog(`Fehler beim Laden von ${key}: ${errorMessage}`, true);
+                    this.debugLog(`Stack Trace: ${error instanceof Error ? error.stack : 'Nicht verfügbar'}`, true);
                     this.loadingPromises.delete(key);
                     reject(new Error(`Fehler beim Laden von ${key}: ${errorMessage}`));
                 }
