@@ -8,7 +8,13 @@ module.exports = {
         rules: [
             {
                 test: /\.tsx?$/,
-                use: 'ts-loader',
+                use: {
+                    loader: 'ts-loader',
+                    options: {
+                        transpileOnly: true,
+                        experimentalWatchApi: true
+                    }
+                },
                 exclude: /node_modules/,
             },
         ],
@@ -18,15 +24,27 @@ module.exports = {
         fallback: {
             "path": false,
             "fs": false
-        }
+        },
+        modules: [
+            path.resolve(__dirname, 'node_modules'),
+            'node_modules'
+        ]
     },
     output: {
         filename: 'bundle.js',
         path: path.resolve(__dirname, 'dist/client'),
+        clean: true
     },
     optimization: {
         minimize: true,
-        minimizer: [new TerserPlugin()],
+        minimizer: [new TerserPlugin({
+            terserOptions: {
+                format: {
+                    comments: false,
+                },
+            },
+            extractComments: false,
+        })],
         splitChunks: {
             chunks: 'all',
             maxInitialRequests: Infinity,
@@ -42,4 +60,9 @@ module.exports = {
             },
         },
     },
+    performance: {
+        hints: false,
+        maxEntrypointSize: 512000,
+        maxAssetSize: 512000
+    }
 }; 
