@@ -21,8 +21,21 @@ export class ResourceManager {
         return ResourceManager.instance;
     }
 
+    private updateUI(progress: number, message: string) {
+        const progressElement = document.getElementById('loading-progress');
+        const loadingText = document.querySelector('#loading-overlay h2');
+        if (progressElement) {
+            progressElement.textContent = `${Math.round(progress)}%`;
+        }
+        if (loadingText) {
+            loadingText.textContent = message;
+        }
+        console.log(`${message} - ${Math.round(progress)}%`);
+    }
+
     public async preloadAllResources(): Promise<void> {
         console.log('Starte Preload aller Ressourcen...');
+        this.updateUI(0, 'Initialisiere Ressourcen...');
         
         const resources = [
             {
@@ -36,38 +49,62 @@ export class ResourceManager {
         ];
 
         try {
-            const progressElement = document.getElementById('loading-progress');
             let loadedCount = 0;
             const totalCount = resources.length;
 
-            const updateProgress = (individualProgress: number) => {
-                if (progressElement) {
-                    // Berechne Gesamtfortschritt (Kombination aus geladenen Ressourcen und individuellem Fortschritt)
-                    const totalProgress = ((loadedCount + individualProgress / 100) / totalCount) * 100;
-                    progressElement.textContent = `${Math.round(totalProgress)}%`;
-                    console.log(`Ladefortschritt: ${Math.round(totalProgress)}%`);
-                }
+            const updateProgress = (individualProgress: number, currentResource: string) => {
+                const totalProgress = ((loadedCount + individualProgress / 100) / totalCount) * 100;
+                this.updateUI(totalProgress, `Lade ${currentResource}...`);
             };
 
             for (const resource of resources) {
                 try {
-                    console.log(`Versuche zu laden: ${resource.key} von Pfad: ${resource.path}`);
-                    await this.loadResource(resource.key, resource.path, updateProgress);
+                    console.log(`Starte Laden von ${resource.key} von Pfad: ${resource.path}`);
+                    await this.loadResource(
+                        resource.key, 
+                        resource.path, 
+                        (progress) => updateProgress(progress, resource.key)
+                    );
                     loadedCount++;
-                    updateProgress(100); // Aktualisiere für vollständig geladene Ressource
-                    console.log(`${resource.key} erfolgreich geladen (${loadedCount}/${totalCount})`);
+                    updateProgress(100, resource.key);
                 } catch (error: any) {
                     console.error(`Fehler beim Laden von ${resource.key}:`, error);
                     const errorMessage = error instanceof Error ? error.message : String(error);
-                    throw new Error(`Fehler beim Laden von ${resource.key}: ${errorMessage}`);
+                    this.showError(`Fehler beim Laden von ${resource.key}: ${errorMessage}`);
+                    throw error;
                 }
             }
 
+            this.updateUI(100, 'Alle Ressourcen geladen!');
             console.log('Alle Ressourcen erfolgreich geladen');
+
+            // Zeige Charakterauswahl nach erfolgreichem Laden
+            const characterSelection = document.getElementById('character-selection');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'none';
+            }
+            if (characterSelection) {
+                characterSelection.style.display = 'flex';
+            }
+
         } catch (error: any) {
             console.error('Fehler beim Laden der Ressourcen:', error);
             const errorMessage = error instanceof Error ? error.message : String(error);
-            throw new Error(`Fehler beim Laden der Ressourcen: ${errorMessage}`);
+            this.showError(`Fehler beim Laden der Ressourcen: ${errorMessage}`);
+            throw error;
+        }
+    }
+
+    private showError(message: string) {
+        const errorElement = document.getElementById('error-message');
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            setTimeout(() => {
+                errorElement.style.display = 'none';
+            }, 5000);
         }
     }
 
@@ -101,7 +138,6 @@ export class ResourceManager {
                 (progress) => {
                     if (progress.lengthComputable) {
                         const percent = (progress.loaded / progress.total) * 100;
-                        console.log(`Lade ${key}: ${Math.round(percent)}%`);
                         onProgress?.(percent);
                     }
                 },
