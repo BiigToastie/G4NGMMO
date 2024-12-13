@@ -8,10 +8,11 @@ export class ResourceManager {
     private loadingPromises: Map<string, Promise<GLTF>>;
 
     private constructor() {
+        console.log('Initialisiere ResourceManager...');
         this.resources = new Map();
         this.loader = new GLTFLoader();
         this.loadingPromises = new Map();
-        console.log('ResourceManager initialisiert');
+        console.log('ResourceManager erfolgreich initialisiert');
     }
 
     public static getInstance(): ResourceManager {
@@ -22,15 +23,23 @@ export class ResourceManager {
     }
 
     private updateUI(progress: number, message: string) {
+        console.log(`UI Update: ${message} (${progress}%)`);
         const progressElement = document.getElementById('loading-progress');
         const loadingText = document.querySelector('#loading-overlay h2');
+        
         if (progressElement) {
             progressElement.textContent = `${Math.round(progress)}%`;
+            console.log(`Progress aktualisiert: ${Math.round(progress)}%`);
+        } else {
+            console.error('Progress-Element nicht gefunden!');
         }
+        
         if (loadingText) {
             loadingText.textContent = message;
+            console.log(`Ladetext aktualisiert: ${message}`);
+        } else {
+            console.error('Loading-Text-Element nicht gefunden!');
         }
-        console.log(`${message} - ${Math.round(progress)}%`);
     }
 
     public async preloadAllResources(): Promise<void> {
@@ -40,13 +49,15 @@ export class ResourceManager {
         const resources = [
             {
                 key: 'maleCharacter',
-                path: './models/male_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: '/models/male_all/Animation_Mirror_Viewing_withSkin.glb'
             },
             {
                 key: 'femaleCharacter',
-                path: './models/female_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: '/models/female_all/Animation_Mirror_Viewing_withSkin.glb'
             }
         ];
+
+        console.log('Ressourcen zum Laden:', resources);
 
         try {
             let loadedCount = 0;
@@ -58,14 +69,21 @@ export class ResourceManager {
             };
 
             for (const resource of resources) {
+                console.log(`\nStarte Laden von Ressource: ${resource.key}`);
+                console.log(`Pfad: ${resource.path}`);
+                
                 try {
-                    console.log(`Starte Laden von ${resource.key} von Pfad: ${resource.path}`);
                     await this.loadResource(
                         resource.key, 
                         resource.path, 
-                        (progress) => updateProgress(progress, resource.key)
+                        (progress) => {
+                            console.log(`Ladefortschritt für ${resource.key}: ${progress}%`);
+                            updateProgress(progress, resource.key);
+                        }
                     );
+                    
                     loadedCount++;
+                    console.log(`${resource.key} erfolgreich geladen (${loadedCount}/${totalCount})`);
                     updateProgress(100, resource.key);
                 } catch (error: any) {
                     console.error(`Fehler beim Laden von ${resource.key}:`, error);
@@ -75,18 +93,25 @@ export class ResourceManager {
                 }
             }
 
+            console.log('\nAlle Ressourcen erfolgreich geladen');
             this.updateUI(100, 'Alle Ressourcen geladen!');
-            console.log('Alle Ressourcen erfolgreich geladen');
 
             // Zeige Charakterauswahl nach erfolgreichem Laden
             const characterSelection = document.getElementById('character-selection');
             const loadingOverlay = document.getElementById('loading-overlay');
             
             if (loadingOverlay) {
+                console.log('Verstecke Ladebildschirm');
                 loadingOverlay.style.display = 'none';
+            } else {
+                console.error('Loading-Overlay nicht gefunden!');
             }
+            
             if (characterSelection) {
+                console.log('Zeige Charakterauswahl');
                 characterSelection.style.display = 'flex';
+            } else {
+                console.error('Character-Selection nicht gefunden!');
             }
 
         } catch (error: any) {
@@ -98,6 +123,7 @@ export class ResourceManager {
     }
 
     private showError(message: string) {
+        console.error('Fehler:', message);
         const errorElement = document.getElementById('error-message');
         if (errorElement) {
             errorElement.textContent = message;
@@ -105,6 +131,8 @@ export class ResourceManager {
             setTimeout(() => {
                 errorElement.style.display = 'none';
             }, 5000);
+        } else {
+            console.error('Error-Message-Element nicht gefunden!');
         }
     }
 
@@ -113,15 +141,18 @@ export class ResourceManager {
         path: string, 
         onProgress?: (progress: number) => void
     ): Promise<GLTF> {
-        console.log(`Lade Ressource: ${key} von ${path}`);
+        console.log(`\nStarte Laden von Ressource: ${key}`);
+        console.log(`Pfad: ${path}`);
         
         // Prüfe ob bereits geladen
         if (this.resources.has(key)) {
+            console.log(`${key} bereits geladen, verwende Cache`);
             return this.resources.get(key)!;
         }
 
         // Prüfe ob bereits am Laden
         if (this.loadingPromises.has(key)) {
+            console.log(`${key} wird bereits geladen, warte auf Abschluss`);
             return this.loadingPromises.get(key)!;
         }
 
@@ -130,9 +161,9 @@ export class ResourceManager {
             this.loader.load(
                 path,
                 (gltf) => {
+                    console.log(`${key} erfolgreich geladen`);
                     this.resources.set(key, gltf);
                     this.loadingPromises.delete(key);
-                    console.log(`Ressource ${key} erfolgreich geladen`);
                     resolve(gltf);
                 },
                 (progress) => {
