@@ -4,27 +4,26 @@ import { CharacterCreator } from './character/CharacterCreator';
 type CharacterClass = 'warrior' | 'mage' | 'ranger' | 'rogue';
 type CharacterGender = 'male' | 'female';
 
+interface CharacterData {
+    userId: number;
+    gender: CharacterGender;
+    class: CharacterClass;
+}
+
 let characterCreator: CharacterCreator;
 
 async function initializeApp(): Promise<void> {
     try {
         console.log('App-Initialisierung startet...');
         
-        // Warte auf WebApp
         await WebApp.ready();
         console.log('WebApp ist bereit');
 
-        // Initialisiere CharacterCreator
         characterCreator = CharacterCreator.getInstance();
         await characterCreator.initialize();
         console.log('CharacterCreator initialisiert');
 
-        // Lade initiales männliches Modell
-        await characterCreator.updateCharacter('male');
-        console.log('Initiales Modell geladen');
-
         setupEventListeners();
-
     } catch (error) {
         console.error('Fehler bei der App-Initialisierung:', error);
         showError('Fehler beim Laden des Spiels');
@@ -32,7 +31,12 @@ async function initializeApp(): Promise<void> {
 }
 
 function setupEventListeners(): void {
-    // Event-Listener für Geschlechterauswahl
+    setupGenderButtons();
+    setupClassButtons();
+    setupSaveButton();
+}
+
+function setupGenderButtons(): void {
     const maleBtn = document.getElementById('male-btn');
     const femaleBtn = document.getElementById('female-btn');
 
@@ -41,30 +45,24 @@ function setupEventListeners(): void {
         return;
     }
 
-    maleBtn.addEventListener('click', async () => {
+    const handleGenderSelection = (gender: CharacterGender, activeBtn: HTMLElement, inactiveBtn: HTMLElement) => {
         try {
-            maleBtn.classList.add('selected');
-            femaleBtn.classList.remove('selected');
-            characterCreator.setGender('male');
+            activeBtn.classList.add('selected');
+            inactiveBtn.classList.remove('selected');
+            characterCreator.setGender(gender);
         } catch (error) {
-            console.error('Fehler beim Laden des männlichen Charakters:', error);
+            console.error(`Fehler beim Laden des ${gender} Charakters:`, error);
             showError('Fehler beim Laden des Charakters');
         }
-    });
+    };
 
-    femaleBtn.addEventListener('click', async () => {
-        try {
-            femaleBtn.classList.add('selected');
-            maleBtn.classList.remove('selected');
-            characterCreator.setGender('female');
-        } catch (error) {
-            console.error('Fehler beim Laden des weiblichen Charakters:', error);
-            showError('Fehler beim Laden des Charakters');
-        }
-    });
+    maleBtn.addEventListener('click', () => handleGenderSelection('male', maleBtn, femaleBtn));
+    femaleBtn.addEventListener('click', () => handleGenderSelection('female', femaleBtn, maleBtn));
+}
 
-    // Event-Listener für Klassen-Buttons
-    const classButtons = ['warrior', 'mage', 'ranger', 'rogue'].map(className => ({
+function setupClassButtons(): void {
+    const classes: CharacterClass[] = ['warrior', 'mage', 'ranger', 'rogue'];
+    const classButtons = classes.map(className => ({
         id: className,
         element: document.getElementById(`${className}-btn`)
     }));
@@ -80,8 +78,9 @@ function setupEventListeners(): void {
             element.classList.add('selected');
         });
     });
+}
 
-    // Event-Listener für Speichern-Button
+function setupSaveButton(): void {
     const saveBtn = document.getElementById('save-character');
     if (!saveBtn) {
         console.error('Speichern-Button nicht gefunden');
@@ -93,23 +92,22 @@ function setupEventListeners(): void {
 
 async function handleSaveCharacter(): Promise<void> {
     try {
-        const selectedGender = getSelectedGender();
-        const selectedClass = getSelectedClass();
-
         if (!WebApp.initDataUnsafe.user?.id) {
             throw new Error('Keine Benutzer-ID gefunden');
         }
+
+        const characterData: CharacterData = {
+            userId: WebApp.initDataUnsafe.user.id,
+            gender: getSelectedGender(),
+            class: getSelectedClass()
+        };
 
         const response = await fetch('/api/character/create', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                userId: WebApp.initDataUnsafe.user.id,
-                gender: selectedGender,
-                class: selectedClass
-            })
+            body: JSON.stringify(characterData)
         });
 
         if (!response.ok) {
@@ -130,9 +128,10 @@ function getSelectedGender(): CharacterGender {
 
 function getSelectedClass(): CharacterClass {
     const classes: CharacterClass[] = ['warrior', 'mage', 'ranger', 'rogue'];
-    return classes.find(className => 
+    const selectedClass = classes.find(className => 
         document.getElementById(`${className}-btn`)?.classList.contains('selected')
-    ) || 'warrior';
+    );
+    return selectedClass ?? 'warrior';
 }
 
 function showError(message: string): void {
@@ -149,7 +148,6 @@ function showError(message: string): void {
     }, 3000);
 }
 
-// Starte die App
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeApp);
 } else {
