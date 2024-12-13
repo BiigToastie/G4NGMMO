@@ -26,11 +26,11 @@ export class ResourceManager {
         const resources = [
             {
                 key: 'maleCharacter',
-                path: '/dist/models/male_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: 'models/male_all/Animation_Mirror_Viewing_withSkin.glb'
             },
             {
                 key: 'femaleCharacter',
-                path: '/dist/models/female_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: 'models/female_all/Animation_Mirror_Viewing_withSkin.glb'
             }
         ];
 
@@ -44,26 +44,29 @@ export class ResourceManager {
                     // Berechne Gesamtfortschritt (Kombination aus geladenen Ressourcen und individuellem Fortschritt)
                     const totalProgress = ((loadedCount + individualProgress / 100) / totalCount) * 100;
                     progressElement.textContent = `${Math.round(totalProgress)}%`;
+                    console.log(`Ladefortschritt: ${Math.round(totalProgress)}%`);
                 }
             };
 
             for (const resource of resources) {
                 try {
-                    console.log(`Starte Laden von ${resource.key}...`);
+                    console.log(`Starte Laden von ${resource.key} von Pfad: ${resource.path}`);
                     await this.loadResource(resource.key, resource.path, updateProgress);
                     loadedCount++;
                     updateProgress(100); // Aktualisiere für vollständig geladene Ressource
                     console.log(`${resource.key} erfolgreich geladen (${loadedCount}/${totalCount})`);
-                } catch (error) {
+                } catch (error: any) {
                     console.error(`Fehler beim Laden von ${resource.key}:`, error);
-                    throw new Error(`Fehler beim Laden von ${resource.key}: ${error.message}`);
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    throw new Error(`Fehler beim Laden von ${resource.key}: ${errorMessage}`);
                 }
             }
 
             console.log('Alle Ressourcen erfolgreich geladen');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Fehler beim Laden der Ressourcen:', error);
-            throw error;
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            throw new Error(`Fehler beim Laden der Ressourcen: ${errorMessage}`);
         }
     }
 
@@ -102,9 +105,10 @@ export class ResourceManager {
                     }
                 },
                 (error) => {
-                    console.error(`Fehler beim Laden von ${key}:`, error);
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    console.error(`Fehler beim Laden von ${key}:`, errorMessage);
                     this.loadingPromises.delete(key);
-                    reject(new Error(`Fehler beim Laden von ${key}: ${error.message}`));
+                    reject(new Error(`Fehler beim Laden von ${key}: ${errorMessage}`));
                 }
             );
         });

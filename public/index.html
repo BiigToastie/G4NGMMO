@@ -117,11 +117,11 @@
     
     <div id="character-selection" style="display: none;">
         <button id="male-button" class="character-button">
-            <img src="/dist/icons/male.svg" alt="Männlich">
+            <img src="icons/male.svg" alt="Männlich">
             Männlich
         </button>
         <button id="female-button" class="character-button">
-            <img src="/dist/icons/female.svg" alt="Weiblich">
+            <img src="icons/female.svg" alt="Weiblich">
             Weiblich
         </button>
     </div>
@@ -141,12 +141,26 @@
         const originalConsoleLog = console.log;
         const originalConsoleError = console.error;
 
+        function formatLogMessage(args) {
+            return args.map(arg => {
+                if (arg instanceof Error) {
+                    return arg.message;
+                }
+                if (typeof arg === 'object') {
+                    try {
+                        return JSON.stringify(arg, null, 2);
+                    } catch (e) {
+                        return String(arg);
+                    }
+                }
+                return String(arg);
+            }).join(' ');
+        }
+
         console.log = function(...args) {
             originalConsoleLog.apply(console, args);
             if (debugInfo) {
-                const message = args.map(arg => 
-                    typeof arg === 'object' ? JSON.stringify(arg) : arg
-                ).join(' ');
+                const message = formatLogMessage(args);
                 debugInfo.innerHTML += `<div>${message}</div>`;
                 debugInfo.scrollTop = debugInfo.scrollHeight;
             }
@@ -155,17 +169,15 @@
         console.error = function(...args) {
             originalConsoleError.apply(console, args);
             if (debugInfo) {
-                const message = args.map(arg => 
-                    typeof arg === 'object' ? JSON.stringify(arg) : arg
-                ).join(' ');
+                const message = formatLogMessage(args);
                 debugInfo.innerHTML += `<div style="color: red;">${message}</div>`;
                 debugInfo.scrollTop = debugInfo.scrollHeight;
             }
         };
     </script>
 
-    <script src="/dist/vendors.bundle.js"></script>
-    <script src="/dist/threejs.bundle.js"></script>
-    <script src="/dist/main.bundle.js"></script>
+    <script src="vendors.bundle.js"></script>
+    <script src="threejs.bundle.js"></script>
+    <script src="main.bundle.js"></script>
 </body>
 </html> 
