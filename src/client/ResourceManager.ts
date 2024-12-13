@@ -11,6 +11,7 @@ export class ResourceManager {
         this.resources = new Map();
         this.loader = new GLTFLoader();
         this.loadingPromises = new Map();
+        console.log('ResourceManager initialisiert');
     }
 
     public static getInstance(): ResourceManager {
@@ -26,11 +27,11 @@ export class ResourceManager {
         const resources = [
             {
                 key: 'maleCharacter',
-                path: 'models/male_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: './models/male_all/Animation_Mirror_Viewing_withSkin.glb'
             },
             {
                 key: 'femaleCharacter',
-                path: 'models/female_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: './models/female_all/Animation_Mirror_Viewing_withSkin.glb'
             }
         ];
 
@@ -50,7 +51,7 @@ export class ResourceManager {
 
             for (const resource of resources) {
                 try {
-                    console.log(`Starte Laden von ${resource.key} von Pfad: ${resource.path}`);
+                    console.log(`Versuche zu laden: ${resource.key} von Pfad: ${resource.path}`);
                     await this.loadResource(resource.key, resource.path, updateProgress);
                     loadedCount++;
                     updateProgress(100); // Aktualisiere für vollständig geladene Ressource
