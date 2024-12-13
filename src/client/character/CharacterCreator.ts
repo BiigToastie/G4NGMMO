@@ -1,28 +1,33 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { MaleCharacter } from './models/MaleCharacter';
-import { FemaleCharacter } from './models/FemaleCharacter';
-import { BaseCharacter } from './models/BaseCharacter';
+import WebApp from '@twa-dev/sdk';
+
+interface CharacterSelection {
+    gender: 'male' | 'female';
+    class: 'warrior' | 'mage' | 'ranger' | 'rogue';
+}
 
 export class CharacterCreator {
     private static instance: CharacterCreator | null = null;
     private scene: THREE.Scene;
     private camera: THREE.PerspectiveCamera;
     private renderer: THREE.WebGLRenderer;
-    private controls: OrbitControls;
-    private currentCharacter: BaseCharacter | null = null;
+    private controls!: OrbitControls;
     private loader: GLTFLoader;
     private animationMixer: THREE.AnimationMixer | null = null;
     private container: HTMLElement | null = null;
     private clock: THREE.Clock;
+    private selectedCharacter: CharacterSelection = {
+        gender: 'male',
+        class: 'warrior'
+    };
 
     private constructor() {
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         this.loader = new GLTFLoader();
-        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.clock = new THREE.Clock();
         this.setupScene();
     }
@@ -77,11 +82,14 @@ export class CharacterCreator {
             // Event Listener für Größenänderungen
             window.addEventListener('resize', this.onWindowResize.bind(this));
 
+            // Event Listener für Charakterauswahl
+            this.setupCharacterSelectionListeners();
+
             // Starte Animation Loop
             this.animate();
 
             // Lade initiales Modell (männlich)
-            await this.updateCharacter('male', 'warrior');
+            await this.updateCharacter();
             console.log('CharacterCreator erfolgreich initialisiert');
 
         } catch (error) {
@@ -90,24 +98,107 @@ export class CharacterCreator {
         }
     }
 
-    public async updateCharacter(gender: 'male' | 'female', characterClass: string): Promise<void> {
+    private setupCharacterSelectionListeners(): void {
+        // Geschlecht-Buttons
+        const maleBtn = document.getElementById('male-btn');
+        const femaleBtn = document.getElementById('female-btn');
+
+        maleBtn?.addEventListener('click', () => {
+            this.selectedCharacter.gender = 'male';
+            this.updateButtonStates();
+            this.updateCharacter();
+        });
+
+        femaleBtn?.addEventListener('click', () => {
+            this.selectedCharacter.gender = 'female';
+            this.updateButtonStates();
+            this.updateCharacter();
+        });
+
+        // Klassen-Buttons
+        const classes = ['warrior', 'mage', 'ranger', 'rogue'] as const;
+        classes.forEach(className => {
+            const btn = document.getElementById(`${className}-btn`);
+            btn?.addEventListener('click', () => {
+                this.selectedCharacter.class = className;
+                this.updateButtonStates();
+                this.updateCharacter();
+            });
+        });
+
+        // Speichern-Button
+        const saveBtn = document.getElementById('save-character');
+        saveBtn?.addEventListener('click', async () => {
+            try {
+                await this.saveCharacter();
+            } catch (error) {
+                console.error('Fehler beim Speichern:', error);
+                this.showError('Fehler beim Speichern des Charakters');
+            }
+        });
+
+        // Initiale Button-States
+        this.updateButtonStates();
+    }
+
+    private updateButtonStates(): void {
+        // Geschlecht-Buttons
+        const maleBtn = document.getElementById('male-btn');
+        const femaleBtn = document.getElementById('female-btn');
+        
+        maleBtn?.classList.toggle('selected', this.selectedCharacter.gender === 'male');
+        femaleBtn?.classList.toggle('selected', this.selectedCharacter.gender === 'female');
+
+        // Klassen-Buttons
+        const classes = ['warrior', 'mage', 'ranger', 'rogue'] as const;
+        classes.forEach(className => {
+            const btn = document.getElementById(`${className}-btn`);
+            btn?.classList.toggle('selected', this.selectedCharacter.class === className);
+        });
+    }
+
+    private async saveCharacter(): Promise<void> {
+        const response = await fetch('/api/character/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                gender: this.selectedCharacter.gender,
+                class: this.selectedCharacter.class
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Fehler beim Speichern des Charakters');
+        }
+
+        // Schließe die WebApp nach erfolgreichem Speichern
+        WebApp.close();
+    }
+
+    private showError(message: string): void {
+        const errorElement = document.getElementById('error-message');
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            setTimeout(() => {
+                errorElement.style.display = 'none';
+            }, 3000);
+        }
+    }
+
+    public async updateCharacter(): Promise<void> {
         try {
-            console.log(`Lade ${gender} Charakter...`);
+            console.log(`Lade ${this.selectedCharacter.gender} ${this.selectedCharacter.class}...`);
 
             // Entferne aktuelles Modell und Animation
-            if (this.currentCharacter) {
-                if (this.animationMixer) {
-                    this.animationMixer.stopAllAction();
-                }
-                const model = this.currentCharacter.getModel();
-                if (model) {
-                    this.scene.remove(model);
-                }
-                this.currentCharacter.dispose();
+            if (this.animationMixer) {
+                this.animationMixer.stopAllAction();
             }
 
             // Lade neues Modell
-            const modelPath = gender === 'male' 
+            const modelPath = this.selectedCharacter.gender === 'male' 
                 ? 'models/male_all/Animation_Mirror_Viewing_withSkin.glb'
                 : 'models/female_all/Animation_Mirror_Viewing_withSkin.glb';
 
@@ -115,6 +206,11 @@ export class CharacterCreator {
             
             const gltf = await this.loader.loadAsync(modelPath);
             const model = gltf.scene;
+
+            // Entferne altes Modell
+            this.scene.children
+                .filter(child => child instanceof THREE.Group)
+                .forEach(child => this.scene.remove(child));
 
             // Modell-Setup
             model.position.set(0, 0, 0);
@@ -153,11 +249,11 @@ export class CharacterCreator {
             this.controls.target.set(center.x, center.y + size.y / 3, center.z);
             this.controls.update();
 
-            console.log(`${gender} Charakter erfolgreich geladen`);
+            console.log(`${this.selectedCharacter.gender} ${this.selectedCharacter.class} erfolgreich geladen`);
 
         } catch (error) {
             console.error('Fehler beim Aktualisieren des Charakters:', error);
-            throw error;
+            this.showError('Fehler beim Laden des Charakters');
         }
     }
 
@@ -188,10 +284,6 @@ export class CharacterCreator {
     public dispose(): void {
         if (this.animationMixer) {
             this.animationMixer.stopAllAction();
-        }
-
-        if (this.currentCharacter) {
-            this.currentCharacter.dispose();
         }
 
         window.removeEventListener('resize', this.onWindowResize.bind(this));
