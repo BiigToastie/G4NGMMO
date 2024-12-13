@@ -21,11 +21,10 @@ async function initializeApp() {
     try {
         debugLog('App-Initialisierung startet...');
         
-        // Prüfe Debug-Fenster
-        const debugInfo = document.getElementById('debug-info');
-        if (!debugInfo) {
-            console.error('Debug-Fenster nicht gefunden!');
-            throw new Error('Debug-Fenster nicht gefunden');
+        // Debug-Button anzeigen
+        const debugButton = document.getElementById('debug-toggle');
+        if (debugButton) {
+            debugButton.style.display = 'block';
         }
         
         // Warte auf WebApp
@@ -33,21 +32,27 @@ async function initializeApp() {
         await WebApp.ready();
         debugLog('WebApp ist bereit');
 
-        // Prüfe Ladebildschirm
-        const loadingOverlay = document.getElementById('loading-overlay');
-        if (!loadingOverlay) {
-            debugLog('Ladebildschirm nicht gefunden!', true);
-            throw new Error('Ladebildschirm nicht gefunden');
+        // Prüfe Verzeichnisstruktur
+        debugLog('Prüfe Verzeichnisstruktur...');
+        try {
+            const response = await fetch('/debug/models');
+            const data = await response.json();
+            debugLog(`Verzeichnisstruktur: ${JSON.stringify(data, null, 2)}`);
+        } catch (error) {
+            debugLog(`Fehler beim Prüfen der Verzeichnisstruktur: ${error}`, true);
         }
-
-        // Zeige Ladebildschirm
-        loadingOverlay.style.display = 'flex';
-        debugLog('Ladebildschirm angezeigt');
 
         // Initialisiere ResourceManager
         debugLog('Initialisiere ResourceManager...');
         const resourceManager = ResourceManager.getInstance();
         debugLog('ResourceManager initialisiert');
+
+        // Zeige Ladebildschirm
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'flex';
+            debugLog('Ladebildschirm angezeigt');
+        }
 
         // Lade Ressourcen
         debugLog('Starte Ressourcenladung...');
@@ -55,7 +60,7 @@ async function initializeApp() {
             await resourceManager.preloadAllResources();
             debugLog('Ressourcen erfolgreich geladen');
         } catch (error) {
-            debugLog('Fehler beim Laden der Ressourcen', true);
+            debugLog(`Fehler beim Laden der Ressourcen: ${error}`, true);
             throw error;
         }
 
@@ -66,35 +71,33 @@ async function initializeApp() {
             await characterCreator.initialize();
             debugLog('CharacterCreator initialisiert');
         } catch (error) {
-            debugLog('Fehler bei der CharacterCreator-Initialisierung', true);
+            debugLog(`Fehler bei der CharacterCreator-Initialisierung: ${error}`, true);
             throw error;
         }
 
         // Verstecke Ladebildschirm
-        loadingOverlay.style.display = 'none';
-        debugLog('Ladebildschirm ausgeblendet');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'none';
+            debugLog('Ladebildschirm ausgeblendet');
+        }
 
         debugLog('App-Initialisierung abgeschlossen');
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         debugLog(`Fehler bei der App-Initialisierung: ${errorMessage}`, true);
+        if (error instanceof Error && error.stack) {
+            debugLog(`Stack Trace: ${error.stack}`, true);
+        }
         
-        // Zeige Fehlermeldung
         const errorElement = document.getElementById('error-message');
         if (errorElement) {
-            errorElement.textContent = `Fehler beim Laden: ${errorMessage}`;
+            errorElement.textContent = 'Fehler beim Laden des Spiels. Bitte versuchen Sie es erneut.';
             errorElement.style.display = 'block';
         }
         
-        // Verstecke Ladebildschirm bei Fehler
         const loadingOverlay = document.getElementById('loading-overlay');
         if (loadingOverlay) {
             loadingOverlay.style.display = 'none';
-        }
-
-        // Log Stack Trace
-        if (error instanceof Error && error.stack) {
-            debugLog(`Stack Trace: ${error.stack}`, true);
         }
     }
 }
@@ -103,13 +106,9 @@ async function initializeApp() {
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         debugLog('DOM geladen, starte App...');
-        initializeApp().catch(error => {
-            debugLog(`Kritischer Fehler: ${error}`, true);
-        });
+        initializeApp();
     });
 } else {
     debugLog('DOM bereits geladen, starte App...');
-    initializeApp().catch(error => {
-        debugLog(`Kritischer Fehler: ${error}`, true);
-    });
+    initializeApp();
 } 
