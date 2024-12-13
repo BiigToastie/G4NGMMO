@@ -162,32 +162,30 @@ export class CharacterCreator {
         console.log('Richte Szene ein...');
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
-        document.body.appendChild(this.renderer.domElement);
+        this.renderer.shadowMap.enabled = true;
 
-        this.camera.position.set(0, 1.7, 3);
-        this.camera.lookAt(0, 1.7, 0);
+        // Kamera-Setup für bessere Charakteransicht
+        this.camera.position.set(0, 1.6, 2.5);
+        this.camera.lookAt(0, 1.6, 0);
     }
 
     private setupLights(): void {
         // Ambient Light für Grundbeleuchtung
-        const ambientLight = new AmbientLight(0xffffff, 0.5);
+        const ambientLight = new AmbientLight(0xffffff, 0.6);
         this.scene.add(ambientLight);
 
         // Hauptlicht von vorne-oben
-        const mainLight = new DirectionalLight(0xffffff, 1);
-        mainLight.position.set(0, 5, 5);
+        const mainLight = new DirectionalLight(0xffffff, 0.8);
+        mainLight.position.set(2, 4, 2);
         mainLight.castShadow = true;
+        mainLight.shadow.mapSize.width = 1024;
+        mainLight.shadow.mapSize.height = 1024;
         this.scene.add(mainLight);
 
         // Füll-Licht von links
-        const fillLight = new DirectionalLight(0xffffff, 0.5);
-        fillLight.position.set(-5, 2, 0);
+        const fillLight = new DirectionalLight(0xffffff, 0.4);
+        fillLight.position.set(-2, 2, -2);
         this.scene.add(fillLight);
-
-        // Akzent-Licht von rechts-hinten
-        const rimLight = new DirectionalLight(0xffffff, 0.3);
-        rimLight.position.set(5, 2, -5);
-        this.scene.add(rimLight);
     }
 
     private setupControls(): void {
@@ -196,10 +194,11 @@ export class CharacterCreator {
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
         this.controls.screenSpacePanning = false;
-        this.controls.minDistance = 2;
-        this.controls.maxDistance = 5;
-        this.controls.maxPolarAngle = Math.PI / 2;
-        this.controls.target.set(0, 1.7, 0);
+        this.controls.minDistance = 1.5;
+        this.controls.maxDistance = 4;
+        this.controls.minPolarAngle = Math.PI / 4; // Minimaler Winkel (von oben)
+        this.controls.maxPolarAngle = Math.PI / 1.5; // Maximaler Winkel (von unten)
+        this.controls.target.set(0, 1.6, 0);
         this.controls.update();
     }
 
@@ -252,47 +251,44 @@ export class CharacterCreator {
         this.showLoadingOverlay();
 
         try {
-            console.log(`Lade ${gender}-Charaktermodell...`);
-            const modelPath = gender === 'male' 
-                ? '/models/male_all/Animation_Mirror_Viewing_withSkin.glb'
-                : '/models/female_all/Animation_Mirror_Viewing_withSkin.glb';
-
-            const modelKey = gender === 'male' ? 'maleCharacter' : 'femaleCharacter';
-            const gltf = this.resourceManager.getResource(modelKey);
-
-            if (!gltf) {
-                throw new Error(`Model nicht gefunden: ${modelPath}`);
-            }
-
-            // Entferne das alte Modell, falls vorhanden
+            console.log(`Lade ${gender} Charakter...`);
+            
+            // Entferne vorheriges Modell und Animation
             if (this.currentCharacter) {
-                console.log('Entferne altes Modell');
+                if (this.mixer) {
+                    this.mixer.stopAllAction();
+                }
                 this.scene.remove(this.currentCharacter.getModel()!);
                 this.currentCharacter.dispose();
+                this.currentCharacter = null;
             }
 
-            // Erstelle den neuen Charakter basierend auf dem Geschlecht
-            console.log('Erstelle neuen Charakter');
+            // Erstelle neuen Charakter
             this.currentCharacter = gender === 'male' 
                 ? new MaleCharacter(this.gltfLoader)
                 : new FemaleCharacter(this.gltfLoader);
+
+            const model = await this.currentCharacter.load();
             
-            // Füge das neue Modell zur Szene hinzu
-            console.log('Füge Modell zur Szene hinzu');
-            const model = gltf.scene.clone(); // Clone das Modell
+            if (!model) {
+                throw new Error('Modell konnte nicht geladen werden');
+            }
+
+            // Modell-Setup
+            model.rotation.y = Math.PI; // Drehe Modell zur Kamera
+            model.position.y = 0;
             this.scene.add(model);
 
-            // Zentriere die Kamera auf das neue Modell
-            this.centerCameraOnCharacter();
-
-            console.log(`${gender}-Charakter erfolgreich geladen`);
+            // Animation-Setup
+            this.mixer = this.currentCharacter.getMixer();
             
-            // Aktualisiere UI
+            // UI aktualisieren
             this.updateCharacterSelectionUI(gender);
+            
+            console.log(`${gender} Charakter erfolgreich geladen`);
         } catch (error) {
-            console.error('Fehler beim Laden des Charaktermodells:', error);
-            this.showErrorMessage('Fehler beim Laden des Charaktermodells');
-            throw error;
+            console.error('Fehler beim Laden des Charakters:', error);
+            this.showErrorMessage('Fehler beim Laden des Charakters');
         } finally {
             this.isLoading = false;
             this.hideLoadingOverlay();
@@ -364,9 +360,9 @@ export class CharacterCreator {
     }
 
     private updateLoadingProgress(progress: number): void {
-        const progressBar = document.getElementById('loading-progress');
-        if (progressBar) {
-            progressBar.style.width = `${progress}%`;
+        const progressElement = document.getElementById('loading-progress');
+        if (progressElement) {
+            progressElement.textContent = `${Math.round(progress)}%`;
         }
     }
 
@@ -377,7 +373,7 @@ export class CharacterCreator {
             errorElement.style.display = 'block';
             setTimeout(() => {
                 errorElement.style.display = 'none';
-            }, 5000);
+            }, 3000);
         }
     }
 

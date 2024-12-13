@@ -1,40 +1,16 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { TextureLoader, LoadingManager } from 'three';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader';
 
-interface Resource {
-    path: string;
-    type: 'model' | 'texture';
-    key: string;
-}
-
 export class ResourceManager {
-    private static instance: ResourceManager;
-    private gltfLoader: GLTFLoader;
-    private textureLoader: TextureLoader;
-    private loadingManager: LoadingManager;
-    private resources: Map<string, any> = new Map();
-    private resourceQueue: Resource[] = [];
-    private isLoading: boolean = false;
+    private static instance: ResourceManager | null = null;
+    private resources: Map<string, GLTF>;
+    private loader: GLTFLoader;
+    private loadingPromises: Map<string, Promise<GLTF>>;
 
     private constructor() {
-        this.loadingManager = new LoadingManager();
-        this.setupLoadingManager();
-        
-        this.gltfLoader = new GLTFLoader(this.loadingManager);
-        this.textureLoader = new TextureLoader(this.loadingManager);
-
-        // Füge Standard-Ressourcen hinzu
-        this.addToQueue({
-            path: '/models/female_all/Animation_Mirror_Viewing_withSkin.glb',
-            type: 'model',
-            key: 'femaleCharacter'
-        });
-        this.addToQueue({
-            path: '/models/male_all/Animation_Mirror_Viewing_withSkin.glb',
-            type: 'model',
-            key: 'maleCharacter'
-        });
+        this.resources = new Map();
+        this.loader = new GLTFLoader();
+        this.loadingPromises = new Map();
     }
 
     public static getInstance(): ResourceManager {
@@ -44,144 +20,78 @@ export class ResourceManager {
         return ResourceManager.instance;
     }
 
-    private setupLoadingManager(): void {
-        this.loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
-            const progress = (itemsLoaded / itemsTotal) * 100;
-            console.log(`Lade... ${Math.round(progress)}% (${itemsLoaded}/${itemsTotal})`);
-        };
-
-        this.loadingManager.onLoad = () => {
-            console.log('Alle Ressourcen geladen!');
-            this.isLoading = false;
-        };
-
-        this.loadingManager.onError = (url) => {
-            console.error('Fehler beim Laden:', url);
-            this.isLoading = false;
-        };
-    }
-
-    private addToQueue(resource: Resource): void {
-        if (!this.resourceQueue.some(r => r.key === resource.key)) {
-            this.resourceQueue.push(resource);
-        }
-    }
-
     public async preloadAllResources(): Promise<void> {
-        if (this.isLoading) {
-            console.warn('Ressourcen werden bereits geladen...');
-            return;
-        }
-
-        this.isLoading = true;
-        console.log('Starte Preloading von', this.resourceQueue.length, 'Ressourcen');
-
-        const loadPromises = this.resourceQueue.map(resource => this.loadResource(resource));
+        console.log('Starte Preload aller Ressourcen...');
+        
+        const resources = [
+            {
+                key: 'maleCharacter',
+                path: '/dist/models/male_all/Animation_Mirror_Viewing_withSkin.glb'
+            },
+            {
+                key: 'femaleCharacter',
+                path: '/dist/models/female_all/Animation_Mirror_Viewing_withSkin.glb'
+            }
+        ];
 
         try {
-            await Promise.all(loadPromises);
-            console.log('Alle Ressourcen erfolgreich vorgeladen!');
+            await Promise.all(
+                resources.map(resource => 
+                    this.loadResource(resource.key, resource.path)
+                )
+            );
+            console.log('Alle Ressourcen erfolgreich geladen');
         } catch (error) {
-            console.error('Fehler beim Vorladen der Ressourcen:', error);
+            console.error('Fehler beim Laden der Ressourcen:', error);
             throw error;
-        } finally {
-            this.isLoading = false;
         }
     }
 
-    private loadResource(resource: Resource): Promise<void> {
-        return new Promise((resolve, reject) => {
-            console.log(`Lade Ressource: ${resource.key} (${resource.type})`);
+    private async loadResource(key: string, path: string): Promise<GLTF> {
+        console.log(`Lade Ressource: ${key} von ${path}`);
+        
+        // Prüfe ob bereits geladen
+        if (this.resources.has(key)) {
+            return this.resources.get(key)!;
+        }
 
-            switch (resource.type) {
-                case 'model':
-                    this.gltfLoader.load(
-                        resource.path,
-                        (gltf) => {
-                            this.resources.set(resource.key, gltf);
-                            console.log(`Model geladen: ${resource.key}`);
-                            resolve();
-                        },
-                        (progress) => {
-                            if (progress.lengthComputable) {
-                                const percentComplete = (progress.loaded / progress.total) * 100;
-                                console.log(`${resource.key} - ${Math.round(percentComplete)}% geladen`);
-                            }
-                        },
-                        (err: unknown) => {
-                            const error = err instanceof Error ? err : new Error(String(err));
-                            console.error(`Fehler beim Laden von ${resource.key}:`, error);
-                            reject(error);
-                        }
-                    );
-                    break;
+        // Prüfe ob bereits am Laden
+        if (this.loadingPromises.has(key)) {
+            return this.loadingPromises.get(key)!;
+        }
 
-                case 'texture':
-                    this.textureLoader.load(
-                        resource.path,
-                        (texture) => {
-                            this.resources.set(resource.key, texture);
-                            console.log(`Textur geladen: ${resource.key}`);
-                            resolve();
-                        },
-                        (progress) => {
-                            if (progress.lengthComputable) {
-                                const percentComplete = (progress.loaded / progress.total) * 100;
-                                console.log(`${resource.key} - ${Math.round(percentComplete)}% geladen`);
-                            }
-                        },
-                        (err: unknown) => {
-                            const error = err instanceof Error ? err : new Error(String(err));
-                            console.error(`Fehler beim Laden von ${resource.key}:`, error);
-                            reject(error);
-                        }
-                    );
-                    break;
-
-                default:
-                    reject(new Error(`Unbekannter Ressourcentyp: ${resource.type}`));
-            }
+        // Starte neuen Ladevorgang
+        const loadingPromise = new Promise<GLTF>((resolve, reject) => {
+            this.loader.load(
+                path,
+                (gltf) => {
+                    this.resources.set(key, gltf);
+                    this.loadingPromises.delete(key);
+                    console.log(`Ressource ${key} erfolgreich geladen`);
+                    resolve(gltf);
+                },
+                (progress) => {
+                    const percent = (progress.loaded / progress.total) * 100;
+                    console.log(`Lade ${key}: ${Math.round(percent)}%`);
+                },
+                (error) => {
+                    console.error(`Fehler beim Laden von ${key}:`, error);
+                    this.loadingPromises.delete(key);
+                    reject(error);
+                }
+            );
         });
+
+        this.loadingPromises.set(key, loadingPromise);
+        return loadingPromise;
     }
 
-    public getResource(key: string): any {
-        if (!this.resources.has(key)) {
-            console.warn(`Ressource nicht gefunden: ${key}`);
-            return null;
-        }
+    public getResource(key: string): GLTF | undefined {
         return this.resources.get(key);
     }
 
-    public getModel(path: string): GLTF | null {
-        const key = this.resourceQueue.find(r => r.path === path)?.key;
-        if (!key) {
-            console.warn(`Kein Model mit Pfad gefunden: ${path}`);
-            return null;
-        }
-        return this.getResource(key) as GLTF;
-    }
-
-    public isResourceLoaded(key: string): boolean {
-        return this.resources.has(key);
-    }
-
-    public clearResource(key: string): void {
-        if (this.resources.has(key)) {
-            const resource = this.resources.get(key);
-            if (resource && resource.dispose) {
-                resource.dispose();
-            }
-            this.resources.delete(key);
-        }
-    }
-
-    public clearAllResources(): void {
-        this.resources.forEach((resource, key) => {
-            if (resource && resource.dispose) {
-                resource.dispose();
-            }
-        });
+    public clearResources(): void {
         this.resources.clear();
-        this.resourceQueue = [];
+        this.loadingPromises.clear();
     }
 } 

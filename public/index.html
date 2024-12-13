@@ -3,175 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>G4NG MMO</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>MMO Telegram Game</title>
     <style>
         body {
             margin: 0;
-            padding: 0;
             overflow: hidden;
-            background-color: #1a1a1a;
-            color: white;
             font-family: Arial, sans-serif;
         }
-        #loading-screen {
+        #canvas-container {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: #1a1a1a;
+        }
+        #character-selection {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             display: flex;
-            flex-direction: column;
+            gap: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            z-index: 1000;
+        }
+        .character-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.3s;
+        }
+        .character-button:hover {
+            background: #45a049;
+        }
+        .character-button img {
+            width: 24px;
+            height: 24px;
+        }
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 9999;
-        }
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid #333;
-            border-top: 5px solid #4CAF50;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        #loading-text {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-        #loading-progress {
-            font-size: 16px;
-            color: #888;
+            z-index: 2000;
+            color: white;
+            flex-direction: column;
         }
         #error-message {
-            color: #ff4444;
-            margin-top: 20px;
-            text-align: center;
-            display: none;
-            padding: 10px;
-            background-color: rgba(255, 0, 0, 0.1);
-            border-radius: 5px;
-        }
-        #character-creator {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-            display: none;
-        }
-        #game-container {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            display: none;
-            z-index: 5;
-        }
-        .ui-overlay {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 100;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ff4444;
             color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            display: none;
+            z-index: 3000;
         }
     </style>
 </head>
 <body>
-    <div id="loading-screen">
-        <div class="loading-spinner"></div>
-        <div id="loading-text">Laden...</div>
-        <div id="loading-progress">Initialisiere Spiel</div>
-        <div id="error-message"></div>
-    </div>
+    <div id="canvas-container"></div>
     
-    <div id="character-creator"></div>
-    
-    <div id="game-container">
-        <div class="ui-overlay">
-            <div id="player-info"></div>
-        </div>
+    <div id="character-selection">
+        <button id="male-button" class="character-button">
+            <img src="/dist/icons/male.svg" alt="Männlich">
+            Männlich
+        </button>
+        <button id="female-button" class="character-button">
+            <img src="/dist/icons/female.svg" alt="Weiblich">
+            Weiblich
+        </button>
     </div>
 
-    <script>
-        // Initialisiere Skript-Ladestatus
-        window.scriptsLoaded = {
-            vendors: false,
-            three: false,
-            main: false
-        };
+    <div id="loading-overlay">
+        <h2>Lade Spiel...</h2>
+        <div id="loading-progress">0%</div>
+    </div>
 
-        // Funktion zum Überprüfen, ob alle Skripte geladen sind
-        function checkAllScriptsLoaded() {
-            const loadedCount = Object.values(window.scriptsLoaded).filter(loaded => loaded).length;
-            const totalCount = Object.keys(window.scriptsLoaded).length;
-            console.log(`Skripte geladen: ${loadedCount}/${totalCount}`);
-            return Object.values(window.scriptsLoaded).every(loaded => loaded);
-        }
+    <div id="error-message"></div>
 
-        // Funktion zum Aktualisieren des Ladestatus
-        function updateLoadingProgress() {
-            const progress = document.getElementById('loading-progress');
-            if (progress) {
-                const loadedCount = Object.values(window.scriptsLoaded).filter(loaded => loaded).length;
-                const totalCount = Object.keys(window.scriptsLoaded).length;
-                progress.textContent = `Lade Spiel... (${loadedCount}/${totalCount})`;
-            }
-        }
-
-        // Funktion zum Laden der Skripte in der richtigen Reihenfolge
-        function loadScripts() {
-            // Lade vendors.bundle.js
-            const vendorsScript = document.createElement('script');
-            vendorsScript.src = 'dist/vendors.bundle.js';
-            vendorsScript.onload = () => {
-                window.scriptsLoaded.vendors = true;
-                console.log('Vendors geladen');
-                updateLoadingProgress();
-                
-                // Lade threejs.bundle.js nach vendors
-                const threeScript = document.createElement('script');
-                threeScript.src = 'dist/threejs.bundle.js';
-                threeScript.onload = () => {
-                    window.scriptsLoaded.three = true;
-                    console.log('Three.js geladen');
-                    updateLoadingProgress();
-                    
-                    // Lade main.bundle.js nach threejs
-                    const mainScript = document.createElement('script');
-                    mainScript.src = 'dist/main.bundle.js';
-                    mainScript.onload = () => {
-                        window.scriptsLoaded.main = true;
-                        console.log('Main geladen');
-                        updateLoadingProgress();
-                    };
-                    mainScript.onerror = () => {
-                        console.error('Fehler beim Laden von main.bundle.js');
-                        document.getElementById('error-message').textContent = 'Fehler beim Laden der Spiellogik';
-                        document.getElementById('error-message').style.display = 'block';
-                    };
-                    document.body.appendChild(mainScript);
-                };
-                threeScript.onerror = () => {
-                    console.error('Fehler beim Laden von threejs.bundle.js');
-                    document.getElementById('error-message').textContent = 'Fehler beim Laden der 3D-Engine';
-                    document.getElementById('error-message').style.display = 'block';
-                };
-                document.body.appendChild(threeScript);
-            };
-            vendorsScript.onerror = () => {
-                console.error('Fehler beim Laden von vendors.bundle.js');
-                document.getElementById('error-message').textContent = 'Fehler beim Laden der Ressourcen';
-                document.getElementById('error-message').style.display = 'block';
-            };
-            document.body.appendChild(vendorsScript);
-        }
-
-        // Starte das Laden der Skripte
-        loadScripts();
-    </script>
+    <script src="/dist/vendors.bundle.js"></script>
+    <script src="/dist/threejs.bundle.js"></script>
+    <script src="/dist/main.bundle.js"></script>
 </body>
 </html> 
