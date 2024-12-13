@@ -1,18 +1,19 @@
 declare module '@twa-dev/sdk' {
+    interface User {
+        id: number;
+        username?: string;
+        first_name?: string;
+        last_name?: string;
+    }
+
+    interface InitData {
+        user?: User;
+    }
+
     interface WebApp {
-        isInitialized: boolean;
-        ready: () => void;
-        expand: () => void;
-        close: () => void;
-        initDataUnsafe: {
-            user?: {
-                id: number;
-                first_name: string;
-                last_name?: string;
-                username?: string;
-            };
-        };
-        colorScheme: string;
+        ready(): Promise<void>;
+        close(): void;
+        initDataUnsafe: InitData;
     }
 
     const WebApp: WebApp;

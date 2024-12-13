@@ -128,7 +128,7 @@ export class GameWorld {
             const gltf = await this.loader.loadAsync(`/dist/models/${gender}_all/Animation_Mirror_Viewing_withSkin.glb`);
             const model = gltf.scene;
             
-            model.traverse((object) => {
+            model.traverse((object: THREE.Object3D) => {
                 if (object instanceof THREE.SkinnedMesh) {
                     object.castShadow = true;
                     object.receiveShadow = true;
@@ -175,7 +175,7 @@ export class GameWorld {
 
             this.players.set(id, player);
 
-            if (id === WebApp.initDataUnsafe.user.id) {
+            if (WebApp.initDataUnsafe.user?.id === id) {
                 this.localPlayer = player;
             }
 
