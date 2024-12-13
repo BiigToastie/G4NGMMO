@@ -1,7 +1,7 @@
-import express, { Request, Response } from 'express';
-import Character, { ICharacter } from '../models/character';
+import { Router } from 'express';
+import { Character } from '../models/character';
 
-const router = express.Router();
+const router = Router();
 
 // Charakter erstellen
 router.post('/', async (req: Request, res: Response) => {

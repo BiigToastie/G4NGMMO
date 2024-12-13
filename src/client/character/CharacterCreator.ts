@@ -132,7 +132,7 @@ export class CharacterCreator {
         const model = gltf.scene;
         model.position.set(xPosition, 0, 0);
         
-        model.traverse((object) => {
+        model.traverse((object: THREE.Object3D) => {
             if (object instanceof THREE.SkinnedMesh) {
                 object.castShadow = true;
                 object.receiveShadow = true;
@@ -143,7 +143,7 @@ export class CharacterCreator {
         });
 
         const mixer = new THREE.AnimationMixer(model);
-        let animation = null;
+        let animation: THREE.AnimationAction | null = null;
 
         if (gltf.animations.length > 0) {
             animation = mixer.clipAction(gltf.animations[0]);
