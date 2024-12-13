@@ -22,6 +22,7 @@ export class CharacterCreator {
         gender: 'male',
         class: 'warrior'
     };
+    private currentModel: THREE.Object3D | null = null;
 
     private constructor() {
         this.scene = new THREE.Scene();
@@ -89,7 +90,7 @@ export class CharacterCreator {
             this.animate();
 
             // Lade initiales Modell (männlich)
-            await this.updateCharacter();
+            await this.updateCharacter('male');
             console.log('CharacterCreator erfolgreich initialisiert');
 
         } catch (error) {
@@ -106,13 +107,13 @@ export class CharacterCreator {
         maleBtn?.addEventListener('click', () => {
             this.selectedCharacter.gender = 'male';
             this.updateButtonStates();
-            this.updateCharacter();
+            this.updateCharacter('male');
         });
 
         femaleBtn?.addEventListener('click', () => {
             this.selectedCharacter.gender = 'female';
             this.updateButtonStates();
-            this.updateCharacter();
+            this.updateCharacter('female');
         });
 
         // Klassen-Buttons
@@ -122,7 +123,7 @@ export class CharacterCreator {
             btn?.addEventListener('click', () => {
                 this.selectedCharacter.class = className;
                 this.updateButtonStates();
-                this.updateCharacter();
+                this.updateCharacter(this.selectedCharacter.gender);
             });
         });
 
@@ -188,33 +189,44 @@ export class CharacterCreator {
         }
     }
 
-    public async updateCharacter(): Promise<void> {
+    public async updateCharacter(gender: 'male' | 'female'): Promise<void> {
         try {
-            console.log(`Lade ${this.selectedCharacter.gender} ${this.selectedCharacter.class}...`);
+            console.log(`Lade ${gender} Charakter...`);
 
             // Entferne aktuelles Modell und Animation
             if (this.animationMixer) {
                 this.animationMixer.stopAllAction();
             }
 
+            if (this.currentModel) {
+                this.scene.remove(this.currentModel);
+                this.currentModel.traverse((object) => {
+                    if (object instanceof THREE.Mesh) {
+                        if (object.geometry) object.geometry.dispose();
+                        if (object.material) {
+                            if (Array.isArray(object.material)) {
+                                object.material.forEach(material => material.dispose());
+                            } else {
+                                object.material.dispose();
+                            }
+                        }
+                    }
+                });
+            }
+
             // Lade neues Modell
-            const modelPath = this.selectedCharacter.gender === 'male' 
-                ? 'models/male_all/Animation_Mirror_Viewing_withSkin.glb'
-                : 'models/female_all/Animation_Mirror_Viewing_withSkin.glb';
+            const modelPath = gender === 'male' 
+                ? '/dist/models/male_all/Animation_Mirror_Viewing_withSkin.glb'
+                : '/dist/models/female_all/Animation_Mirror_Viewing_withSkin.glb';
 
             console.log(`Lade Modell von: ${modelPath}`);
             
             const gltf = await this.loader.loadAsync(modelPath);
-            const model = gltf.scene;
-
-            // Entferne altes Modell
-            this.scene.children
-                .filter(child => child instanceof THREE.Group)
-                .forEach(child => this.scene.remove(child));
+            this.currentModel = gltf.scene;
 
             // Modell-Setup
-            model.position.set(0, 0, 0);
-            model.traverse((object) => {
+            this.currentModel.position.set(0, 0, 0);
+            this.currentModel.traverse((object) => {
                 if ('castShadow' in object) {
                     object.castShadow = true;
                     object.receiveShadow = true;
@@ -223,17 +235,17 @@ export class CharacterCreator {
 
             // Animation-Setup
             if (gltf.animations.length > 0) {
-                this.animationMixer = new THREE.AnimationMixer(model);
+                this.animationMixer = new THREE.AnimationMixer(this.currentModel);
                 const animation = gltf.animations[0]; // Mirror_Viewing Animation
                 const action = this.animationMixer.clipAction(animation);
                 action.play();
             }
 
             // Füge Modell zur Szene hinzu
-            this.scene.add(model);
+            this.scene.add(this.currentModel);
 
             // Zentriere Kamera auf Modell
-            const box = new THREE.Box3().setFromObject(model);
+            const box = new THREE.Box3().setFromObject(this.currentModel);
             const center = box.getCenter(new THREE.Vector3());
             const size = box.getSize(new THREE.Vector3());
 
@@ -249,11 +261,11 @@ export class CharacterCreator {
             this.controls.target.set(center.x, center.y + size.y / 3, center.z);
             this.controls.update();
 
-            console.log(`${this.selectedCharacter.gender} ${this.selectedCharacter.class} erfolgreich geladen`);
+            console.log(`${gender} Charakter erfolgreich geladen`);
 
         } catch (error) {
             console.error('Fehler beim Aktualisieren des Charakters:', error);
-            this.showError('Fehler beim Laden des Charakters');
+            throw error;
         }
     }
 
