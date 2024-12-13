@@ -8,11 +8,25 @@ export class ResourceManager {
     private loadingPromises: Map<string, Promise<GLTF>>;
 
     private constructor() {
-        console.log('Initialisiere ResourceManager...');
+        this.debugLog('Initialisiere ResourceManager...');
         this.resources = new Map();
         this.loader = new GLTFLoader();
         this.loadingPromises = new Map();
-        console.log('ResourceManager erfolgreich initialisiert');
+        this.debugLog('ResourceManager erfolgreich initialisiert');
+    }
+
+    private debugLog(message: string, isError: boolean = false) {
+        const timestamp = new Date().toLocaleTimeString();
+        console.log(`[${timestamp}] ${message}`);
+        
+        const debugInfo = document.getElementById('debug-info');
+        if (debugInfo) {
+            const logEntry = document.createElement('div');
+            logEntry.style.color = isError ? '#ec3942' : '#f5f5f5';
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            debugInfo.appendChild(logEntry);
+            debugInfo.scrollTop = debugInfo.scrollHeight;
+        }
     }
 
     public static getInstance(): ResourceManager {
@@ -23,41 +37,39 @@ export class ResourceManager {
     }
 
     private updateUI(progress: number, message: string) {
-        console.log(`UI Update: ${message} (${progress}%)`);
+        this.debugLog(`UI Update: ${message} (${progress}%)`);
         const progressElement = document.getElementById('loading-progress');
         const loadingText = document.querySelector('#loading-overlay h2');
         
         if (progressElement) {
             progressElement.textContent = `${Math.round(progress)}%`;
-            console.log(`Progress aktualisiert: ${Math.round(progress)}%`);
         } else {
-            console.error('Progress-Element nicht gefunden!');
+            this.debugLog('Progress-Element nicht gefunden!', true);
         }
         
         if (loadingText) {
             loadingText.textContent = message;
-            console.log(`Ladetext aktualisiert: ${message}`);
         } else {
-            console.error('Loading-Text-Element nicht gefunden!');
+            this.debugLog('Loading-Text-Element nicht gefunden!', true);
         }
     }
 
     public async preloadAllResources(): Promise<void> {
-        console.log('Starte Preload aller Ressourcen...');
+        this.debugLog('Starte Preload aller Ressourcen...');
         this.updateUI(0, 'Initialisiere Ressourcen...');
         
         const resources = [
             {
                 key: 'maleCharacter',
-                path: '/models/male_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: 'dist/models/male_all/Animation_Mirror_Viewing_withSkin.glb'
             },
             {
                 key: 'femaleCharacter',
-                path: '/models/female_all/Animation_Mirror_Viewing_withSkin.glb'
+                path: 'dist/models/female_all/Animation_Mirror_Viewing_withSkin.glb'
             }
         ];
 
-        console.log('Ressourcen zum Laden:', resources);
+        this.debugLog(`Ressourcen zum Laden: ${JSON.stringify(resources, null, 2)}`);
 
         try {
             let loadedCount = 0;
@@ -69,31 +81,30 @@ export class ResourceManager {
             };
 
             for (const resource of resources) {
-                console.log(`\nStarte Laden von Ressource: ${resource.key}`);
-                console.log(`Pfad: ${resource.path}`);
+                this.debugLog(`\nStarte Laden von Ressource: ${resource.key}`);
+                this.debugLog(`Pfad: ${resource.path}`);
                 
                 try {
                     await this.loadResource(
                         resource.key, 
                         resource.path, 
                         (progress) => {
-                            console.log(`Ladefortschritt für ${resource.key}: ${progress}%`);
+                            this.debugLog(`Ladefortschritt für ${resource.key}: ${progress}%`);
                             updateProgress(progress, resource.key);
                         }
                     );
                     
                     loadedCount++;
-                    console.log(`${resource.key} erfolgreich geladen (${loadedCount}/${totalCount})`);
+                    this.debugLog(`${resource.key} erfolgreich geladen (${loadedCount}/${totalCount})`);
                     updateProgress(100, resource.key);
                 } catch (error: any) {
-                    console.error(`Fehler beim Laden von ${resource.key}:`, error);
                     const errorMessage = error instanceof Error ? error.message : String(error);
-                    this.showError(`Fehler beim Laden von ${resource.key}: ${errorMessage}`);
+                    this.debugLog(`Fehler beim Laden von ${resource.key}: ${errorMessage}`, true);
                     throw error;
                 }
             }
 
-            console.log('\nAlle Ressourcen erfolgreich geladen');
+            this.debugLog('Alle Ressourcen erfolgreich geladen');
             this.updateUI(100, 'Alle Ressourcen geladen!');
 
             // Zeige Charakterauswahl nach erfolgreichem Laden
@@ -101,38 +112,23 @@ export class ResourceManager {
             const loadingOverlay = document.getElementById('loading-overlay');
             
             if (loadingOverlay) {
-                console.log('Verstecke Ladebildschirm');
+                this.debugLog('Verstecke Ladebildschirm');
                 loadingOverlay.style.display = 'none';
             } else {
-                console.error('Loading-Overlay nicht gefunden!');
+                this.debugLog('Loading-Overlay nicht gefunden!', true);
             }
             
             if (characterSelection) {
-                console.log('Zeige Charakterauswahl');
+                this.debugLog('Zeige Charakterauswahl');
                 characterSelection.style.display = 'flex';
             } else {
-                console.error('Character-Selection nicht gefunden!');
+                this.debugLog('Character-Selection nicht gefunden!', true);
             }
 
         } catch (error: any) {
-            console.error('Fehler beim Laden der Ressourcen:', error);
             const errorMessage = error instanceof Error ? error.message : String(error);
-            this.showError(`Fehler beim Laden der Ressourcen: ${errorMessage}`);
+            this.debugLog(`Fehler beim Laden der Ressourcen: ${errorMessage}`, true);
             throw error;
-        }
-    }
-
-    private showError(message: string) {
-        console.error('Fehler:', message);
-        const errorElement = document.getElementById('error-message');
-        if (errorElement) {
-            errorElement.textContent = message;
-            errorElement.style.display = 'block';
-            setTimeout(() => {
-                errorElement.style.display = 'none';
-            }, 5000);
-        } else {
-            console.error('Error-Message-Element nicht gefunden!');
         }
     }
 
@@ -141,18 +137,18 @@ export class ResourceManager {
         path: string, 
         onProgress?: (progress: number) => void
     ): Promise<GLTF> {
-        console.log(`\nStarte Laden von Ressource: ${key}`);
-        console.log(`Pfad: ${path}`);
+        this.debugLog(`Starte Laden von Ressource: ${key}`);
+        this.debugLog(`Pfad: ${path}`);
         
         // Prüfe ob bereits geladen
         if (this.resources.has(key)) {
-            console.log(`${key} bereits geladen, verwende Cache`);
+            this.debugLog(`${key} bereits geladen, verwende Cache`);
             return this.resources.get(key)!;
         }
 
         // Prüfe ob bereits am Laden
         if (this.loadingPromises.has(key)) {
-            console.log(`${key} wird bereits geladen, warte auf Abschluss`);
+            this.debugLog(`${key} wird bereits geladen, warte auf Abschluss`);
             return this.loadingPromises.get(key)!;
         }
 
@@ -161,7 +157,7 @@ export class ResourceManager {
             this.loader.load(
                 path,
                 (gltf) => {
-                    console.log(`${key} erfolgreich geladen`);
+                    this.debugLog(`${key} erfolgreich geladen`);
                     this.resources.set(key, gltf);
                     this.loadingPromises.delete(key);
                     resolve(gltf);
@@ -174,7 +170,7 @@ export class ResourceManager {
                 },
                 (error) => {
                     const errorMessage = error instanceof Error ? error.message : String(error);
-                    console.error(`Fehler beim Laden von ${key}:`, errorMessage);
+                    this.debugLog(`Fehler beim Laden von ${key}: ${errorMessage}`, true);
                     this.loadingPromises.delete(key);
                     reject(new Error(`Fehler beim Laden von ${key}: ${errorMessage}`));
                 }
