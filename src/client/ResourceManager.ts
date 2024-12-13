@@ -124,9 +124,8 @@ export class ResourceManager {
                     this.debugLog(`Content-Type: ${checkResponse.headers.get('content-type')}`);
                     
                     // Konfiguriere GLTFLoader
-                    this.loader.setRequestHeader({
-                        'Accept': 'model/gltf-binary'
-                    });
+                    this.loader = new GLTFLoader();
+                    this.loader.setRequestHeader('Accept', 'model/gltf-binary');
                     
                     await this.loadResource(
                         resource.key, 
