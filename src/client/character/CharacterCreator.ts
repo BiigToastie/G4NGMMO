@@ -144,6 +144,7 @@ export class CharacterCreator {
         const mixer = new THREE.AnimationMixer(model);
         if (gltf.animations.length > 0) {
             const action = mixer.clipAction(gltf.animations[0]);
+            mixer.existingAction = action;  // Speichere die Action für späteren Zugriff
             action.play();
         }
 
@@ -153,35 +154,39 @@ export class CharacterCreator {
 
     public setGender(gender: 'male' | 'female'): void {
         this.selectedGender = gender;
-        this.updateModelsHighlight();
+        this.updateModelsVisibility();
     }
 
-    private updateModelsHighlight(): void {
-        const updateModelMaterial = (model: CharacterModel | null, isSelected: boolean): void => {
-            if (!model) return;
-
-            model.model.traverse((object) => {
-                if (object instanceof THREE.SkinnedMesh && object.material) {
-                    const material = object.material.clone();
-                    material.opacity = isSelected ? 1.0 : 0.7;
-                    material.transparent = !isSelected;
-                    material.needsUpdate = true;
-                    object.material = material;
+    private updateModelsVisibility(): void {
+        if (this.maleModel) {
+            this.maleModel.model.visible = this.selectedGender === 'male';
+            if (this.selectedGender === 'male') {
+                this.maleModel.mixer.stopAllAction();
+                if (this.maleModel.mixer.existingAction) {
+                    this.maleModel.mixer.existingAction.play();
                 }
-            });
-        };
+            }
+        }
 
-        updateModelMaterial(this.maleModel, this.selectedGender === 'male');
-        updateModelMaterial(this.femaleModel, this.selectedGender === 'female');
+        if (this.femaleModel) {
+            this.femaleModel.model.visible = this.selectedGender === 'female';
+            if (this.selectedGender === 'female') {
+                this.femaleModel.mixer.stopAllAction();
+                if (this.femaleModel.mixer.existingAction) {
+                    this.femaleModel.mixer.existingAction.play();
+                }
+            }
+        }
+
+        // Zentriere die Kamera auf das aktive Modell
+        const activeModel = this.selectedGender === 'male' ? this.maleModel : this.femaleModel;
+        if (activeModel) {
+            this.centerCameraOnModel(activeModel.model);
+        }
     }
 
-    private centerCameraOnModels(): void {
-        if (!this.maleModel || !this.femaleModel) return;
-
-        const box = new THREE.Box3()
-            .expandByObject(this.maleModel.model)
-            .expandByObject(this.femaleModel.model);
-
+    private centerCameraOnModel(model: THREE.Object3D): void {
+        const box = new THREE.Box3().setFromObject(model);
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
 

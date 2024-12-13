@@ -45,11 +45,16 @@ function setupGenderButtons(): void {
         return;
     }
 
+    maleBtn.classList.add('selected');
+    femaleBtn.classList.remove('selected');
+    characterCreator.setGender('male');
+
     const handleGenderSelection = (gender: CharacterGender, activeBtn: HTMLElement, inactiveBtn: HTMLElement) => {
         try {
             activeBtn.classList.add('selected');
             inactiveBtn.classList.remove('selected');
             characterCreator.setGender(gender);
+            console.log(`Geschlecht gewechselt zu: ${gender}`);
         } catch (error) {
             console.error(`Fehler beim Laden des ${gender} Charakters:`, error);
             showError('Fehler beim Laden des Charakters');
