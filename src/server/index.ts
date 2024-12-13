@@ -95,16 +95,15 @@ io.on('connection', (socket) => {
 });
 
 // Server starten
-const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || '0.0.0.0';
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
 async function startServer() {
     try {
         await db.initialize();
         
-        server.listen(PORT, HOST, () => {
-            console.log(`Server läuft auf ${HOST}:${PORT}`);
-            console.log(`Client verfügbar unter: http://${HOST}:${PORT}`);
+        server.listen(PORT, () => {
+            console.log(`Server läuft auf Port ${PORT}`);
+            console.log(`Client verfügbar unter: http://localhost:${PORT}`);
             console.log(`Statische Dateien werden von ${path.join(__dirname, '../../../dist/client')} serviert`);
         });
     } catch (error) {
