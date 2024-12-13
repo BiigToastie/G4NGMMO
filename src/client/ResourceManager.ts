@@ -60,14 +60,24 @@ export class ResourceManager {
         
         // Teste zuerst die Verfügbarkeit der Verzeichnisse
         try {
-            const response = await fetch('/models');
+            const response = await fetch('models/male_all/Animation_Mirror_Viewing_withSkin.glb', {
+                method: 'HEAD',
+                headers: {
+                    'Accept': 'application/octet-stream'
+                }
+            });
+            
             if (!response.ok) {
-                this.debugLog('Modell-Verzeichnis nicht erreichbar!', true);
-                throw new Error(`Modell-Verzeichnis nicht gefunden (${response.status})`);
+                this.debugLog('Test-Modell nicht erreichbar!', true);
+                this.debugLog(`Status: ${response.status} ${response.statusText}`, true);
+                throw new Error(`Test-Modell nicht gefunden (${response.status})`);
             }
-            this.debugLog('Modell-Verzeichnis gefunden');
+            this.debugLog('Test-Modell gefunden');
         } catch (error) {
-            this.debugLog('Fehler beim Zugriff auf Modell-Verzeichnis', true);
+            this.debugLog('Fehler beim Zugriff auf Test-Modell', true);
+            if (error instanceof Error) {
+                this.debugLog(`Fehlerdetails: ${error.message}`, true);
+            }
             throw error;
         }
         
@@ -102,13 +112,24 @@ export class ResourceManager {
                 
                 try {
                     // Prüfe ob die Datei existiert
-                    const checkResponse = await fetch(fullPath, { method: 'HEAD' });
+                    const checkResponse = await fetch(fullPath, {
+                        method: 'HEAD',
+                        headers: {
+                            'Accept': 'application/octet-stream'
+                        }
+                    });
+                    
                     if (!checkResponse.ok) {
                         this.debugLog(`Datei nicht gefunden: ${fullPath}`, true);
                         this.debugLog(`Status: ${checkResponse.status} ${checkResponse.statusText}`, true);
                         throw new Error(`Datei nicht gefunden (${checkResponse.status})`);
                     }
                     this.debugLog(`Datei gefunden: ${fullPath}`);
+                    
+                    // Konfiguriere GLTFLoader
+                    this.loader.setRequestHeader({
+                        'Accept': 'application/octet-stream'
+                    });
                     
                     await this.loadResource(
                         resource.key, 
