@@ -1,40 +1,49 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { Schema, model, Document } from 'mongoose';
 
 export interface ICharacter extends Document {
     userId: string;
     name: string;
+    class: 'warrior' | 'mage' | 'ranger' | 'rogue';
     gender: 'male' | 'female';
-    height: number;
-    build: number;
-    skinColor: string;
-    face: number;
-    hairColor: string;
-    hairStyle: number;
-    eyes: number;
-    eyeColor: string;
-    mouth: number;
+    position: {
+        x: number;
+        y: number;
+        z: number;
+    };
+    rotation: {
+        x: number;
+        y: number;
+        z: number;
+    };
     createdAt: Date;
-    updatedAt: Date;
+    lastLogin: Date;
 }
 
-const CharacterSchema: Schema = new Schema({
+const CharacterSchema = new Schema<ICharacter>({
     userId: { type: String, required: true, unique: true },
     name: { type: String, required: true },
-    gender: { type: String, enum: ['male', 'female'], required: true },
-    height: { type: Number, required: true, min: 150, max: 200 },
-    build: { type: Number, required: true, min: 1, max: 100 },
-    skinColor: { type: String, required: true },
-    face: { type: Number, required: true, min: 1, max: 5 },
-    hairColor: { type: String, required: true },
-    hairStyle: { type: Number, required: true, min: 1, max: 10 },
-    eyes: { type: Number, required: true, min: 1, max: 5 },
-    eyeColor: { type: String, required: true },
-    mouth: { type: Number, required: true, min: 1, max: 5 }
-}, {
-    timestamps: true
+    class: { 
+        type: String, 
+        required: true,
+        enum: ['warrior', 'mage', 'ranger', 'rogue']
+    },
+    gender: {
+        type: String,
+        required: true,
+        enum: ['male', 'female']
+    },
+    position: {
+        x: { type: Number, default: 0 },
+        y: { type: Number, default: 0 },
+        z: { type: Number, default: 0 }
+    },
+    rotation: {
+        x: { type: Number, default: 0 },
+        y: { type: Number, default: 0 },
+        z: { type: Number, default: 0 }
+    },
+    createdAt: { type: Date, default: Date.now },
+    lastLogin: { type: Date, default: Date.now }
 });
 
-// Index für schnellere Abfragen
-CharacterSchema.index({ userId: 1 });
-
-export default mongoose.model<ICharacter>('Character', CharacterSchema); 
+export const Character = model<ICharacter>('Character', CharacterSchema); 

@@ -7,6 +7,7 @@ import WebApp from '@twa-dev/sdk';
 interface CharacterModel {
     model: THREE.Group;
     mixer: THREE.AnimationMixer;
+    animation: THREE.AnimationAction | null;
 }
 
 interface CharacterSelection {
@@ -111,8 +112,8 @@ export class CharacterCreator {
             this.maleModel = await this.setupModel(maleGLTF, -1.2);
             this.femaleModel = await this.setupModel(femaleGLTF, 1.2);
 
-            this.updateModelsHighlight();
-            this.centerCameraOnModels();
+            this.updateModelsVisibility();
+            this.centerCameraOnModel(this.selectedGender === 'male' ? this.maleModel!.model : this.femaleModel!.model);
 
             console.log('Beide Modelle erfolgreich geladen');
         } catch (error) {
@@ -142,14 +143,15 @@ export class CharacterCreator {
         });
 
         const mixer = new THREE.AnimationMixer(model);
+        let animation = null;
+
         if (gltf.animations.length > 0) {
-            const action = mixer.clipAction(gltf.animations[0]);
-            mixer.existingAction = action;  // Speichere die Action für späteren Zugriff
-            action.play();
+            animation = mixer.clipAction(gltf.animations[0]);
+            animation.play();
         }
 
         this.scene.add(model);
-        return { model, mixer };
+        return { model, mixer, animation };
     }
 
     public setGender(gender: 'male' | 'female'): void {
@@ -162,8 +164,8 @@ export class CharacterCreator {
             this.maleModel.model.visible = this.selectedGender === 'male';
             if (this.selectedGender === 'male') {
                 this.maleModel.mixer.stopAllAction();
-                if (this.maleModel.mixer.existingAction) {
-                    this.maleModel.mixer.existingAction.play();
+                if (this.maleModel.animation) {
+                    this.maleModel.animation.play();
                 }
             }
         }
@@ -172,13 +174,12 @@ export class CharacterCreator {
             this.femaleModel.model.visible = this.selectedGender === 'female';
             if (this.selectedGender === 'female') {
                 this.femaleModel.mixer.stopAllAction();
-                if (this.femaleModel.mixer.existingAction) {
-                    this.femaleModel.mixer.existingAction.play();
+                if (this.femaleModel.animation) {
+                    this.femaleModel.animation.play();
                 }
             }
         }
 
-        // Zentriere die Kamera auf das aktive Modell
         const activeModel = this.selectedGender === 'male' ? this.maleModel : this.femaleModel;
         if (activeModel) {
             this.centerCameraOnModel(activeModel.model);

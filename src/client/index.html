@@ -3,101 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MMO Telegram Game</title>
+    <title>MMO Game</title>
     <style>
         body {
             margin: 0;
-            padding: 0;
+            overflow: hidden;
             font-family: Arial, sans-serif;
             background-color: #17212b;
-            color: #f5f5f5;
-        }
-
-        #loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #17212b;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        #loading-progress {
-            font-size: 24px;
-            margin-top: 20px;
-            color: #6ab2f2;
-        }
-
-        #debug-info {
-            position: fixed;
-            bottom: 10px;
-            left: 10px;
-            right: 10px;
-            height: 150px;
-            background: rgba(0, 0, 0, 0.8);
-            color: #f5f5f5;
-            padding: 10px;
-            font-family: monospace;
-            font-size: 12px;
-            overflow-y: auto;
-            z-index: 1000;
-            border-radius: 5px;
-            border: 1px solid #5288c1;
+            color: white;
         }
 
         #character-selection {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: #232e3c;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            z-index: 900;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
         }
 
-        .error-message {
-            color: #ec3942;
-            background: rgba(236, 57, 66, 0.1);
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
+        .character-slots {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            width: 100%;
+            padding: 20px;
+        }
+
+        .character-slot {
+            width: 150px;
+            height: 200px;
+            border: 2px solid #30475e;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background-color: rgba(48, 71, 94, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .character-slot:hover {
+            border-color: #4a90e2;
+            background-color: rgba(74, 144, 226, 0.1);
+        }
+
+        .character-slot.selected {
+            border-color: #4a90e2;
+            background-color: rgba(74, 144, 226, 0.2);
+        }
+
+        .empty-slot-text {
+            color: #8a9aa9;
+            text-align: center;
+        }
+
+        #character-creator {
             display: none;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        #character-preview {
+            width: 100%;
+            height: 100%;
+        }
+
+        .button-container {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4a90e2;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .action-button:disabled {
+            background-color: #30475e;
+            cursor: not-allowed;
+        }
+
+        #game-world {
+            display: none;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        #movement-controller {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 100px;
+            background-color: rgba(74, 144, 226, 0.3);
+            border-radius: 50%;
+            border: 2px solid #4a90e2;
+        }
+
+        .gender-buttons {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+
+        .gender-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #30475e;
+            color: white;
+            cursor: pointer;
+        }
+
+        .gender-button.selected {
+            background-color: #4a90e2;
         }
     </style>
 </head>
 <body>
-    <div id="loading-overlay">
-        <h2>Lade Ressourcen...</h2>
-        <div id="loading-progress">0%</div>
-        <div id="error-message" class="error-message"></div>
-    </div>
-
-    <div id="debug-info"></div>
-
     <div id="character-selection">
-        <h2>Wähle deinen Charakter</h2>
-        <div class="gender-selection">
-            <button id="male-btn">Männlich</button>
-            <button id="female-btn">Weiblich</button>
+        <h1>Charakterauswahl</h1>
+        <div class="character-slots">
+            <div class="character-slot" data-slot="1">
+                <p class="empty-slot-text">Leerer Slot</p>
+            </div>
+            <div class="character-slot" data-slot="2">
+                <p class="empty-slot-text">Leerer Slot</p>
+            </div>
         </div>
-        <div class="class-selection">
-            <button id="warrior-btn">Krieger</button>
-            <button id="mage-btn">Magier</button>
-            <button id="ranger-btn">Waldläufer</button>
-            <button id="rogue-btn">Schurke</button>
+        <div class="button-container">
+            <button id="start-game" class="action-button" disabled>Spiel starten</button>
         </div>
     </div>
 
-    <script src="dist/vendors.bundle.js"></script>
-    <script src="dist/threejs.bundle.js"></script>
-    <script src="dist/main.bundle.js"></script>
+    <div id="character-creator">
+        <div id="character-preview"></div>
+        <div class="gender-buttons">
+            <button id="male-btn" class="gender-button selected">Männlich</button>
+            <button id="female-btn" class="gender-button">Weiblich</button>
+        </div>
+        <div class="button-container">
+            <button id="save-character" class="action-button">Charakter speichern</button>
+            <button id="cancel-creation" class="action-button">Abbrechen</button>
+        </div>
+    </div>
+
+    <div id="game-world">
+        <div id="movement-controller"></div>
+    </div>
+
+    <script src="bundle.js"></script>
 </body>
 </html> 

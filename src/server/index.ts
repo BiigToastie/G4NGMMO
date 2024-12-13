@@ -1,112 +1,95 @@
 import express from 'express';
-import cors from 'cors';
+import http from 'http';
+import { Server as SocketServer } from 'socket.io';
 import path from 'path';
-import { connectToDatabase } from './mongodb';
-import characterRoutes from './routes/character';
-import { port, env, telegramToken } from './config';
-import BotHandler from './bot/TelegramBot';
+import { Database } from './database';
+import characterRoutes from './api/characters';
+
+interface Player {
+    id: number;
+    name: string;
+    gender: 'male' | 'female';
+    position: {
+        x: number;
+        y: number;
+        z: number;
+    };
+}
 
 const app = express();
+const server = http.createServer(app);
+const io = new SocketServer(server);
+const db = Database.getInstance();
+const players = new Map<number, Player>();
 
 // Middleware
-app.use(cors());
 app.use(express.json());
-
-// MIME-Types für GLB/GLTF
-express.static.mime.define({
-    'model/gltf-binary': ['glb'],
-    'model/gltf+json': ['gltf']
-});
-
-// Statische Dateien mit spezifischen Optionen
-app.use(express.static('public', {
-    etag: true,
-    lastModified: true,
-    setHeaders: (res, path) => {
-        if (path.endsWith('.glb')) {
-            res.setHeader('Content-Type', 'model/gltf-binary');
-        }
-        if (path.endsWith('.gltf')) {
-            res.setHeader('Content-Type', 'model/gltf+json');
-        }
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-        res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-        res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-    }
-}));
-
-// Debug-Route für Modell-Verzeichnis
-app.get('/debug/models', (_req, res) => {
-    const modelsPath = path.join(__dirname, '../../public/models');
-    const fs = require('fs');
-    try {
-        const files = fs.readdirSync(modelsPath, { recursive: true });
-        res.json({
-            success: true,
-            path: modelsPath,
-            files: files
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: String(error)
-        });
-    }
-});
+app.use(express.static(path.join(__dirname, '../client')));
 
 // API-Routen
-app.use('/api/character', characterRoutes);
+app.use('/api', characterRoutes);
 
-// Webhook für Telegram Bot
-app.post(`/bot${telegramToken}`, async (req, res) => {
-    try {
-        await BotHandler.getInstance().processUpdate(req.body);
-        res.sendStatus(200);
-    } catch (error) {
-        console.error('Fehler beim Verarbeiten des Webhook-Updates:', error);
-        res.sendStatus(500);
-    }
+// Socket.IO Events
+io.on('connection', (socket) => {
+    console.log('Neuer Spieler verbunden');
+
+    socket.on('player:join', (data: { id: number; name: string; gender: 'male' | 'female' }) => {
+        const player: Player = {
+            id: data.id,
+            name: data.name,
+            gender: data.gender,
+            position: { x: 0, y: 0, z: 0 }
+        };
+
+        players.set(data.id, player);
+        socket.broadcast.emit('player:joined', player);
+        
+        // Sende Liste aller aktiven Spieler an den neuen Spieler
+        const activePlayers = Array.from(players.values());
+        socket.emit('players:list', activePlayers);
+        
+        console.log(`Spieler ${data.name} (ID: ${data.id}) ist beigetreten`);
+    });
+
+    socket.on('player:move', (data: { id: number; position: { x: number; y: number; z: number } }) => {
+        const player = players.get(data.id);
+        if (player) {
+            player.position = data.position;
+            socket.broadcast.emit('player:moved', {
+                id: data.id,
+                position: data.position
+            });
+        }
+    });
+
+    socket.on('player:leave', (id: number) => {
+        if (players.has(id)) {
+            const player = players.get(id)!;
+            players.delete(id);
+            socket.broadcast.emit('player:left', id);
+            console.log(`Spieler ${player.name} (ID: ${id}) hat das Spiel verlassen`);
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Spieler getrennt');
+    });
 });
 
-// Alle anderen Routen zur index.html umleiten (für Client-Side Routing)
-app.get('*', (_req, res) => {
-    res.sendFile(path.resolve(__dirname, '../../public/index.html'));
-});
+// Server starten
+const PORT = process.env.PORT || 3000;
 
-// Starte Server
 async function startServer() {
     try {
-        // Verbinde mit MongoDB
-        await connectToDatabase();
-        console.log('MongoDB-Verbindung hergestellt');
-
-        // Initialisiere Bot im Produktionsmodus
-        if (env === 'production') {
-            BotHandler.getInstance();
-            console.log('Telegram Bot initialisiert');
-        }
-
-        // Starte Express-Server
-        app.listen(port, () => {
-            console.log(`Server läuft auf Port ${port}`);
-            console.log(`Webhook URL: ${process.env.BASE_URL}/bot${telegramToken}`);
-            console.log(`Öffentliches Verzeichnis: ${path.resolve(__dirname, '../../public')}`);
+        await db.initialize();
+        
+        server.listen(PORT, () => {
+            console.log(`Server läuft auf Port ${PORT}`);
         });
     } catch (error) {
-        console.error('Serverfehler:', error);
+        console.error('Fehler beim Serverstart:', error);
         process.exit(1);
     }
 }
-
-// Error Handler
-process.on('unhandledRejection', (error) => {
-    console.error('Unbehandelter Promise Rejection:', error);
-});
-
-process.on('uncaughtException', (error) => {
-    console.error('Unbehandelter Fehler:', error);
-    process.exit(1);
-});
 
 startServer(); 

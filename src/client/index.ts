@@ -1,110 +1,173 @@
 import WebApp from '@twa-dev/sdk';
 import { CharacterCreator } from './character/CharacterCreator';
-
-type CharacterClass = 'warrior' | 'mage' | 'ranger' | 'rogue';
-type CharacterGender = 'male' | 'female';
+import { GameWorld } from './game/GameWorld';
 
 interface CharacterData {
     userId: number;
-    gender: CharacterGender;
-    class: CharacterClass;
+    gender: 'male' | 'female';
+    slot: number;
+}
+
+interface SavedCharacter {
+    gender: 'male' | 'female';
+    slot: number;
 }
 
 let characterCreator: CharacterCreator;
+let gameWorld: GameWorld;
+let selectedSlot: number | null = null;
+let selectedCharacter: SavedCharacter | null = null;
 
 async function initializeApp(): Promise<void> {
     try {
         console.log('App-Initialisierung startet...');
-        
         await WebApp.ready();
         console.log('WebApp ist bereit');
 
-        characterCreator = CharacterCreator.getInstance();
-        await characterCreator.initialize();
-        console.log('CharacterCreator initialisiert');
-
+        await loadSavedCharacters();
         setupEventListeners();
+
     } catch (error) {
         console.error('Fehler bei der App-Initialisierung:', error);
         showError('Fehler beim Laden des Spiels');
     }
 }
 
-function setupEventListeners(): void {
-    setupGenderButtons();
-    setupClassButtons();
-    setupSaveButton();
-}
-
-function setupGenderButtons(): void {
-    const maleBtn = document.getElementById('male-btn');
-    const femaleBtn = document.getElementById('female-btn');
-
-    if (!maleBtn || !femaleBtn) {
-        console.error('Geschlechter-Buttons nicht gefunden');
-        return;
-    }
-
-    maleBtn.classList.add('selected');
-    femaleBtn.classList.remove('selected');
-    characterCreator.setGender('male');
-
-    const handleGenderSelection = (gender: CharacterGender, activeBtn: HTMLElement, inactiveBtn: HTMLElement) => {
-        try {
-            activeBtn.classList.add('selected');
-            inactiveBtn.classList.remove('selected');
-            characterCreator.setGender(gender);
-            console.log(`Geschlecht gewechselt zu: ${gender}`);
-        } catch (error) {
-            console.error(`Fehler beim Laden des ${gender} Charakters:`, error);
-            showError('Fehler beim Laden des Charakters');
-        }
-    };
-
-    maleBtn.addEventListener('click', () => handleGenderSelection('male', maleBtn, femaleBtn));
-    femaleBtn.addEventListener('click', () => handleGenderSelection('female', femaleBtn, maleBtn));
-}
-
-function setupClassButtons(): void {
-    const classes: CharacterClass[] = ['warrior', 'mage', 'ranger', 'rogue'];
-    const classButtons = classes.map(className => ({
-        id: className,
-        element: document.getElementById(`${className}-btn`)
-    }));
-
-    classButtons.forEach(({ id, element }) => {
-        if (!element) {
-            console.error(`Button für Klasse ${id} nicht gefunden`);
-            return;
-        }
-
-        element.addEventListener('click', () => {
-            classButtons.forEach(btn => btn.element?.classList.remove('selected'));
-            element.classList.add('selected');
-        });
-    });
-}
-
-function setupSaveButton(): void {
-    const saveBtn = document.getElementById('save-character');
-    if (!saveBtn) {
-        console.error('Speichern-Button nicht gefunden');
-        return;
-    }
-
-    saveBtn.addEventListener('click', handleSaveCharacter);
-}
-
-async function handleSaveCharacter(): Promise<void> {
+async function loadSavedCharacters(): Promise<void> {
     try {
         if (!WebApp.initDataUnsafe.user?.id) {
             throw new Error('Keine Benutzer-ID gefunden');
         }
 
+        const response = await fetch(`/api/characters/${WebApp.initDataUnsafe.user.id}`);
+        if (!response.ok) throw new Error('Fehler beim Laden der Charaktere');
+
+        const characters: SavedCharacter[] = await response.json();
+        updateCharacterSlots(characters);
+    } catch (error) {
+        console.error('Fehler beim Laden der gespeicherten Charaktere:', error);
+        showError('Fehler beim Laden der Charaktere');
+    }
+}
+
+function updateCharacterSlots(characters: SavedCharacter[]): void {
+    const slots = document.querySelectorAll('.character-slot');
+    slots.forEach((slot: Element) => {
+        const slotNumber = parseInt((slot as HTMLElement).dataset.slot || '0');
+        const character = characters.find(char => char.slot === slotNumber);
+
+        if (character) {
+            slot.innerHTML = `
+                <div class="character-info">
+                    <p>${character.gender === 'male' ? 'Männlich' : 'Weiblich'}</p>
+                </div>
+            `;
+        } else {
+            slot.innerHTML = '<p class="empty-slot-text">Leerer Slot</p>';
+        }
+    });
+}
+
+function setupEventListeners(): void {
+    setupCharacterSlots();
+    setupCreatorButtons();
+    setupGameStartButton();
+}
+
+function setupCharacterSlots(): void {
+    const slots = document.querySelectorAll('.character-slot');
+    slots.forEach((slot: Element) => {
+        slot.addEventListener('click', () => {
+            const slotNumber = parseInt((slot as HTMLElement).dataset.slot || '0');
+            handleSlotClick(slotNumber, slot as HTMLElement);
+        });
+    });
+}
+
+async function handleSlotClick(slotNumber: number, slotElement: HTMLElement): Promise<void> {
+    const isEmptySlot = slotElement.querySelector('.empty-slot-text') !== null;
+
+    if (!WebApp.initDataUnsafe.user?.id) {
+        showError('Keine Benutzer-ID gefunden');
+        return;
+    }
+
+    if (isEmptySlot) {
+        selectedSlot = slotNumber;
+        showCharacterCreator();
+    } else {
+        const response = await fetch(`/api/character/${WebApp.initDataUnsafe.user.id}/${slotNumber}`);
+        if (!response.ok) {
+            showError('Fehler beim Laden des Charakters');
+            return;
+        }
+
+        selectedCharacter = await response.json();
+        document.querySelectorAll('.character-slot').forEach(s => s.classList.remove('selected'));
+        slotElement.classList.add('selected');
+        document.getElementById('start-game')?.removeAttribute('disabled');
+    }
+}
+
+function setupCreatorButtons(): void {
+    const maleBtn = document.getElementById('male-btn');
+    const femaleBtn = document.getElementById('female-btn');
+    const saveBtn = document.getElementById('save-character');
+    const cancelBtn = document.getElementById('cancel-creation');
+
+    if (!maleBtn || !femaleBtn || !saveBtn || !cancelBtn) {
+        console.error('Charakter-Editor Buttons nicht gefunden');
+        return;
+    }
+
+    maleBtn.addEventListener('click', () => handleGenderSelection('male', maleBtn, femaleBtn));
+    femaleBtn.addEventListener('click', () => handleGenderSelection('female', femaleBtn, maleBtn));
+    saveBtn.addEventListener('click', handleSaveCharacter);
+    cancelBtn.addEventListener('click', hideCharacterCreator);
+}
+
+function setupGameStartButton(): void {
+    const startBtn = document.getElementById('start-game');
+    if (!startBtn) return;
+
+    startBtn.addEventListener('click', startGame);
+}
+
+async function handleGenderSelection(gender: 'male' | 'female', activeBtn: HTMLElement, inactiveBtn: HTMLElement): Promise<void> {
+    try {
+        activeBtn.classList.add('selected');
+        inactiveBtn.classList.remove('selected');
+        
+        if (!characterCreator) {
+            characterCreator = CharacterCreator.getInstance();
+            await characterCreator.initialize();
+        }
+        
+        characterCreator.setGender(gender);
+    } catch (error) {
+        console.error('Fehler bei der Geschlechterauswahl:', error);
+        showError('Fehler beim Laden des Charakters');
+    }
+}
+
+async function handleSaveCharacter(): Promise<void> {
+    if (selectedSlot === null) {
+        showError('Kein Slot ausgewählt');
+        return;
+    }
+
+    if (!WebApp.initDataUnsafe.user?.id) {
+        showError('Keine Benutzer-ID gefunden');
+        return;
+    }
+
+    try {
+        const gender = document.getElementById('male-btn')?.classList.contains('selected') ? 'male' : 'female';
+        
         const characterData: CharacterData = {
             userId: WebApp.initDataUnsafe.user.id,
-            gender: getSelectedGender(),
-            class: getSelectedClass()
+            gender,
+            slot: selectedSlot
         };
 
         const response = await fetch('/api/character/create', {
@@ -119,37 +182,67 @@ async function handleSaveCharacter(): Promise<void> {
             throw new Error('Fehler beim Speichern des Charakters');
         }
 
-        WebApp.close();
+        await loadSavedCharacters();
+        hideCharacterCreator();
+        selectedSlot = null;
+
     } catch (error) {
         console.error('Fehler beim Speichern:', error);
         showError('Fehler beim Speichern des Charakters');
     }
 }
 
-function getSelectedGender(): CharacterGender {
-    const maleBtn = document.getElementById('male-btn');
-    return maleBtn?.classList.contains('selected') ? 'male' : 'female';
-}
-
-function getSelectedClass(): CharacterClass {
-    const classes: CharacterClass[] = ['warrior', 'mage', 'ranger', 'rogue'];
-    const selectedClass = classes.find(className => 
-        document.getElementById(`${className}-btn`)?.classList.contains('selected')
-    );
-    return selectedClass ?? 'warrior';
-}
-
-function showError(message: string): void {
-    const errorElement = document.getElementById('error-message');
-    if (!errorElement) {
-        console.error('Error-Element nicht gefunden');
+async function startGame(): Promise<void> {
+    if (!selectedCharacter) {
+        showError('Kein Charakter ausgewählt');
         return;
     }
 
+    if (!WebApp.initDataUnsafe.user?.id) {
+        showError('Keine Benutzer-ID gefunden');
+        return;
+    }
+
+    try {
+        document.getElementById('character-selection')!.style.display = 'none';
+        const gameWorldElement = document.getElementById('game-world')!;
+        gameWorldElement.style.display = 'block';
+
+        gameWorld = GameWorld.getInstance();
+        await gameWorld.initialize();
+
+        await gameWorld.addPlayer(
+            WebApp.initDataUnsafe.user.id,
+            WebApp.initDataUnsafe.user.username || 'Spieler',
+            selectedCharacter.gender
+        );
+
+        // TODO: Verbinde mit dem Spiel-Server und lade andere Spieler
+        
+    } catch (error) {
+        console.error('Fehler beim Spielstart:', error);
+        showError('Fehler beim Starten des Spiels');
+    }
+}
+
+function showCharacterCreator(): void {
+    document.getElementById('character-selection')!.style.display = 'none';
+    document.getElementById('character-creator')!.style.display = 'block';
+}
+
+function hideCharacterCreator(): void {
+    document.getElementById('character-creator')!.style.display = 'none';
+    document.getElementById('character-selection')!.style.display = 'flex';
+}
+
+function showError(message: string): void {
+    const errorElement = document.createElement('div');
+    errorElement.className = 'error-message';
     errorElement.textContent = message;
-    errorElement.style.display = 'block';
+    document.body.appendChild(errorElement);
+
     setTimeout(() => {
-        errorElement.style.display = 'none';
+        errorElement.remove();
     }, 3000);
 }
 
