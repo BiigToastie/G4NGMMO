@@ -89,19 +89,12 @@ async function initializeCharacterCreator(): Promise<any> {
         logDebug('Versuche dynamischen Import von CharacterCreator');
         let CharacterCreatorModule;
         try {
-            CharacterCreatorModule = await import('./character/CharacterCreator.js');
+            CharacterCreatorModule = await import('./character/CharacterCreator');
             logDebug('Modul erfolgreich geladen');
             logDebug(`Verfügbare Exports: ${Object.keys(CharacterCreatorModule).join(', ')}`);
         } catch (importError) {
             logDebug(`Import-Fehler: ${importError}`);
-            // Versuche alternativen Import-Pfad
-            try {
-                CharacterCreatorModule = await import('./character/CharacterCreator');
-                logDebug('Modul über alternativen Pfad geladen');
-            } catch (altImportError) {
-                logDebug(`Alternativer Import-Fehler: ${altImportError}`);
-                throw new Error('CharacterCreator-Modul konnte nicht geladen werden');
-            }
+            throw new Error('CharacterCreator-Modul konnte nicht geladen werden');
         }
 
         // Versuche beide möglichen Export-Varianten
