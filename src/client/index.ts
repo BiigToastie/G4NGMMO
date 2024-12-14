@@ -89,37 +89,49 @@ logDebug('=== Debug-System initialisiert ===');
 async function initializeCharacterCreator(): Promise<CharacterCreator> {
     logDebug('=== CharacterCreator Initialisierung ===');
     try {
+        // Prüfe ob die Klasse bereits global verfügbar ist
+        if (window.characterCreator) {
+            logDebug('Verwende existierende CharacterCreator-Instanz');
+            return window.characterCreator;
+        }
+
         logDebug('Prüfe verfügbare Klassen:');
         logDebug(`1. CharacterCreator (Import): ${typeof CharacterCreator}`);
-        logDebug(`2. CharacterCreator (Named): ${typeof CharacterCreatorClass}`);
-        logDebug(`3. window.CharacterCreator: ${typeof window.CharacterCreator}`);
-        logDebug(`4. window.characterCreator: ${window.characterCreator ? 'existiert' : 'null'}`);
+        logDebug(`2. window.CharacterCreator: ${typeof window.CharacterCreator}`);
 
-        const CreatorClass = CharacterCreator || CharacterCreatorClass || window.CharacterCreator;
+        // Versuche die Klasse zu laden
+        const CreatorClass = CharacterCreator || window.CharacterCreator;
         
         if (!CreatorClass) {
-            logDebug('Keine CharacterCreator-Klasse gefunden');
-            throw new Error('CharacterCreator-Klasse nicht gefunden');
-        }
-
-        logDebug('CharacterCreator-Klasse gefunden');
-        logDebug(`Typ der Klasse: ${typeof CreatorClass}`);
-        logDebug(`getInstance verfügbar: ${typeof CreatorClass.getInstance === 'function'}`);
-
-        if (!window.characterCreator) {
-            logDebug('Erstelle neue Instanz...');
-            window.characterCreator = CreatorClass.getInstance();
-            
-            if (!window.characterCreator) {
-                throw new Error('getInstance lieferte keine Instanz zurück');
+            logDebug('Keine CharacterCreator-Klasse gefunden, versuche dynamischen Import');
+            try {
+                const module = await import('./character/CharacterCreator');
+                if (!module.default) {
+                    throw new Error('Modul enthält keine default export');
+                }
+                window.CharacterCreator = module.default;
+                logDebug('Dynamischer Import erfolgreich');
+            } catch (importError) {
+                logDebug(`Dynamischer Import fehlgeschlagen: ${importError}`);
+                throw new Error('CharacterCreator-Klasse konnte nicht geladen werden');
             }
-
-            logDebug('Initialisiere Instanz...');
-            await window.characterCreator.initialize();
-            logDebug('Instanz erfolgreich initialisiert');
-        } else {
-            logDebug('Verwende existierende Instanz');
         }
+
+        if (!window.CharacterCreator || typeof window.CharacterCreator.getInstance !== 'function') {
+            logDebug('CharacterCreator-Klasse nicht korrekt initialisiert');
+            throw new Error('CharacterCreator-Klasse nicht korrekt initialisiert');
+        }
+
+        logDebug('Erstelle neue CharacterCreator-Instanz');
+        window.characterCreator = window.CharacterCreator.getInstance();
+        
+        if (!window.characterCreator) {
+            throw new Error('getInstance lieferte keine Instanz zurück');
+        }
+
+        logDebug('Initialisiere neue Instanz');
+        await window.characterCreator.initialize();
+        logDebug('CharacterCreator erfolgreich initialisiert');
 
         return window.characterCreator;
     } catch (error) {
@@ -411,20 +423,30 @@ function setupGameStartButton(): void {
 
 async function handleGenderSelection(gender: 'male' | 'female', activeBtn: HTMLElement, inactiveBtn: HTMLElement): Promise<void> {
     try {
-        logDebug(`Geschlechterauswahl gestartet: ${gender}`);
+        logDebug(`=== Geschlechterauswahl: ${gender} ===`);
         activeBtn.classList.add('selected');
         inactiveBtn.classList.remove('selected');
         
-        logDebug('Hole CharacterCreator-Instanz...');
+        logDebug('Initialisiere CharacterCreator...');
         const creator = await initializeCharacterCreator();
         
         if (!creator) {
             throw new Error('Keine CharacterCreator-Instanz verfügbar');
         }
         
-        logDebug(`Setze Geschlecht auf ${gender}...`);
+        logDebug(`Setze Geschlecht auf ${gender}`);
         creator.setGender(gender);
-        logDebug(`Geschlecht erfolgreich auf ${gender} gesetzt`);
+        logDebug('Geschlecht erfolgreich gesetzt');
+        
+        // Überprüfe den character-preview Container
+        const previewContainer = document.getElementById('character-preview');
+        logDebug(`Preview Container gefunden: ${!!previewContainer}`);
+        if (previewContainer) {
+            logDebug(`Preview Container Dimensionen: ${previewContainer.clientWidth}x${previewContainer.clientHeight}`);
+            logDebug(`Preview Container Style Display: ${window.getComputedStyle(previewContainer).display}`);
+            logDebug(`Preview Container Kinder: ${previewContainer.children.length}`);
+        }
+        
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         logDebug(`Fehler bei der Geschlechterauswahl: ${errorMsg}`);
@@ -437,25 +459,36 @@ async function handleGenderSelection(gender: 'male' | 'female', activeBtn: HTMLE
 }
 
 async function handleSaveCharacter(): Promise<void> {
+    logDebug('=== Speichern gestartet ===');
     const selectedSlot = getSelectedSlot();
+    logDebug(`Ausgewählter Slot: ${selectedSlot}`);
+
     if (selectedSlot === null) {
+        logDebug('Kein Slot ausgewählt');
         showError('Kein Slot ausgewählt');
         return;
     }
 
     if (!WebApp.initDataUnsafe.user?.id) {
+        logDebug('Keine Benutzer-ID gefunden');
         showError('Keine Benutzer-ID gefunden');
         return;
     }
 
     try {
-        const gender = document.getElementById('male-btn')?.classList.contains('selected') ? 'male' : 'female';
+        const maleBtn = document.getElementById('male-btn');
+        const isMale = maleBtn?.classList.contains('selected');
+        const gender = isMale ? 'male' : 'female';
+        logDebug(`Gewähltes Geschlecht: ${gender}`);
         
         const characterData: CharacterData = {
             userId: WebApp.initDataUnsafe.user.id,
             gender,
             slot: selectedSlot
         };
+
+        logDebug('Sende Speicheranfrage...');
+        logDebug(`Daten: ${JSON.stringify(characterData)}`);
 
         const response = await fetch('/api/character/create', {
             method: 'POST',
@@ -466,7 +499,9 @@ async function handleSaveCharacter(): Promise<void> {
         });
 
         if (!response.ok) {
-            throw new Error('Fehler beim Speichern des Charakters');
+            const errorText = await response.text();
+            logDebug(`Server-Fehler: ${errorText}`);
+            throw new Error(`Fehler beim Speichern des Charakters: ${errorText}`);
         }
 
         logDebug('Charakter erfolgreich gespeichert');
@@ -476,7 +511,8 @@ async function handleSaveCharacter(): Promise<void> {
         showSuccess('Charakter erfolgreich gespeichert');
 
     } catch (error) {
-        logDebug(`Fehler beim Speichern: ${error instanceof Error ? error.message : String(error)}`);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        logDebug(`Fehler beim Speichern: ${errorMsg}`);
         showError('Fehler beim Speichern des Charakters');
     }
 }
