@@ -31,7 +31,11 @@ export class CharacterCreator {
     private constructor() {
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        this.renderer = new THREE.WebGLRenderer({ 
+            antialias: true, 
+            alpha: true,
+            preserveDrawingBuffer: true
+        });
         this.loader = new GLTFLoader();
         this.clock = new THREE.Clock();
         this.setupScene();
@@ -48,17 +52,21 @@ export class CharacterCreator {
         this.scene.background = new THREE.Color(0x17212b);
 
         const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-        directionalLight.position.set(5, 5, 5);
-        directionalLight.castShadow = true;
         
-        const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight2.position.set(-5, 5, -5);
-
-        const directionalLight3 = new THREE.DirectionalLight(0xffffff, 0.5);
-        directionalLight3.position.set(0, -5, 5);
+        const frontLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        frontLight.position.set(0, 2, 4);
+        frontLight.castShadow = true;
         
-        this.scene.add(ambientLight, directionalLight, directionalLight2, directionalLight3);
+        const backLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        backLight.position.set(0, 2, -4);
+        
+        const leftLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        leftLight.position.set(-4, 2, 0);
+        
+        const rightLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        rightLight.position.set(4, 2, 0);
+        
+        this.scene.add(ambientLight, frontLight, backLight, leftLight, rightLight);
 
         this.camera.position.set(0, 1.6, 2.5);
         this.camera.lookAt(0, 1, 0);
@@ -134,7 +142,13 @@ export class CharacterCreator {
         const path = `/models/${gender}_all/Animation_Mirror_Viewing_withSkin.glb`;
         debug(`Lade ${gender} Modell von ${path}...`);
         try {
-            return await this.loader.loadAsync(path);
+            const gltf = await this.loader.loadAsync(path);
+            debug(`${gender} Modell erfolgreich geladen`);
+            debug(`Animationen gefunden: ${gltf.animations.length}`);
+            gltf.animations.forEach((anim, index) => {
+                debug(`Animation ${index}: ${anim.name}`);
+            });
+            return gltf;
         } catch (error) {
             debug(`Fehler beim Laden des Modells ${gender}: ${error}`);
             throw error;
@@ -142,9 +156,12 @@ export class CharacterCreator {
     }
 
     private async setupModel(gltf: GLTF, xPosition: number): Promise<CharacterModel> {
+        const debug = (msg: string) => window.logDebug ? window.logDebug(msg) : console.log(msg);
         const model = gltf.scene;
+        
         model.position.set(xPosition, 0, 0);
         model.scale.set(1, 1, 1);
+        model.rotation.y = Math.PI;
         
         model.traverse((object: THREE.Object3D) => {
             if (object instanceof THREE.SkinnedMesh) {
@@ -160,12 +177,20 @@ export class CharacterCreator {
         let animation: THREE.AnimationAction | null = null;
 
         if (gltf.animations.length > 0) {
+            debug('Verfügbare Animationen:');
+            gltf.animations.forEach((anim, index) => {
+                debug(`${index}: ${anim.name}`);
+            });
+
             const idleAnimation = gltf.animations.find(anim => 
                 anim.name.toLowerCase().includes('idle')
             ) || gltf.animations[0];
             
             animation = mixer.clipAction(idleAnimation);
             animation.play();
+            debug(`Animation "${idleAnimation.name}" gestartet`);
+        } else {
+            debug('Keine Animationen im Modell gefunden');
         }
 
         this.scene.add(model);
@@ -240,19 +265,26 @@ export class CharacterCreator {
     }
 
     private animate(): void {
-        requestAnimationFrame(this.animate.bind(this));
+        const debug = (msg: string) => window.logDebug ? window.logDebug(msg) : console.log(msg);
         
-        const delta = this.clock.getDelta();
+        const animateFrame = () => {
+            requestAnimationFrame(animateFrame);
+            
+            const delta = this.clock.getDelta();
 
-        if (this.maleModel?.mixer) {
-            this.maleModel.mixer.update(delta);
-        }
-        if (this.femaleModel?.mixer) {
-            this.femaleModel.mixer.update(delta);
-        }
-        
-        this.controls.update();
-        this.renderer.render(this.scene, this.camera);
+            if (this.maleModel?.mixer) {
+                this.maleModel.mixer.update(delta);
+            }
+            if (this.femaleModel?.mixer) {
+                this.femaleModel.mixer.update(delta);
+            }
+            
+            this.controls.update();
+            this.renderer.render(this.scene, this.camera);
+        };
+
+        debug('Animation-Loop gestartet');
+        animateFrame();
     }
 
     public dispose(): void {

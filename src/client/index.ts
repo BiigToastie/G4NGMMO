@@ -2,6 +2,17 @@ import WebApp from '@twa-dev/sdk';
 import { CharacterCreator } from './character/CharacterCreator';
 import { GameWorld } from './game/GameWorld';
 
+// Mache CharacterCreator global verfügbar
+declare global {
+    interface Window {
+        CharacterCreator: typeof CharacterCreator;
+        characterCreator: CharacterCreator | null;
+    }
+}
+
+window.CharacterCreator = CharacterCreator;
+window.characterCreator = null;
+
 interface CharacterData {
     userId: number;
     gender: 'male' | 'female';
