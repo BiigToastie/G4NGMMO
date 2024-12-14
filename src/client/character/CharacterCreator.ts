@@ -276,4 +276,10 @@ export class CharacterCreator {
             }
         });
     }
-} 
+}
+
+// Mache CharacterCreator global verfügbar
+(window as any).CharacterCreator = CharacterCreator;
+
+// Exportiere die Klasse als default
+export default CharacterCreator; 

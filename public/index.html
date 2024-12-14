@@ -347,8 +347,17 @@
         async function initializeCharacterCreator() {
             try {
                 window.logDebug('Initialisiere CharacterCreator...');
+                if (!window.CharacterCreator) {
+                    window.logDebug('Warte auf CharacterCreator-Klasse...');
+                    await new Promise(resolve => setTimeout(resolve, 500)); // Warte kurz auf Skript-Ladung
+                }
+                
+                if (!window.CharacterCreator) {
+                    throw new Error('CharacterCreator-Klasse nicht gefunden');
+                }
+
                 if (!window.characterCreator) {
-                    window.characterCreator = await window.CharacterCreator.getInstance();
+                    window.characterCreator = window.CharacterCreator.getInstance();
                     await window.characterCreator.initialize();
                     window.logDebug('CharacterCreator erfolgreich initialisiert');
                 }
@@ -358,7 +367,7 @@
         }
 
         // Event-Handler für Slot-Klicks
-        function handleSlotClick(slotNumber) {
+        async function handleSlotClick(slotNumber) {
             window.logDebug('Click auf Slot ' + slotNumber);
             const creator = document.querySelector('#character-creator');
             const selection = document.querySelector('#character-selection');
@@ -369,7 +378,7 @@
             selection.style.display = 'none';
             
             // Initialisiere CharacterCreator
-            initializeCharacterCreator();
+            await initializeCharacterCreator();
         }
 
         // Initialisiere Event-Handler für Geschlechterauswahl
