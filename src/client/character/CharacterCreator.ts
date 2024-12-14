@@ -15,7 +15,7 @@ interface CharacterSelection {
     class: 'warrior' | 'mage' | 'ranger' | 'rogue';
 }
 
-export class CharacterCreator {
+class CharacterCreator {
     private static instance: CharacterCreator | null = null;
     private readonly scene: THREE.Scene;
     private readonly camera: THREE.PerspectiveCamera;
@@ -329,5 +329,5 @@ if (typeof window !== 'undefined') {
     window.characterCreator = null;
 }
 
-export { CharacterCreator };
+// Exportiere die Klasse nur einmal als default
 export default CharacterCreator; 

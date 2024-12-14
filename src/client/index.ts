@@ -1,5 +1,5 @@
 import WebApp from '@twa-dev/sdk';
-import { CharacterCreator } from './character/CharacterCreator';
+import CharacterCreator from './character/CharacterCreator';
 import { GameWorld } from './game/GameWorld';
 
 // Globale Debug-Funktion
