@@ -76,35 +76,48 @@ async function initializeApp(): Promise<void> {
         const testButton = document.createElement('button');
         testButton.textContent = 'Test Event Handler';
         testButton.style.position = 'fixed';
-        testButton.style.top = '10px';
-        testButton.style.right = '10px';
-        testButton.style.zIndex = '9999';
-        testButton.style.padding = '10px';
+        testButton.style.bottom = '80px';
+        testButton.style.left = '50%';
+        testButton.style.transform = 'translateX(-50%)';
+        testButton.style.zIndex = '999999';
+        testButton.style.padding = '15px 30px';
         testButton.style.backgroundColor = '#4CAF50';
         testButton.style.color = 'white';
         testButton.style.border = 'none';
         testButton.style.borderRadius = '5px';
         testButton.style.cursor = 'pointer';
+        testButton.style.fontSize = '16px';
+        testButton.style.fontWeight = 'bold';
+        testButton.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
         
         testButton.onclick = () => {
             logDebug('Test-Button geklickt');
+            console.log('Test-Button geklickt');
             const slots = document.querySelectorAll('.character-slot');
             logDebug(`Gefundene Slots: ${slots.length}`);
+            console.log(`Gefundene Slots: ${slots.length}`);
             
             slots.forEach((slot: Element, index: number) => {
                 const slotElement = slot as HTMLElement;
                 const hasClickHandler = typeof slotElement.onclick === 'function';
                 logDebug(`Slot ${index + 1}: Hat Click-Handler: ${hasClickHandler}`);
+                console.log(`Slot ${index + 1}: Hat Click-Handler: ${hasClickHandler}`);
                 
                 // Teste Click-Event
                 if (hasClickHandler) {
                     logDebug(`Simuliere Click auf Slot ${index + 1}`);
+                    console.log(`Simuliere Click auf Slot ${index + 1}`);
                     slotElement.click();
                 }
             });
         };
         
-        document.body.appendChild(testButton);
+        const characterSelection = document.getElementById('character-selection');
+        if (characterSelection) {
+            characterSelection.appendChild(testButton);
+        } else {
+            document.body.appendChild(testButton);
+        }
 
         // Lade gespeicherte Charaktere
         logDebug('Lade gespeicherte Charaktere...');
