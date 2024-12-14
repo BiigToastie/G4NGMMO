@@ -314,8 +314,17 @@ export class CharacterCreator {
     }
 }
 
-// Mache CharacterCreator global verfügbar
-(window as any).CharacterCreator = CharacterCreator;
+// Globale Typdeklaration
+declare global {
+    interface Window {
+        CharacterCreator: typeof CharacterCreator;
+        characterCreator: CharacterCreator | null;
+        logDebug?: (message: string) => void;
+    }
+}
 
-// Exportiere die Klasse als default
+// Explizite globale Zuweisung
+window.CharacterCreator = CharacterCreator;
+window.characterCreator = null;
+
 export default CharacterCreator; 

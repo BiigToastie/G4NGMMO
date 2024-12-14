@@ -2,13 +2,25 @@ import WebApp from '@twa-dev/sdk';
 import { CharacterCreator } from './character/CharacterCreator';
 import { GameWorld } from './game/GameWorld';
 
-// Mache CharacterCreator global verfügbar
+// Globale Typdeklaration
 declare global {
     interface Window {
         CharacterCreator: typeof CharacterCreator;
         characterCreator: CharacterCreator | null;
+        logDebug: (message: string) => void;
     }
 }
+
+// Globale Debug-Funktion
+window.logDebug = function(message: string): void {
+    console.log(message);
+    const debugInfo = document.getElementById('debug-info');
+    if (debugInfo) {
+        const timestamp = new Date().toLocaleTimeString();
+        debugInfo.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+        debugInfo.scrollTop = debugInfo.scrollHeight;
+    }
+};
 
 window.CharacterCreator = CharacterCreator;
 window.characterCreator = null;
@@ -28,17 +40,6 @@ let characterCreator: CharacterCreator;
 let gameWorld: GameWorld;
 let selectedSlot: number | null = null;
 let selectedCharacter: SavedCharacter | null = null;
-
-// Debug-Logging-Funktion
-function logDebug(message: string): void {
-    console.log(message);
-    const debugInfo = document.getElementById('debug-info');
-    if (debugInfo) {
-        const timestamp = new Date().toLocaleTimeString();
-        debugInfo.innerHTML += `<div>[${timestamp}] ${message}</div>`;
-        debugInfo.scrollTop = debugInfo.scrollHeight;
-    }
-}
 
 async function waitForWebApp(): Promise<void> {
     logDebug('Warte auf WebApp...');
