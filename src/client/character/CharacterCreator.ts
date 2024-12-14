@@ -25,7 +25,7 @@ interface CharacterSelection {
 }
 
 // Die CharacterCreator-Klasse
-export class CharacterCreator {
+class CharacterCreator {
     private static instance: CharacterCreator | null = null;
     private readonly scene: THREE.Scene;
     private readonly camera: THREE.PerspectiveCamera;
@@ -65,13 +65,6 @@ export class CharacterCreator {
         if (!CharacterCreator.instance) {
             debug('Erstelle neue CharacterCreator-Instanz');
             CharacterCreator.instance = new CharacterCreator();
-            
-            // Stelle sicher, dass die Instanz global verfügbar ist
-            if (typeof window !== 'undefined') {
-                debug('Mache CharacterCreator global verfügbar');
-                window.CharacterCreator = CharacterCreator;
-                window.characterCreator = CharacterCreator.instance;
-            }
         } else {
             debug('Verwende existierende CharacterCreator-Instanz');
         }
@@ -361,6 +354,10 @@ export class CharacterCreator {
         });
     }
 }
+
+// Exportiere die Klasse als default und benannten Export
+export default CharacterCreator;
+export { CharacterCreator };
 
 // Stelle sicher, dass die Klasse global verfügbar ist
 if (typeof window !== 'undefined') {

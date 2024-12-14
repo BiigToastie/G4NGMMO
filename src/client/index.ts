@@ -1,11 +1,8 @@
 import WebApp from '@twa-dev/sdk';
-import { CharacterCreator } from './character/CharacterCreator';
 import { GameWorld } from './game/GameWorld';
 
 // Sofortige Debug-Ausgaben für Import-Status
 console.log('=== Import-Status ===');
-console.log('CharacterCreator:', CharacterCreator);
-console.log('typeof CharacterCreator:', typeof CharacterCreator);
 
 // Interface-Definitionen
 export interface CharacterData {
@@ -23,7 +20,7 @@ export interface SavedCharacter {
 // Globale Variablen
 let selectedSlot: number | null = null;
 let selectedCharacter: SavedCharacter | null = null;
-let characterCreator: CharacterCreator | null = null;
+let characterCreator: any = null;
 let gameWorld: GameWorld | null = null;
 
 // Getter/Setter für globale Variablen
@@ -76,21 +73,13 @@ const logDebug = (message: string): void => {
 // Globale Zuweisungen
 window.logDebug = logDebug;
 
-// Stelle sicher, dass die CharacterCreator-Klasse global verfügbar ist
-if (typeof CharacterCreator !== 'undefined') {
-    window.CharacterCreator = CharacterCreator;
-    logDebug('CharacterCreator global zugewiesen');
-}
-
 // Modifizierte initializeCharacterCreator-Funktion
-async function initializeCharacterCreator(): Promise<CharacterCreator> {
+async function initializeCharacterCreator(): Promise<any> {
     logDebug('=== CharacterCreator Initialisierung ===');
     
     try {
         // Debug-Ausgaben für den aktuellen Status
-        logDebug(`CharacterCreator (direkt): ${typeof CharacterCreator}`);
-        logDebug(`window.CharacterCreator: ${typeof window.CharacterCreator}`);
-        logDebug(`window.characterCreator: ${window.characterCreator ? 'existiert' : 'null'}`);
+        logDebug('Versuche CharacterCreator zu laden...');
 
         // Prüfe ob bereits eine Instanz existiert
         if (window.characterCreator) {
@@ -98,28 +87,27 @@ async function initializeCharacterCreator(): Promise<CharacterCreator> {
             return window.characterCreator;
         }
 
-        // Versuche die Klasse zu laden
-        let CreatorClass = CharacterCreator;
-        
-        if (!CreatorClass || typeof CreatorClass !== 'function') {
-            logDebug('CharacterCreator nicht als Klasse verfügbar, versuche dynamischen Import');
-            try {
-                const module = await import('./character/CharacterCreator');
-                CreatorClass = module.CharacterCreator;
-                logDebug(`Dynamischer Import erfolgreich: ${typeof CreatorClass}`);
-            } catch (importError) {
-                logDebug(`Fehler beim dynamischen Import: ${importError}`);
-                throw new Error('CharacterCreator-Klasse konnte nicht geladen werden');
-            }
+        // Versuche die Klasse dynamisch zu laden
+        logDebug('Versuche dynamischen Import von CharacterCreator');
+        let CreatorModule;
+        try {
+            CreatorModule = await import('./character/CharacterCreator');
+            logDebug('Modul erfolgreich geladen');
+            logDebug(`Verfügbare Exports: ${Object.keys(CreatorModule).join(', ')}`);
+        } catch (importError) {
+            logDebug(`Import-Fehler: ${importError}`);
+            throw new Error('CharacterCreator-Modul konnte nicht geladen werden');
         }
 
-        if (!CreatorClass || typeof CreatorClass !== 'function') {
-            logDebug('CharacterCreator-Klasse nicht gefunden nach Import-Versuch');
-            throw new Error('CharacterCreator-Klasse nicht gefunden');
+        const { CharacterCreator } = CreatorModule;
+        
+        if (!CharacterCreator || typeof CharacterCreator !== 'function') {
+            logDebug(`CharacterCreator Typ: ${typeof CharacterCreator}`);
+            throw new Error('CharacterCreator-Klasse nicht gefunden im Modul');
         }
 
         logDebug('Erstelle neue CharacterCreator-Instanz');
-        const instance = CreatorClass.getInstance();
+        const instance = CharacterCreator.getInstance();
         
         if (!instance) {
             logDebug('getInstance lieferte keine Instanz zurück');
