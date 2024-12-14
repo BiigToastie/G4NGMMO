@@ -2,6 +2,11 @@ import WebApp from '@twa-dev/sdk';
 import CharacterCreator from './character/CharacterCreator';
 import { GameWorld } from './game/GameWorld';
 
+// Sofortige Debug-Ausgabe
+console.log('=== Modul-Initialisierung ===');
+console.log('CharacterCreator direkt nach Import:', CharacterCreator);
+console.log('Typ von CharacterCreator:', typeof CharacterCreator);
+
 // Definiere die Debug-Funktion zuerst
 const logDebug = (message: string): void => {
     console.log(message);
@@ -24,90 +29,65 @@ declare global {
 
 // Globale Zuweisungen
 window.logDebug = logDebug;
+logDebug('=== Debug-System initialisiert ===');
 
-// Debug-Ausgaben für CharacterCreator-Status
-console.log('CharacterCreator Import:', CharacterCreator);
-logDebug(`CharacterCreator Import Status: ${typeof CharacterCreator}`);
-
-if (typeof CharacterCreator === 'undefined') {
-    logDebug('WARNUNG: CharacterCreator ist undefined nach Import');
-} else {
-    logDebug('CharacterCreator erfolgreich importiert');
+// Versuche die CharacterCreator-Klasse global verfügbar zu machen
+try {
+    logDebug('Versuche CharacterCreator global zu machen...');
+    if (typeof CharacterCreator === 'undefined') {
+        logDebug('WARNUNG: CharacterCreator ist undefined nach Import');
+        throw new Error('CharacterCreator ist undefined nach Import');
+    }
+    
     window.CharacterCreator = CharacterCreator;
-    logDebug('CharacterCreator global zugewiesen');
+    logDebug('CharacterCreator erfolgreich global zugewiesen');
+    logDebug(`Typ von window.CharacterCreator: ${typeof window.CharacterCreator}`);
+    
+    if (typeof window.CharacterCreator.getInstance !== 'function') {
+        logDebug('WARNUNG: getInstance ist keine Funktion');
+        throw new Error('getInstance ist keine Funktion');
+    }
+    
+    logDebug('getInstance-Methode ist verfügbar');
+} catch (error) {
+    logDebug(`Fehler bei der globalen Zuweisung: ${error instanceof Error ? error.message : String(error)}`);
 }
 
 window.characterCreator = null;
 
-// Interface-Definitionen
-interface CharacterData {
-    userId: number;
-    gender: 'male' | 'female';
-    slot: number;
-}
-
-interface SavedCharacter {
-    gender: 'male' | 'female';
-    slot: number;
-}
-
-// Globale Variablen
-let selectedSlot: number | null = null;
-let selectedCharacter: SavedCharacter | null = null;
-
 // Modifizierte initializeCharacterCreator-Funktion
 async function initializeCharacterCreator(): Promise<CharacterCreator> {
-    logDebug('Initialisiere CharacterCreator...');
+    logDebug('=== CharacterCreator Initialisierung ===');
     try {
-        // Detaillierte Status-Überprüfung
-        logDebug('CharacterCreator Status-Check:');
-        logDebug(`1. Import-Variable: ${typeof CharacterCreator}`);
-        logDebug(`2. Window.CharacterCreator: ${typeof window.CharacterCreator}`);
-        logDebug(`3. Window.characterCreator: ${window.characterCreator ? 'existiert' : 'null'}`);
+        logDebug('Prüfe verfügbare Klassen:');
+        logDebug(`1. CharacterCreator (Import): ${typeof CharacterCreator}`);
+        logDebug(`2. window.CharacterCreator: ${typeof window.CharacterCreator}`);
+        logDebug(`3. window.characterCreator: ${window.characterCreator ? 'existiert' : 'null'}`);
 
-        // Versuche zuerst die importierte Klasse zu verwenden
-        let CreatorClass = CharacterCreator;
+        const CreatorClass = CharacterCreator || window.CharacterCreator;
         
         if (!CreatorClass) {
-            logDebug('Import-Variable nicht verfügbar, prüfe globale Variable');
-            CreatorClass = window.CharacterCreator;
+            logDebug('Keine CharacterCreator-Klasse gefunden');
+            throw new Error('CharacterCreator-Klasse nicht gefunden');
         }
 
-        if (!CreatorClass) {
-            logDebug('Versuche dynamischen Import...');
-            try {
-                const module = await import('./character/CharacterCreator');
-                CreatorClass = module.default;
-                logDebug(`Dynamischer Import Ergebnis: ${typeof module.default}`);
-                
-                if (!CreatorClass) {
-                    throw new Error('Dynamischer Import ergab keine gültige Klasse');
-                }
-            } catch (importError) {
-                logDebug(`Dynamischer Import fehlgeschlagen: ${importError}`);
-                throw new Error('CharacterCreator-Klasse konnte nicht geladen werden');
-            }
-        }
-
-        logDebug(`CreatorClass Status: ${typeof CreatorClass}`);
-        logDebug(`CreatorClass.getInstance: ${typeof CreatorClass.getInstance}`);
+        logDebug('CharacterCreator-Klasse gefunden');
+        logDebug(`Typ der Klasse: ${typeof CreatorClass}`);
+        logDebug(`getInstance verfügbar: ${typeof CreatorClass.getInstance === 'function'}`);
 
         if (!window.characterCreator) {
-            if (typeof CreatorClass.getInstance !== 'function') {
-                logDebug('FEHLER: getInstance ist keine Funktion');
-                throw new Error('CharacterCreator.getInstance ist keine Funktion');
-            }
-
-            logDebug('Erstelle neue CharacterCreator-Instanz...');
+            logDebug('Erstelle neue Instanz...');
             window.characterCreator = CreatorClass.getInstance();
             
             if (!window.characterCreator) {
                 throw new Error('getInstance lieferte keine Instanz zurück');
             }
 
-            logDebug('Initialisiere neue Instanz...');
+            logDebug('Initialisiere Instanz...');
             await window.characterCreator.initialize();
             logDebug('Instanz erfolgreich initialisiert');
+        } else {
+            logDebug('Verwende existierende Instanz');
         }
 
         return window.characterCreator;
