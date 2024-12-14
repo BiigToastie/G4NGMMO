@@ -27,8 +27,12 @@ class CharacterCreator {
     private maleModel: CharacterModel | null = null;
     private femaleModel: CharacterModel | null = null;
     private selectedGender: 'male' | 'female' = 'male';
+    private initialized: boolean = false;
 
     private constructor() {
+        const debug = (msg: string) => window.logDebug ? window.logDebug(msg) : console.log(msg);
+        debug('CharacterCreator Konstruktor gestartet');
+        
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.renderer = new THREE.WebGLRenderer({ 
@@ -38,14 +42,74 @@ class CharacterCreator {
         });
         this.loader = new GLTFLoader();
         this.clock = new THREE.Clock();
+        
+        debug('CharacterCreator Basis-Setup abgeschlossen');
         this.setupScene();
+        debug('CharacterCreator Konstruktor abgeschlossen');
     }
 
     public static getInstance(): CharacterCreator {
+        const debug = (msg: string) => window.logDebug ? window.logDebug(msg) : console.log(msg);
+        debug('getInstance aufgerufen');
+        
         if (!CharacterCreator.instance) {
+            debug('Erstelle neue CharacterCreator-Instanz');
             CharacterCreator.instance = new CharacterCreator();
+        } else {
+            debug('Verwende existierende CharacterCreator-Instanz');
         }
+        
         return CharacterCreator.instance;
+    }
+
+    public async initialize(): Promise<void> {
+        const debug = (msg: string) => window.logDebug ? window.logDebug(msg) : console.log(msg);
+        
+        if (this.initialized) {
+            debug('CharacterCreator bereits initialisiert');
+            return;
+        }
+        
+        try {
+            debug('Starte CharacterCreator-Initialisierung');
+            
+            this.container = document.getElementById('character-preview');
+            if (!this.container) {
+                debug('Fehler: Character preview container nicht gefunden');
+                throw new Error('Character preview container nicht gefunden');
+            }
+            debug('Character preview container gefunden');
+
+            this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+            this.renderer.setPixelRatio(window.devicePixelRatio);
+            this.renderer.shadowMap.enabled = true;
+            this.container.appendChild(this.renderer.domElement);
+            debug('Renderer konfiguriert und an Container angehängt');
+
+            this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+            this.setupControls();
+            debug('Controls eingerichtet');
+
+            window.addEventListener('resize', this.onWindowResize.bind(this));
+            debug('Resize-Event-Listener registriert');
+
+            await this.loadModels();
+            debug('Modelle geladen');
+            
+            this.animate();
+            debug('Animation gestartet');
+            
+            this.initialized = true;
+            debug('CharacterCreator erfolgreich initialisiert');
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            debug(`Fehler bei der CharacterCreator-Initialisierung: ${errorMsg}`);
+            if (error instanceof Error && error.stack) {
+                debug('Stack Trace:');
+                debug(error.stack);
+            }
+            throw error;
+        }
     }
 
     private setupScene(): void {
@@ -70,39 +134,6 @@ class CharacterCreator {
 
         this.camera.position.set(0, 1.6, 2.5);
         this.camera.lookAt(0, 1, 0);
-    }
-
-    public async initialize(): Promise<void> {
-        try {
-            const debug = (msg: string) => window.logDebug ? window.logDebug(msg) : console.log(msg);
-            debug('Initialisiere CharacterCreator...');
-            
-            this.container = document.getElementById('character-preview');
-            if (!this.container) {
-                throw new Error('Character preview container nicht gefunden');
-            }
-
-            this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-            this.renderer.setPixelRatio(window.devicePixelRatio);
-            this.renderer.shadowMap.enabled = true;
-            this.container.appendChild(this.renderer.domElement);
-
-            this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-            this.setupControls();
-
-            window.addEventListener('resize', this.onWindowResize.bind(this));
-
-            await this.loadModels();
-            this.animate();
-
-            debug('CharacterCreator erfolgreich initialisiert');
-        } catch (error) {
-            const errorMsg = error instanceof Error ? error.message : String(error);
-            if (window.logDebug) {
-                window.logDebug(`Fehler bei der CharacterCreator-Initialisierung: ${errorMsg}`);
-            }
-            throw error;
-        }
     }
 
     private setupControls(): void {

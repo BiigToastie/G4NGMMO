@@ -308,14 +308,27 @@ function setupGameStartButton(): void {
 
 async function handleGenderSelection(gender: 'male' | 'female', activeBtn: HTMLElement, inactiveBtn: HTMLElement): Promise<void> {
     try {
+        logDebug(`Geschlechterauswahl gestartet: ${gender}`);
         activeBtn.classList.add('selected');
         inactiveBtn.classList.remove('selected');
         
+        logDebug('Hole CharacterCreator-Instanz...');
         const creator = await initializeCharacterCreator();
+        
+        if (!creator) {
+            throw new Error('Keine CharacterCreator-Instanz verfügbar');
+        }
+        
+        logDebug(`Setze Geschlecht auf ${gender}...`);
         creator.setGender(gender);
-        logDebug(`Geschlecht gewählt: ${gender}`);
+        logDebug(`Geschlecht erfolgreich auf ${gender} gesetzt`);
     } catch (error) {
-        logDebug(`Fehler bei der Geschlechterauswahl: ${error instanceof Error ? error.message : String(error)}`);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        logDebug(`Fehler bei der Geschlechterauswahl: ${errorMsg}`);
+        if (error instanceof Error && error.stack) {
+            logDebug('Stack Trace:');
+            logDebug(error.stack);
+        }
         showError('Fehler beim Laden des Charakters');
     }
 }
@@ -453,23 +466,41 @@ function showError(message: string): void {
 async function initializeCharacterCreator(): Promise<CharacterCreator> {
     logDebug('Initialisiere CharacterCreator...');
     try {
-        if (!window.CharacterCreator) {
-            logDebug('CharacterCreator-Klasse nicht gefunden, importiere sie...');
-            const CharacterCreatorModule = await import('./character/CharacterCreator');
-            window.CharacterCreator = CharacterCreatorModule.default;
+        logDebug('CharacterCreator Status:');
+        logDebug(`window.CharacterCreator: ${!!window.CharacterCreator}`);
+        logDebug(`window.characterCreator: ${!!window.characterCreator}`);
+        logDebug(`Lokale CharacterCreator: ${!!CharacterCreator}`);
+
+        if (!CharacterCreator) {
+            logDebug('Lokale CharacterCreator-Klasse nicht gefunden');
+            throw new Error('CharacterCreator-Klasse nicht gefunden');
         }
 
         if (!window.characterCreator) {
             logDebug('Erstelle neue CharacterCreator-Instanz...');
             window.characterCreator = CharacterCreator.getInstance();
+            
+            logDebug('Initialisiere CharacterCreator-Instanz...');
             await window.characterCreator.initialize();
+            
+            // Überprüfe, ob die Initialisierung erfolgreich war
+            if (!window.characterCreator) {
+                throw new Error('CharacterCreator-Initialisierung fehlgeschlagen');
+            }
+            
             logDebug('CharacterCreator erfolgreich initialisiert');
+        } else {
+            logDebug('Verwende existierende CharacterCreator-Instanz');
         }
 
         return window.characterCreator;
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         logDebug(`Fehler bei der CharacterCreator-Initialisierung: ${errorMsg}`);
+        logDebug('Stack Trace:');
+        if (error instanceof Error && error.stack) {
+            logDebug(error.stack);
+        }
         throw error;
     }
 }
