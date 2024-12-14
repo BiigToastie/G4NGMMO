@@ -21,8 +21,8 @@ export interface SavedCharacter {
 // Globale Typdeklaration
 declare global {
     interface Window {
-        CharacterCreator: any;
-        characterCreator: any;
+        CharacterCreator: typeof CharacterCreator;
+        characterCreator: CharacterCreator | null;
         logDebug: (message: string) => void;
     }
 }
@@ -30,7 +30,7 @@ declare global {
 // Globale Variablen
 let selectedSlot: number | null = null;
 let selectedCharacter: SavedCharacter | null = null;
-let characterCreator: any = null;
+let characterCreator: CharacterCreator | null = null;
 let gameWorld: GameWorld | null = null;
 
 // Getter/Setter für globale Variablen
@@ -75,7 +75,7 @@ const logDebug = (message: string): void => {
 window.logDebug = logDebug;
 
 // Modifizierte initializeCharacterCreator-Funktion
-async function initializeCharacterCreator(): Promise<any> {
+async function initializeCharacterCreator(): Promise<CharacterCreator> {
     logDebug('=== CharacterCreator Initialisierung ===');
     
     try {
@@ -106,6 +106,9 @@ async function initializeCharacterCreator(): Promise<any> {
             logDebug(`CharacterCreator Typ: ${typeof CharacterCreator}`);
             throw new Error('CharacterCreator-Klasse nicht gefunden im Modul');
         }
+
+        // Globale Zuweisung der Klasse
+        window.CharacterCreator = CharacterCreator;
 
         logDebug('Erstelle neue CharacterCreator-Instanz');
         const instance = CharacterCreator.getInstance();
