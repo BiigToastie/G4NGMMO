@@ -1,5 +1,5 @@
 import { Game } from './game/Game';
-import { CharacterCreator } from './character/CharacterCreator';
+import CharacterCreator from './character/CharacterCreator';
 import { ResourceManager } from './ResourceManager';
 import WebApp from '@twa-dev/sdk';
 

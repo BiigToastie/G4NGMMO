@@ -455,8 +455,8 @@ async function initializeCharacterCreator(): Promise<CharacterCreator> {
     try {
         if (!window.CharacterCreator) {
             logDebug('CharacterCreator-Klasse nicht gefunden, importiere sie...');
-            const { CharacterCreator } = await import('./character/CharacterCreator');
-            window.CharacterCreator = CharacterCreator;
+            const CharacterCreatorModule = await import('./character/CharacterCreator');
+            window.CharacterCreator = CharacterCreatorModule.default;
         }
 
         if (!window.characterCreator) {
