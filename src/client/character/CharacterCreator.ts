@@ -15,7 +15,17 @@ interface CharacterSelection {
     class: 'warrior' | 'mage' | 'ranger' | 'rogue';
 }
 
-class CharacterCreator {
+// Globale Typdeklaration
+declare global {
+    interface Window {
+        CharacterCreator: typeof CharacterCreator;
+        characterCreator: CharacterCreator | null;
+        logDebug: (message: string) => void;
+    }
+}
+
+// Die CharacterCreator-Klasse
+export class CharacterCreator {
     private static instance: CharacterCreator | null = null;
     private readonly scene: THREE.Scene;
     private readonly camera: THREE.PerspectiveCamera;
@@ -345,20 +355,12 @@ class CharacterCreator {
     }
 }
 
-// Globale Typdeklaration
-declare global {
-    interface Window {
-        CharacterCreator: typeof CharacterCreator;
-        characterCreator: CharacterCreator | null;
-        logDebug: (message: string) => void;
-    }
-}
-
 // Stelle sicher, dass die Klasse global verfügbar ist
 if (typeof window !== 'undefined') {
     window.CharacterCreator = CharacterCreator;
     window.characterCreator = null;
+    console.log('CharacterCreator global verfügbar gemacht');
 }
 
-// Exportiere die Klasse nur einmal als default
-export default CharacterCreator; 
+// Exportiere die Klasse als default UND als benannten Export
+export { CharacterCreator as default }; 

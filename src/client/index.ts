@@ -1,5 +1,5 @@
 import WebApp from '@twa-dev/sdk';
-import CharacterCreator from './character/CharacterCreator';
+import CharacterCreator, { CharacterCreator as CharacterCreatorClass } from './character/CharacterCreator';
 import { GameWorld } from './game/GameWorld';
 
 // Interface-Definitionen
@@ -58,7 +58,14 @@ declare global {
 // Sofortige Debug-Ausgabe
 console.log('=== Modul-Initialisierung ===');
 console.log('CharacterCreator direkt nach Import:', CharacterCreator);
-console.log('Typ von CharacterCreator:', typeof CharacterCreator);
+console.log('CharacterCreator Klasse:', CharacterCreatorClass);
+console.log('window.CharacterCreator:', window.CharacterCreator);
+
+// Stelle sicher, dass die Klasse global verfügbar ist
+if (!window.CharacterCreator) {
+    window.CharacterCreator = CharacterCreator;
+    console.log('CharacterCreator global zugewiesen');
+}
 
 // Definiere die Debug-Funktion
 const logDebug = (message: string): void => {
@@ -84,10 +91,11 @@ async function initializeCharacterCreator(): Promise<CharacterCreator> {
     try {
         logDebug('Prüfe verfügbare Klassen:');
         logDebug(`1. CharacterCreator (Import): ${typeof CharacterCreator}`);
-        logDebug(`2. window.CharacterCreator: ${typeof window.CharacterCreator}`);
-        logDebug(`3. window.characterCreator: ${window.characterCreator ? 'existiert' : 'null'}`);
+        logDebug(`2. CharacterCreator (Named): ${typeof CharacterCreatorClass}`);
+        logDebug(`3. window.CharacterCreator: ${typeof window.CharacterCreator}`);
+        logDebug(`4. window.characterCreator: ${window.characterCreator ? 'existiert' : 'null'}`);
 
-        const CreatorClass = CharacterCreator || window.CharacterCreator;
+        const CreatorClass = CharacterCreator || CharacterCreatorClass || window.CharacterCreator;
         
         if (!CreatorClass) {
             logDebug('Keine CharacterCreator-Klasse gefunden');
