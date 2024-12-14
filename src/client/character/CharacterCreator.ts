@@ -323,8 +323,11 @@ declare global {
     }
 }
 
-// Explizite globale Zuweisung
-window.CharacterCreator = CharacterCreator;
-window.characterCreator = null;
+// Stelle sicher, dass die Klasse global verfügbar ist
+if (typeof window !== 'undefined') {
+    window.CharacterCreator = CharacterCreator;
+    window.characterCreator = null;
+}
 
+export { CharacterCreator };
 export default CharacterCreator; 

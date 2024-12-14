@@ -204,7 +204,7 @@ function updateCharacterSlots(characters: SavedCharacter[]): void {
             logDebug(`Slot ${slotNumber} ist leer`);
         }
 
-        // Füge Click-Event-Listener direkt hinzu
+        // Füge Click-Event-Listener hinzu
         slotElement.onclick = async (event: MouseEvent) => {
             event.preventDefault();
             event.stopPropagation();
@@ -214,35 +214,30 @@ function updateCharacterSlots(characters: SavedCharacter[]): void {
             logDebug(`Slot ${slotNumber} geklickt (${isEmptySlot ? 'leer' : 'belegt'})`);
             
             if (isEmptySlot) {
-                logDebug('Leerer Slot erkannt, öffne Charaktererstellung');
-                selectedSlot = slotNumber;
-                
-                const characterCreatorElement = document.getElementById('character-creator');
-                const characterSelectionElement = document.getElementById('character-selection');
-                
-                if (!characterCreatorElement || !characterSelectionElement) {
-                    logDebug('Fehler: UI-Elemente nicht gefunden');
-                    return;
-                }
-                
-                // Direkte UI-Manipulation
-                characterSelectionElement.style.display = 'none';
-                characterCreatorElement.style.display = 'flex';
-                characterCreatorElement.style.opacity = '1';
-                
-                logDebug('Charaktererstellung angezeigt');
-                
-                // Initialisiere CharacterCreator
-                if (!characterCreator) {
-                    logDebug('Initialisiere CharacterCreator');
-                    characterCreator = CharacterCreator.getInstance();
-                    try {
-                        await characterCreator.initialize();
-                        logDebug('CharacterCreator erfolgreich initialisiert');
-                    } catch (error) {
-                        logDebug(`Fehler bei CharacterCreator-Initialisierung: ${error}`);
-                        showError('Fehler beim Laden des Charaktereditors');
+                try {
+                    logDebug('Leerer Slot erkannt, öffne Charaktererstellung');
+                    selectedSlot = slotNumber;
+                    
+                    const characterCreatorElement = document.getElementById('character-creator');
+                    const characterSelectionElement = document.getElementById('character-selection');
+                    
+                    if (!characterCreatorElement || !characterSelectionElement) {
+                        logDebug('Fehler: UI-Elemente nicht gefunden');
+                        return;
                     }
+                    
+                    // Initialisiere CharacterCreator vor dem Anzeigen
+                    await initializeCharacterCreator();
+                    
+                    // UI anzeigen
+                    characterSelectionElement.style.display = 'none';
+                    characterCreatorElement.style.display = 'flex';
+                    characterCreatorElement.style.opacity = '1';
+                    
+                    logDebug('Charaktererstellung angezeigt');
+                } catch (error) {
+                    logDebug(`Fehler beim Öffnen der Charaktererstellung: ${error}`);
+                    showError('Fehler beim Öffnen der Charaktererstellung');
                 }
             } else {
                 const response = await fetch(`/api/character/${WebApp.initDataUnsafe.user?.id}/${slotNumber}`);
@@ -316,12 +311,8 @@ async function handleGenderSelection(gender: 'male' | 'female', activeBtn: HTMLE
         activeBtn.classList.add('selected');
         inactiveBtn.classList.remove('selected');
         
-        if (!characterCreator) {
-            characterCreator = CharacterCreator.getInstance();
-            await characterCreator.initialize();
-        }
-        
-        characterCreator.setGender(gender);
+        const creator = await initializeCharacterCreator();
+        creator.setGender(gender);
         logDebug(`Geschlecht gewählt: ${gender}`);
     } catch (error) {
         logDebug(`Fehler bei der Geschlechterauswahl: ${error instanceof Error ? error.message : String(error)}`);
@@ -457,6 +448,30 @@ function showError(message: string): void {
     setTimeout(() => {
         errorElement.remove();
     }, 3000);
+}
+
+async function initializeCharacterCreator(): Promise<CharacterCreator> {
+    logDebug('Initialisiere CharacterCreator...');
+    try {
+        if (!window.CharacterCreator) {
+            logDebug('CharacterCreator-Klasse nicht gefunden, importiere sie...');
+            const { CharacterCreator } = await import('./character/CharacterCreator');
+            window.CharacterCreator = CharacterCreator;
+        }
+
+        if (!window.characterCreator) {
+            logDebug('Erstelle neue CharacterCreator-Instanz...');
+            window.characterCreator = CharacterCreator.getInstance();
+            await window.characterCreator.initialize();
+            logDebug('CharacterCreator erfolgreich initialisiert');
+        }
+
+        return window.characterCreator;
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        logDebug(`Fehler bei der CharacterCreator-Initialisierung: ${errorMsg}`);
+        throw error;
+    }
 }
 
 // Initialisierung
