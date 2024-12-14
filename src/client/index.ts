@@ -89,7 +89,7 @@ async function initializeCharacterCreator(): Promise<any> {
         logDebug('Versuche dynamischen Import von CharacterCreator');
         let CharacterCreatorModule;
         try {
-            CharacterCreatorModule = await import('./character/CharacterCreator.ts');
+            CharacterCreatorModule = await import('./character/CharacterCreator');
             logDebug('Modul erfolgreich geladen');
             logDebug(`Verfügbare Exports: ${Object.keys(CharacterCreatorModule).join(', ')}`);
             

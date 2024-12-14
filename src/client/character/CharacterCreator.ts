@@ -355,10 +355,6 @@ export class CharacterCreator {
     }
 }
 
-// Exportiere die Klasse als default und benannten Export
-export default CharacterCreator;
-export { CharacterCreator };
-
 // Stelle sicher, dass die Klasse global verfügbar ist
 if (typeof window !== 'undefined') {
     window.CharacterCreator = CharacterCreator;
