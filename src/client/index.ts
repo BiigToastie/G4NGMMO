@@ -151,7 +151,8 @@ function setupCharacterSlots(): void {
     logDebug(`${slots.length} Character-Slots gefunden`);
     
     slots.forEach((slot: Element) => {
-        slot.addEventListener('click', () => {
+        slot.addEventListener('click', (event) => {
+            event.preventDefault();
             const slotNumber = parseInt((slot as HTMLElement).dataset.slot || '0');
             logDebug(`Slot ${slotNumber} geklickt`);
             handleSlotClick(slotNumber, slot as HTMLElement);
@@ -160,6 +161,7 @@ function setupCharacterSlots(): void {
 }
 
 async function handleSlotClick(slotNumber: number, slotElement: HTMLElement): Promise<void> {
+    logDebug(`Verarbeite Slot-Klick für Slot ${slotNumber}`);
     const isEmptySlot = slotElement.querySelector('.empty-slot-text') !== null;
     logDebug(`Slot ${slotNumber} geklickt (${isEmptySlot ? 'leer' : 'belegt'})`);
 
@@ -169,6 +171,7 @@ async function handleSlotClick(slotNumber: number, slotElement: HTMLElement): Pr
     }
 
     if (isEmptySlot) {
+        logDebug('Leerer Slot geklickt, zeige Charaktererstellung');
         selectedSlot = slotNumber;
         showCharacterCreator();
     } else {
@@ -191,11 +194,33 @@ function setupCreatorButtons(): void {
     const saveBtn = document.getElementById('save-character');
     const cancelBtn = document.getElementById('cancel-creation');
 
+    logDebug('Suche Creator-Buttons...');
+    logDebug(`Male Button gefunden: ${!!maleBtn}`);
+    logDebug(`Female Button gefunden: ${!!femaleBtn}`);
+    logDebug(`Save Button gefunden: ${!!saveBtn}`);
+    logDebug(`Cancel Button gefunden: ${!!cancelBtn}`);
+
     if (maleBtn && femaleBtn && saveBtn && cancelBtn) {
-        maleBtn.addEventListener('click', () => handleGenderSelection('male', maleBtn, femaleBtn));
-        femaleBtn.addEventListener('click', () => handleGenderSelection('female', femaleBtn, maleBtn));
-        saveBtn.addEventListener('click', handleSaveCharacter);
-        cancelBtn.addEventListener('click', hideCharacterCreator);
+        maleBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            logDebug('Male Button geklickt');
+            handleGenderSelection('male', maleBtn, femaleBtn);
+        });
+        femaleBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            logDebug('Female Button geklickt');
+            handleGenderSelection('female', femaleBtn, maleBtn);
+        });
+        saveBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            logDebug('Save Button geklickt');
+            handleSaveCharacter();
+        });
+        cancelBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            logDebug('Cancel Button geklickt');
+            hideCharacterCreator();
+        });
         logDebug('Creator-Buttons eingerichtet');
     } else {
         logDebug('Fehler: Nicht alle Creator-Buttons gefunden');
@@ -313,12 +338,20 @@ function showCharacterCreator(): void {
         return;
     }
 
-    // Sanfte Überblendung
+    logDebug('Starte Überblendung zur Charaktererstellung');
     characterSelection.style.opacity = '0';
+    
     setTimeout(() => {
+        logDebug('Verstecke Charakterauswahl');
         characterSelection.style.display = 'none';
+        logDebug('Zeige Charaktererstellung');
         characterCreatorElement.style.display = 'flex';
+        
+        // Erzwinge Reflow
+        characterCreatorElement.offsetHeight;
+        
         setTimeout(() => {
+            logDebug('Blende Charaktererstellung ein');
             characterCreatorElement.style.opacity = '1';
         }, 50);
     }, 300);
