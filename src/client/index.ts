@@ -278,6 +278,7 @@ function updateCharacterSlots(characters: SavedCharacter[]): void {
         const slotElement = slot as HTMLElement;
         const slotNumber = parseInt(slotElement.dataset.slot || '0');
         const character = characters.find(char => char.slot === slotNumber);
+        const deleteButton = slotElement.querySelector('.delete-character-btn') as HTMLButtonElement;
 
         // Aktualisiere Slot-Inhalt
         if (character) {
@@ -285,7 +286,21 @@ function updateCharacterSlots(characters: SavedCharacter[]): void {
                 <div class="character-info">
                     <p>${character.gender === 'male' ? 'Männlich' : 'Weiblich'}</p>
                 </div>
+                <button class="delete-character-btn">Löschen</button>
             `;
+            
+            // Füge Delete-Button Event Listener hinzu
+            const newDeleteButton = slotElement.querySelector('.delete-character-btn');
+            if (newDeleteButton) {
+                newDeleteButton.addEventListener('click', (event) => {
+                    event.stopPropagation(); // Verhindere Slot-Click-Event
+                    showConfirmationDialog(
+                        'Möchtest du diesen Charakter wirklich löschen?',
+                        () => deleteCharacter(slotNumber)
+                    );
+                });
+            }
+            
             logDebug(`Slot ${slotNumber} aktualisiert: ${character.gender}`);
         } else {
             slotElement.innerHTML = '<p class="empty-slot-text">Leerer Slot</p>';
@@ -458,11 +473,85 @@ async function handleSaveCharacter(): Promise<void> {
         await loadSavedCharacters();
         hideCharacterCreator();
         setSelectedSlot(null);
+        showSuccess('Charakter erfolgreich gespeichert');
 
     } catch (error) {
         logDebug(`Fehler beim Speichern: ${error instanceof Error ? error.message : String(error)}`);
         showError('Fehler beim Speichern des Charakters');
     }
+}
+
+async function deleteCharacter(slot: number): Promise<void> {
+    if (!WebApp.initDataUnsafe.user?.id) {
+        showError('Keine Benutzer-ID gefunden');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/character/delete/${WebApp.initDataUnsafe.user.id}/${slot}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            throw new Error('Fehler beim Löschen des Charakters');
+        }
+
+        logDebug(`Charakter in Slot ${slot} erfolgreich gelöscht`);
+        await loadSavedCharacters();
+        showSuccess('Charakter erfolgreich gelöscht');
+
+    } catch (error) {
+        logDebug(`Fehler beim Löschen: ${error instanceof Error ? error.message : String(error)}`);
+        showError('Fehler beim Löschen des Charakters');
+    }
+}
+
+function showConfirmationDialog(message: string, onConfirm: () => void): void {
+    const dialog = document.createElement('div');
+    dialog.className = 'confirmation-dialog';
+    dialog.innerHTML = `
+        <p>${message}</p>
+        <div class="buttons">
+            <button class="confirm-btn">Ja</button>
+            <button class="cancel-btn">Nein</button>
+        </div>
+    `;
+
+    const confirmBtn = dialog.querySelector('.confirm-btn');
+    const cancelBtn = dialog.querySelector('.cancel-btn');
+
+    confirmBtn?.addEventListener('click', () => {
+        onConfirm();
+        dialog.remove();
+    });
+
+    cancelBtn?.addEventListener('click', () => {
+        dialog.remove();
+    });
+
+    document.body.appendChild(dialog);
+}
+
+function showSuccess(message: string): void {
+    const successElement = document.createElement('div');
+    successElement.className = 'success-message';
+    successElement.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #28a745;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 4px;
+        z-index: 1000;
+    `;
+    successElement.textContent = message;
+    document.body.appendChild(successElement);
+
+    setTimeout(() => {
+        successElement.remove();
+    }, 3000);
 }
 
 async function startGame(): Promise<void> {

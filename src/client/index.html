@@ -44,6 +44,7 @@
             cursor: pointer;
             background-color: rgba(48, 71, 94, 0.3);
             transition: all 0.3s ease;
+            position: relative;
         }
 
         .character-slot:hover {
@@ -158,6 +159,66 @@
             margin-bottom: 5px;
             word-wrap: break-word;
         }
+
+        .delete-character-btn {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .character-slot:hover .delete-character-btn {
+            opacity: 1;
+        }
+
+        .delete-character-btn:hover {
+            background-color: #c82333;
+        }
+
+        .confirmation-dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #17212b;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #30475e;
+            z-index: 1000;
+            text-align: center;
+        }
+
+        .confirmation-dialog .buttons {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .confirmation-dialog button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .confirmation-dialog .confirm-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .confirmation-dialog .cancel-btn {
+            background-color: #6c757d;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -166,9 +227,11 @@
         <div class="character-slots">
             <div class="character-slot" data-slot="1">
                 <p class="empty-slot-text">Leerer Slot</p>
+                <button class="delete-character-btn" style="display: none;">Löschen</button>
             </div>
             <div class="character-slot" data-slot="2">
                 <p class="empty-slot-text">Leerer Slot</p>
+                <button class="delete-character-btn" style="display: none;">Löschen</button>
             </div>
         </div>
         <div class="button-container">
