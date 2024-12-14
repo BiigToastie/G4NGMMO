@@ -125,8 +125,6 @@ async function initializeCharacterCreator(): Promise<CharacterCreator> {
     }
 }
 
-let gameWorld: GameWorld;
-
 async function waitForWebApp(): Promise<void> {
     logDebug('Warte auf WebApp...');
     try {
