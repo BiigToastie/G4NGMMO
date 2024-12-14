@@ -40,7 +40,7 @@ module.exports = {
     },
     output: {
         filename: '[name].[contenthash].js',
-        path: path.resolve(__dirname, 'dist/client'),
+        path: path.resolve(__dirname, 'dist/server/client'),
         clean: true,
         publicPath: '/'
     },
@@ -49,15 +49,15 @@ module.exports = {
             patterns: [
                 {
                     from: 'public/index.html',
-                    to: 'index.html'
+                    to: path.resolve(__dirname, 'dist/server/client/index.html')
                 },
                 {
                     from: 'src/client/assets',
-                    to: 'assets'
+                    to: path.resolve(__dirname, 'dist/server/client/assets')
                 },
                 {
                     from: 'public/models',
-                    to: 'models',
+                    to: path.resolve(__dirname, 'dist/server/client/models'),
                     noErrorOnMissing: true
                 }
             ]
