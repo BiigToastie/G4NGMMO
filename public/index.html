@@ -212,19 +212,20 @@
             display: none;
             flex-direction: column;
             align-items: center;
-            z-index: 100;
+            justify-content: center;
+            z-index: 1000;
             opacity: 0;
             transition: opacity 0.3s ease;
         }
 
         #character-preview {
             width: 100%;
-            height: calc(100% - 200px);
+            height: 100%;
             position: relative;
         }
 
         .gender-buttons {
-            position: fixed;
+            position: absolute;
             top: 20px;
             left: 0;
             right: 0;
@@ -232,7 +233,7 @@
             justify-content: center;
             gap: 10px;
             padding: 20px;
-            z-index: 101;
+            z-index: 1001;
         }
 
         .gender-button {
@@ -253,6 +254,18 @@
             background-color: var(--tg-theme-button-color, #3390ec);
             color: var(--tg-theme-button-text-color, white);
         }
+
+        #character-creator .button-container {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            z-index: 1001;
+        }
     </style>
 </head>
 <body>
@@ -267,10 +280,26 @@
         <div id="character-selection">
             <h1>Charakterauswahl</h1>
             <div class="character-slots">
-                <div class="character-slot" data-slot="1" onclick="window.logDebug('Direkter Click auf Slot 1'); document.querySelector('#character-creator').style.display = 'flex'; document.querySelector('#character-selection').style.display = 'none';">
+                <div class="character-slot" data-slot="1" onclick="
+                    window.logDebug('Direkter Click auf Slot 1'); 
+                    const creator = document.querySelector('#character-creator');
+                    const selection = document.querySelector('#character-selection');
+                    creator.style.display = 'flex';
+                    creator.style.opacity = '1';
+                    creator.style.zIndex = '1000';
+                    selection.style.display = 'none';
+                ">
                     <p class="empty-slot-text">Leerer Slot</p>
                 </div>
-                <div class="character-slot" data-slot="2" onclick="window.logDebug('Direkter Click auf Slot 2'); document.querySelector('#character-creator').style.display = 'flex'; document.querySelector('#character-selection').style.display = 'none';">
+                <div class="character-slot" data-slot="2" onclick="
+                    window.logDebug('Direkter Click auf Slot 2'); 
+                    const creator = document.querySelector('#character-creator');
+                    const selection = document.querySelector('#character-selection');
+                    creator.style.display = 'flex';
+                    creator.style.opacity = '1';
+                    creator.style.zIndex = '1000';
+                    selection.style.display = 'none';
+                ">
                     <p class="empty-slot-text">Leerer Slot</p>
                 </div>
             </div>
