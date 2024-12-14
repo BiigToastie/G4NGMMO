@@ -1,5 +1,6 @@
 import WebApp from '@twa-dev/sdk';
 import { GameWorld } from './game/GameWorld';
+import type { CharacterCreator } from './character/CharacterCreator';
 
 // Sofortige Debug-Ausgaben für Import-Status
 console.log('=== Import-Status ===');
@@ -15,6 +16,15 @@ export interface SavedCharacter {
     userId: number;
     gender: 'male' | 'female';
     slot: number;
+}
+
+// Globale Typdeklaration
+declare global {
+    interface Window {
+        CharacterCreator: any;
+        characterCreator: any;
+        logDebug: (message: string) => void;
+    }
 }
 
 // Globale Variablen
@@ -46,15 +56,6 @@ function getGameWorld(): GameWorld | null {
 
 function setGameWorld(value: GameWorld | null): void {
     gameWorld = value;
-}
-
-// Globale Typdeklaration
-declare global {
-    interface Window {
-        CharacterCreator: typeof CharacterCreator;
-        characterCreator: CharacterCreator | null;
-        logDebug: (message: string) => void;
-    }
 }
 
 // Debug-Funktion
