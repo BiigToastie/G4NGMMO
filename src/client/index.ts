@@ -1,5 +1,5 @@
 import WebApp from '@twa-dev/sdk';
-import CharacterCreator, { CharacterCreator as CharacterCreatorClass } from './character/CharacterCreator';
+import { CharacterCreator } from './character/CharacterCreator';
 import { GameWorld } from './game/GameWorld';
 
 // Interface-Definitionen
@@ -21,31 +21,6 @@ let selectedCharacter: SavedCharacter | null = null;
 let characterCreator: CharacterCreator | null = null;
 let gameWorld: GameWorld | null = null;
 
-// Getter/Setter für globale Variablen
-function getSelectedSlot(): number | null {
-    return selectedSlot;
-}
-
-function setSelectedSlot(value: number | null): void {
-    selectedSlot = value;
-}
-
-function getSelectedCharacter(): SavedCharacter | null {
-    return selectedCharacter;
-}
-
-function setSelectedCharacter(value: SavedCharacter | null): void {
-    selectedCharacter = value;
-}
-
-function getGameWorld(): GameWorld | null {
-    return gameWorld;
-}
-
-function setGameWorld(value: GameWorld | null): void {
-    gameWorld = value;
-}
-
 // Globale Typdeklaration
 declare global {
     interface Window {
@@ -53,18 +28,6 @@ declare global {
         characterCreator: CharacterCreator | null;
         logDebug: (message: string) => void;
     }
-}
-
-// Sofortige Debug-Ausgabe
-console.log('=== Modul-Initialisierung ===');
-console.log('CharacterCreator direkt nach Import:', CharacterCreator);
-console.log('CharacterCreator Klasse:', CharacterCreatorClass);
-console.log('window.CharacterCreator:', window.CharacterCreator);
-
-// Stelle sicher, dass die Klasse global verfügbar ist
-if (!window.CharacterCreator) {
-    window.CharacterCreator = CharacterCreator;
-    console.log('CharacterCreator global zugewiesen');
 }
 
 // Definiere die Debug-Funktion
@@ -83,8 +46,6 @@ window.logDebug = logDebug;
 window.CharacterCreator = CharacterCreator;
 window.characterCreator = null;
 
-logDebug('=== Debug-System initialisiert ===');
-
 // Modifizierte initializeCharacterCreator-Funktion
 async function initializeCharacterCreator(): Promise<CharacterCreator> {
     logDebug('=== CharacterCreator Initialisierung ===');
@@ -99,41 +60,24 @@ async function initializeCharacterCreator(): Promise<CharacterCreator> {
         logDebug(`1. CharacterCreator (Import): ${typeof CharacterCreator}`);
         logDebug(`2. window.CharacterCreator: ${typeof window.CharacterCreator}`);
 
-        // Versuche die Klasse zu laden
-        const CreatorClass = CharacterCreator || window.CharacterCreator;
-        
-        if (!CreatorClass) {
-            logDebug('Keine CharacterCreator-Klasse gefunden, versuche dynamischen Import');
-            try {
-                const module = await import('./character/CharacterCreator');
-                if (!module.default) {
-                    throw new Error('Modul enthält keine default export');
-                }
-                window.CharacterCreator = module.default;
-                logDebug('Dynamischer Import erfolgreich');
-            } catch (importError) {
-                logDebug(`Dynamischer Import fehlgeschlagen: ${importError}`);
-                throw new Error('CharacterCreator-Klasse konnte nicht geladen werden');
-            }
-        }
-
-        if (!window.CharacterCreator || typeof window.CharacterCreator.getInstance !== 'function') {
-            logDebug('CharacterCreator-Klasse nicht korrekt initialisiert');
-            throw new Error('CharacterCreator-Klasse nicht korrekt initialisiert');
+        if (!CharacterCreator) {
+            logDebug('CharacterCreator-Klasse nicht gefunden');
+            throw new Error('CharacterCreator-Klasse nicht gefunden');
         }
 
         logDebug('Erstelle neue CharacterCreator-Instanz');
-        window.characterCreator = window.CharacterCreator.getInstance();
+        const creator = CharacterCreator.getInstance();
+        window.characterCreator = creator;
         
-        if (!window.characterCreator) {
+        if (!creator) {
             throw new Error('getInstance lieferte keine Instanz zurück');
         }
 
         logDebug('Initialisiere neue Instanz');
-        await window.characterCreator.initialize();
+        await creator.initialize();
         logDebug('CharacterCreator erfolgreich initialisiert');
 
-        return window.characterCreator;
+        return creator;
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         logDebug(`Fehler bei der CharacterCreator-Initialisierung: ${errorMsg}`);

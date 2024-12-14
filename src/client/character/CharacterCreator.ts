@@ -361,6 +361,3 @@ if (typeof window !== 'undefined') {
     window.characterCreator = null;
     console.log('CharacterCreator global verfügbar gemacht');
 }
-
-// Exportiere die Klasse als default UND als benannten Export
-export { CharacterCreator as default }; 
