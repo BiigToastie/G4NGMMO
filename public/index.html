@@ -172,7 +172,7 @@
 
         #debug-info {
             position: fixed;
-            bottom: 10px;
+            bottom: 80px;
             left: 10px;
             right: 10px;
             background: rgba(0, 0, 0, 0.8);
@@ -180,10 +180,10 @@
             padding: 10px;
             font-family: monospace;
             font-size: 12px;
-            max-height: 150px;
+            max-height: 100px;
             overflow-y: auto;
             border-radius: 8px;
-            z-index: 1000;
+            z-index: 900;
         }
 
         .error-message {
@@ -220,12 +220,13 @@
 
         #character-preview {
             width: 100%;
-            height: 100%;
+            height: calc(100% - 160px);
             position: relative;
+            margin-top: 60px;
         }
 
         .gender-buttons {
-            position: absolute;
+            position: fixed;
             top: 20px;
             left: 0;
             right: 0;
@@ -248,6 +249,7 @@
             transition: all 0.3s ease;
             min-width: 120px;
             text-align: center;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .gender-button.selected {
@@ -256,7 +258,7 @@
         }
 
         #character-creator .button-container {
-            position: absolute;
+            position: fixed;
             bottom: 20px;
             left: 0;
             right: 0;
@@ -265,6 +267,7 @@
             gap: 10px;
             padding: 20px;
             z-index: 1001;
+            background-color: var(--tg-theme-bg-color, #17212b);
         }
     </style>
 </head>
@@ -337,6 +340,52 @@
         };
         window.addEventListener('resize', appHeight);
         appHeight();
+
+        // Initialisiere Event-Handler für Geschlechterauswahl
+        document.addEventListener('DOMContentLoaded', function() {
+            const maleBtn = document.getElementById('male-btn');
+            const femaleBtn = document.getElementById('female-btn');
+            
+            if (maleBtn && femaleBtn) {
+                maleBtn.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    window.logDebug('Männlich ausgewählt');
+                    maleBtn.classList.add('selected');
+                    femaleBtn.classList.remove('selected');
+                    if (window.characterCreator) {
+                        window.characterCreator.setGender('male');
+                    }
+                });
+
+                femaleBtn.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    window.logDebug('Weiblich ausgewählt');
+                    femaleBtn.classList.add('selected');
+                    maleBtn.classList.remove('selected');
+                    if (window.characterCreator) {
+                        window.characterCreator.setGender('female');
+                    }
+                });
+            }
+
+            // Initialisiere Cancel-Button
+            const cancelBtn = document.getElementById('cancel-creation');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    window.logDebug('Charaktererstellung abgebrochen');
+                    const creator = document.querySelector('#character-creator');
+                    const selection = document.querySelector('#character-selection');
+                    if (creator && selection) {
+                        creator.style.opacity = '0';
+                        setTimeout(() => {
+                            creator.style.display = 'none';
+                            selection.style.display = 'flex';
+                        }, 300);
+                    }
+                });
+            }
+        });
 
         let scriptsLoaded = 0;
         const totalScripts = 3;
