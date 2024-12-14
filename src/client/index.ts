@@ -466,39 +466,61 @@ function showError(message: string): void {
 async function initializeCharacterCreator(): Promise<CharacterCreator> {
     logDebug('Initialisiere CharacterCreator...');
     try {
-        logDebug('CharacterCreator Status:');
-        logDebug(`window.CharacterCreator: ${!!window.CharacterCreator}`);
-        logDebug(`window.characterCreator: ${!!window.characterCreator}`);
-        logDebug(`Lokale CharacterCreator: ${!!CharacterCreator}`);
+        // Detaillierte Status-Überprüfung
+        logDebug('CharacterCreator Status-Check:');
+        logDebug(`1. Import-Variable: ${typeof CharacterCreator}`);
+        logDebug(`2. Window.CharacterCreator: ${typeof window.CharacterCreator}`);
+        logDebug(`3. Window.characterCreator: ${window.characterCreator ? 'existiert' : 'null'}`);
 
-        if (!CharacterCreator) {
-            logDebug('Lokale CharacterCreator-Klasse nicht gefunden');
-            throw new Error('CharacterCreator-Klasse nicht gefunden');
+        // Versuche zuerst die importierte Klasse zu verwenden
+        let CreatorClass = CharacterCreator;
+        
+        if (!CreatorClass && window.CharacterCreator) {
+            logDebug('Verwende globale CharacterCreator-Klasse');
+            CreatorClass = window.CharacterCreator;
+        }
+
+        if (!CreatorClass) {
+            logDebug('Versuche dynamischen Import...');
+            try {
+                const module = await import('./character/CharacterCreator');
+                CreatorClass = module.default;
+                logDebug('Dynamischer Import erfolgreich');
+            } catch (importError) {
+                logDebug(`Dynamischer Import fehlgeschlagen: ${importError}`);
+                throw new Error('CharacterCreator-Klasse konnte nicht geladen werden');
+            }
         }
 
         if (!window.characterCreator) {
             logDebug('Erstelle neue CharacterCreator-Instanz...');
-            window.characterCreator = CharacterCreator.getInstance();
-            
-            logDebug('Initialisiere CharacterCreator-Instanz...');
-            await window.characterCreator.initialize();
-            
-            // Überprüfe, ob die Initialisierung erfolgreich war
-            if (!window.characterCreator) {
-                throw new Error('CharacterCreator-Initialisierung fehlgeschlagen');
+            if (typeof CreatorClass.getInstance !== 'function') {
+                logDebug('FEHLER: getInstance ist keine Funktion');
+                logDebug(`CreatorClass: ${typeof CreatorClass}`);
+                logDebug(`CreatorClass.getInstance: ${typeof CreatorClass.getInstance}`);
+                throw new Error('CharacterCreator.getInstance ist keine Funktion');
             }
             
-            logDebug('CharacterCreator erfolgreich initialisiert');
+            window.characterCreator = CreatorClass.getInstance();
+            logDebug('Neue Instanz erstellt');
+
+            logDebug('Initialisiere Instanz...');
+            await window.characterCreator.initialize();
+            logDebug('Instanz initialisiert');
         } else {
             logDebug('Verwende existierende CharacterCreator-Instanz');
+        }
+
+        if (!window.characterCreator) {
+            throw new Error('CharacterCreator-Initialisierung fehlgeschlagen');
         }
 
         return window.characterCreator;
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         logDebug(`Fehler bei der CharacterCreator-Initialisierung: ${errorMsg}`);
-        logDebug('Stack Trace:');
         if (error instanceof Error && error.stack) {
+            logDebug('Stack Trace:');
             logDebug(error.stack);
         }
         throw error;
