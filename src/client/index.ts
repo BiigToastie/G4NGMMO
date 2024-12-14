@@ -32,6 +32,9 @@ function logDebug(message: string): void {
 async function waitForWebApp(): Promise<void> {
     logDebug('Warte auf WebApp...');
     try {
+        // Initialisiere WebApp mit korrekten Parametern
+        WebApp.expand();
+        WebApp.enableClosingConfirmation();
         await WebApp.ready();
         logDebug('WebApp ist bereit');
     } catch (error) {
@@ -64,6 +67,12 @@ async function initializeApp(): Promise<void> {
             logDebug(`Element ${name} gefunden`);
         });
 
+        // Setze korrekten Viewport
+        document.documentElement.style.height = '100%';
+        document.body.style.height = '100%';
+        document.body.style.position = 'fixed';
+        document.body.style.overflow = 'hidden';
+
         // Verstecke alle UI-Elemente außer Loading
         elements.characterSelection!.style.display = 'none';
         elements.characterCreator!.style.display = 'none';
@@ -78,8 +87,11 @@ async function initializeApp(): Promise<void> {
         setupEventListeners();
 
         // Zeige Charakterauswahl und verstecke Ladebildschirm
-        elements.loading!.style.display = 'none';
-        elements.characterSelection!.style.display = 'flex';
+        setTimeout(() => {
+            elements.loading!.style.display = 'none';
+            elements.characterSelection!.style.display = 'flex';
+            logDebug('UI-Elemente aktualisiert');
+        }, 500);
 
         logDebug('App-Initialisierung abgeschlossen');
 
