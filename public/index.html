@@ -12,25 +12,32 @@
             if (debugInfo) {
                 const timestamp = new Date().toLocaleTimeString();
                 debugInfo.innerHTML += `<div>[${timestamp}] ${message}</div>`;
-                // Scroll zum neuesten Eintrag
                 debugInfo.scrollTop = debugInfo.scrollHeight;
             }
         };
 
-        // Initialer Debug-Log
         console.log('Debug-Logging initialisiert');
     </script>
     <style>
         body {
             margin: 0;
+            padding: 0;
             overflow: hidden;
             font-family: Arial, sans-serif;
             background-color: #17212b;
             color: white;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
         #character-selection {
             position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
             display: none;
@@ -38,13 +45,19 @@
             align-items: center;
             justify-content: center;
             gap: 20px;
+            z-index: 1;
+        }
+
+        #character-selection h1 {
+            color: white;
+            font-size: 24px;
+            margin-bottom: 20px;
         }
 
         .character-slots {
             display: flex;
             gap: 20px;
             justify-content: center;
-            width: 100%;
             padding: 20px;
         }
 
@@ -60,28 +73,36 @@
             cursor: pointer;
             background-color: rgba(48, 71, 94, 0.3);
             transition: all 0.3s ease;
+            padding: 15px;
+            text-align: center;
         }
 
         .character-slot:hover {
             border-color: #4a90e2;
             background-color: rgba(74, 144, 226, 0.1);
+            transform: translateY(-5px);
         }
 
         .character-slot.selected {
             border-color: #4a90e2;
             background-color: rgba(74, 144, 226, 0.2);
+            box-shadow: 0 0 15px rgba(74, 144, 226, 0.3);
         }
 
         .empty-slot-text {
             color: #8a9aa9;
-            text-align: center;
+            font-size: 16px;
+            margin: 0;
         }
 
         #character-creator {
             display: none;
             position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
+            z-index: 2;
         }
 
         #character-preview {
@@ -90,55 +111,90 @@
         }
 
         .button-container {
-            position: absolute;
+            position: fixed;
             bottom: 20px;
             right: 20px;
             display: flex;
             gap: 10px;
+            z-index: 3;
         }
 
         .action-button {
-            padding: 10px 20px;
+            padding: 12px 24px;
             border: none;
             border-radius: 5px;
             background-color: #4a90e2;
             color: white;
             cursor: pointer;
             font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .action-button:hover:not(:disabled) {
+            background-color: #357abd;
+            transform: translateY(-2px);
         }
 
         .action-button:disabled {
             background-color: #30475e;
             cursor: not-allowed;
-        }
-
-        #game-world {
-            display: none;
-            position: absolute;
-            width: 100%;
-            height: 100%;
+            opacity: 0.7;
         }
 
         .gender-buttons {
-            position: absolute;
+            position: fixed;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
             gap: 10px;
+            z-index: 3;
         }
 
         .gender-button {
-            padding: 10px 20px;
+            padding: 12px 24px;
             border: none;
             border-radius: 5px;
             background-color: #30475e;
             color: white;
             cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .gender-button:hover {
+            background-color: #3d5a7d;
         }
 
         .gender-button.selected {
             background-color: #4a90e2;
+            box-shadow: 0 0 10px rgba(74, 144, 226, 0.3);
+        }
+
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #17212b;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        #loading h2 {
+            color: white;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        #loading-progress {
+            color: #4a90e2;
+            font-size: 18px;
+            font-weight: bold;
         }
 
         .error-message {
@@ -148,16 +204,34 @@
             transform: translateX(-50%);
             background-color: rgba(236, 57, 66, 0.9);
             color: white;
-            padding: 10px 20px;
+            padding: 12px 24px;
             border-radius: 5px;
+            z-index: 10000;
+            font-size: 16px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        #debug-info {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
             z-index: 1000;
-            display: none;
+            border-radius: 5px;
+            max-width: 400px;
+            word-wrap: break-word;
         }
     </style>
 </head>
 <body>
-    <div id="loading" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #17212b; display: flex; justify-content: center; align-items: center; z-index: 9999;">
-        <div style="text-align: center; color: white;">
+    <div id="loading">
+        <div style="text-align: center;">
             <h2>Laden...</h2>
             <div id="loading-progress">0%</div>
         </div>
@@ -195,11 +269,9 @@
     </div>
 
     <div id="error-message" class="error-message"></div>
-
-    <div id="debug-info" style="position: fixed; bottom: 10px; left: 10px; color: white; background: rgba(0,0,0,0.7); padding: 10px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; z-index: 1000;"></div>
+    <div id="debug-info"></div>
 
     <script>
-        // Skript-Ladeprüfung
         let scriptsLoaded = 0;
         const totalScripts = 3;
 
