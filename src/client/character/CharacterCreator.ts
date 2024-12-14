@@ -358,6 +358,4 @@ export class CharacterCreator {
 // Stelle sicher, dass die Klasse global verfügbar ist
 if (typeof window !== 'undefined') {
     window.CharacterCreator = CharacterCreator;
-    window.characterCreator = null;
-    console.log('CharacterCreator global verfügbar gemacht');
 }
