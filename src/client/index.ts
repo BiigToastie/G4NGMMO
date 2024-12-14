@@ -410,6 +410,7 @@ async function handleGenderSelection(gender: 'male' | 'female', activeBtn: HTMLE
 }
 
 async function handleSaveCharacter(): Promise<void> {
+    const selectedSlot = getSelectedSlot();
     if (selectedSlot === null) {
         showError('Kein Slot ausgewählt');
         return;
@@ -444,7 +445,7 @@ async function handleSaveCharacter(): Promise<void> {
         logDebug('Charakter erfolgreich gespeichert');
         await loadSavedCharacters();
         hideCharacterCreator();
-        selectedSlot = null;
+        setSelectedSlot(null);
 
     } catch (error) {
         logDebug(`Fehler beim Speichern: ${error instanceof Error ? error.message : String(error)}`);
@@ -453,6 +454,7 @@ async function handleSaveCharacter(): Promise<void> {
 }
 
 async function startGame(): Promise<void> {
+    const selectedCharacter = getSelectedCharacter();
     if (!selectedCharacter) {
         showError('Kein Charakter ausgewählt');
         return;
@@ -468,7 +470,9 @@ async function startGame(): Promise<void> {
         const gameWorldElement = document.getElementById('game-world')!;
         gameWorldElement.style.display = 'block';
 
-        gameWorld = GameWorld.getInstance();
+        const gameWorld = GameWorld.getInstance();
+        setGameWorld(gameWorld);
+        
         if (!gameWorld) {
             throw new Error('GameWorld konnte nicht initialisiert werden');
         }
