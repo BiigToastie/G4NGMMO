@@ -89,47 +89,84 @@ async function initializeCharacterCreator(): Promise<any> {
         logDebug('Versuche dynamischen Import von CharacterCreator');
         let CharacterCreatorModule;
         try {
-            CharacterCreatorModule = await import('./character/CharacterCreator');
-            logDebug('Modul erfolgreich geladen');
+            // Versuche verschiedene Import-Pfade
+            const importPaths = [
+                './character/CharacterCreator',
+                '../character/CharacterCreator',
+                '/character/CharacterCreator',
+                './CharacterCreator'
+            ];
+
+            let importError = null;
+            for (const path of importPaths) {
+                try {
+                    logDebug(`Versuche Import von: ${path}`);
+                    CharacterCreatorModule = await import(path);
+                    logDebug('Import erfolgreich');
+                    break;
+                } catch (error) {
+                    importError = error;
+                    logDebug(`Import von ${path} fehlgeschlagen: ${error}`);
+                }
+            }
+
+            if (!CharacterCreatorModule) {
+                throw importError || new Error('Kein Import-Pfad erfolgreich');
+            }
+
+            logDebug('Modul geladen, analysiere Exports...');
             logDebug(`Verfügbare Exports: ${Object.keys(CharacterCreatorModule).join(', ')}`);
-        } catch (importError) {
-            logDebug(`Import-Fehler: ${importError}`);
+            
+            // Versuche verschiedene Export-Varianten
+            const CharacterCreator = 
+                CharacterCreatorModule.default || 
+                CharacterCreatorModule.CharacterCreator || 
+                Object.values(CharacterCreatorModule).find(exp => 
+                    typeof exp === 'function' && 
+                    exp.name === 'CharacterCreator'
+                );
+
+            if (!CharacterCreator) {
+                logDebug('Export-Analyse:');
+                Object.entries(CharacterCreatorModule).forEach(([key, value]) => {
+                    logDebug(`- ${key}: ${typeof value}`);
+                    if (typeof value === 'function') {
+                        logDebug(`  Funktionsname: ${value.name}`);
+                        logDebug(`  Prototype: ${Object.keys(value.prototype || {}).join(', ')}`);
+                    }
+                });
+                throw new Error('CharacterCreator-Klasse nicht gefunden im Modul');
+            }
+
+            logDebug(`CharacterCreator gefunden: ${typeof CharacterCreator}`);
+            logDebug(`CharacterCreator Name: ${CharacterCreator.name}`);
+            logDebug(`CharacterCreator hat getInstance: ${typeof CharacterCreator.getInstance === 'function'}`);
+            logDebug(`CharacterCreator Prototype: ${Object.keys(CharacterCreator.prototype || {}).join(', ')}`);
+
+            // Globale Zuweisung der Klasse
+            window.CharacterCreator = CharacterCreator;
+            logDebug('CharacterCreator global zugewiesen');
+
+            logDebug('Erstelle neue CharacterCreator-Instanz');
+            const instance = CharacterCreator.getInstance();
+            
+            if (!instance) {
+                logDebug('getInstance lieferte keine Instanz zurück');
+                throw new Error('getInstance lieferte keine Instanz zurück');
+            }
+
+            window.characterCreator = instance;
+            logDebug('Neue Instanz erstellt und global zugewiesen');
+
+            logDebug('Initialisiere Instanz...');
+            await instance.initialize();
+            logDebug('Instanz erfolgreich initialisiert');
+
+            return instance;
+        } catch (error) {
+            logDebug(`Import-Fehler: ${error}`);
             throw new Error('CharacterCreator-Modul konnte nicht geladen werden');
         }
-
-        // Versuche beide möglichen Export-Varianten
-        const CharacterCreator = CharacterCreatorModule.default || CharacterCreatorModule.CharacterCreator;
-        
-        if (!CharacterCreator) {
-            logDebug('Export-Analyse:');
-            Object.keys(CharacterCreatorModule).forEach(key => {
-                logDebug(`- ${key}: ${typeof CharacterCreatorModule[key]}`);
-            });
-            throw new Error('CharacterCreator-Klasse nicht gefunden im Modul');
-        }
-
-        logDebug(`CharacterCreator Typ: ${typeof CharacterCreator}`);
-        logDebug(`CharacterCreator hat getInstance: ${typeof CharacterCreator.getInstance === 'function'}`);
-
-        // Globale Zuweisung der Klasse
-        window.CharacterCreator = CharacterCreator;
-
-        logDebug('Erstelle neue CharacterCreator-Instanz');
-        const instance = CharacterCreator.getInstance();
-        
-        if (!instance) {
-            logDebug('getInstance lieferte keine Instanz zurück');
-            throw new Error('getInstance lieferte keine Instanz zurück');
-        }
-
-        window.characterCreator = instance;
-        logDebug('Neue Instanz erstellt und global zugewiesen');
-
-        logDebug('Initialisiere Instanz...');
-        await instance.initialize();
-        logDebug('Instanz erfolgreich initialisiert');
-
-        return instance;
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         logDebug(`Fehler bei der CharacterCreator-Initialisierung: ${errorMsg}`);
