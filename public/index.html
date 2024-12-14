@@ -267,10 +267,10 @@
         <div id="character-selection">
             <h1>Charakterauswahl</h1>
             <div class="character-slots">
-                <div class="character-slot" data-slot="1">
+                <div class="character-slot" data-slot="1" onclick="window.logDebug('Direkter Click auf Slot 1'); document.querySelector('#character-creator').style.display = 'flex'; document.querySelector('#character-selection').style.display = 'none';">
                     <p class="empty-slot-text">Leerer Slot</p>
                 </div>
-                <div class="character-slot" data-slot="2">
+                <div class="character-slot" data-slot="2" onclick="window.logDebug('Direkter Click auf Slot 2'); document.querySelector('#character-creator').style.display = 'flex'; document.querySelector('#character-selection').style.display = 'none';">
                     <p class="empty-slot-text">Leerer Slot</p>
                 </div>
             </div>
