@@ -2,17 +2,8 @@ import WebApp from '@twa-dev/sdk';
 import { CharacterCreator } from './character/CharacterCreator';
 import { GameWorld } from './game/GameWorld';
 
-// Globale Typdeklaration
-declare global {
-    interface Window {
-        CharacterCreator: typeof CharacterCreator;
-        characterCreator: CharacterCreator | null;
-        logDebug: (message: string) => void;
-    }
-}
-
 // Globale Debug-Funktion
-window.logDebug = function(message: string): void {
+const logDebug = (message: string): void => {
     console.log(message);
     const debugInfo = document.getElementById('debug-info');
     if (debugInfo) {
@@ -22,6 +13,19 @@ window.logDebug = function(message: string): void {
     }
 };
 
+// Globale Typdeklaration
+declare global {
+    interface Window {
+        CharacterCreator: typeof CharacterCreator;
+        characterCreator: CharacterCreator | null;
+        logDebug: (message: string) => void;
+    }
+}
+
+// Globale Zuweisung der Debug-Funktion
+window.logDebug = logDebug;
+
+// Globale Zuweisung der CharacterCreator-Klasse
 window.CharacterCreator = CharacterCreator;
 window.characterCreator = null;
 

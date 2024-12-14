@@ -319,7 +319,7 @@ declare global {
     interface Window {
         CharacterCreator: typeof CharacterCreator;
         characterCreator: CharacterCreator | null;
-        logDebug?: (message: string) => void;
+        logDebug: (message: string) => void;
     }
 }
 
