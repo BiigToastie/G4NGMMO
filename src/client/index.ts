@@ -24,31 +24,65 @@ declare global {
     }
 }
 
+// Stellen Sie sicher, dass logDebug verfügbar ist
+if (!window.logDebug) {
+    window.logDebug = (message: string) => {
+        console.log(message);
+    };
+}
+
+async function waitForWebApp(): Promise<void> {
+    window.logDebug('Warte auf WebApp...');
+    try {
+        await WebApp.ready();
+        window.logDebug('WebApp ist bereit');
+    } catch (error) {
+        window.logDebug('Fehler beim Warten auf WebApp');
+        throw error;
+    }
+}
+
 async function initializeApp(): Promise<void> {
     try {
         window.logDebug('App-Initialisierung startet...');
-        await WebApp.ready();
-        window.logDebug('WebApp ist bereit');
+        
+        // Warte auf WebApp
+        await waitForWebApp();
 
-        const characterSelection = document.getElementById('character-selection');
-        const characterCreator = document.getElementById('character-creator');
-        const gameWorld = document.getElementById('game-world');
+        // Prüfe DOM-Elemente
+        const elements = {
+            characterSelection: document.getElementById('character-selection'),
+            characterCreator: document.getElementById('character-creator'),
+            gameWorld: document.getElementById('game-world'),
+            loading: document.getElementById('loading')
+        };
 
-        if (!characterSelection || !characterCreator || !gameWorld) {
-            throw new Error('Erforderliche DOM-Elemente nicht gefunden');
-        }
-
-        window.logDebug('DOM-Elemente gefunden');
+        // Überprüfe alle erforderlichen Elemente
+        Object.entries(elements).forEach(([name, element]) => {
+            if (!element) {
+                throw new Error(`Element ${name} nicht gefunden`);
+            }
+            window.logDebug(`Element ${name} gefunden`);
+        });
 
         // Setze initiale Anzeige
-        characterSelection.style.display = 'flex';
-        characterCreator.style.display = 'none';
-        gameWorld.style.display = 'none';
+        elements.characterSelection!.style.display = 'flex';
+        elements.characterCreator!.style.display = 'none';
+        elements.gameWorld!.style.display = 'none';
 
+        // Lade Charaktere und richte Event-Listener ein
         window.logDebug('Lade gespeicherte Charaktere...');
         await loadSavedCharacters();
+        
         window.logDebug('Richte Event-Listener ein...');
         setupEventListeners();
+
+        // Verstecke Ladebildschirm
+        if (elements.loading) {
+            elements.loading.style.display = 'none';
+        }
+
+        window.logDebug('App-Initialisierung abgeschlossen');
 
     } catch (error) {
         console.error('Fehler bei der App-Initialisierung:', error);
@@ -315,8 +349,14 @@ function showError(message: string): void {
     }, 3000);
 }
 
+// Initialisierung
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeApp);
+    window.logDebug('Dokument lädt noch, warte auf DOMContentLoaded');
+    document.addEventListener('DOMContentLoaded', () => {
+        window.logDebug('DOMContentLoaded ausgelöst');
+        initializeApp();
+    });
 } else {
+    window.logDebug('Dokument bereits geladen, starte sofort');
     initializeApp();
 } 
