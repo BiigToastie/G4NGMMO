@@ -81,47 +81,6 @@ async function initializeApp(): Promise<void> {
         elements.characterSelection!.style.display = 'flex';
         logDebug('UI-Elemente aktualisiert');
 
-        // Füge Click-Handler für Charakter-Slots hinzu
-        document.querySelectorAll('.character-slot').forEach((slot: Element) => {
-            slot.addEventListener('click', async (event: Event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                
-                const slotElement = event.currentTarget as HTMLElement;
-                const slotNumber = parseInt(slotElement.dataset.slot || '0');
-                
-                logDebug(`Click auf Slot ${slotNumber}`);
-                
-                const isEmptySlot = slotElement.querySelector('.empty-slot-text') !== null;
-                logDebug(`Slot ${slotNumber} ist ${isEmptySlot ? 'leer' : 'belegt'}`);
-                
-                if (isEmptySlot) {
-                    logDebug('Öffne Charaktererstellung...');
-                    selectedSlot = slotNumber;
-                    
-                    // Direkte DOM-Manipulation
-                    document.getElementById('character-selection')!.style.display = 'none';
-                    const creatorElement = document.getElementById('character-creator')!;
-                    creatorElement.style.display = 'flex';
-                    creatorElement.style.opacity = '1';
-                    
-                    logDebug('Charaktererstellung angezeigt');
-                    
-                    // Initialisiere CharacterCreator
-                    if (!characterCreator) {
-                        logDebug('Initialisiere CharacterCreator');
-                        characterCreator = CharacterCreator.getInstance();
-                        await characterCreator.initialize();
-                        logDebug('CharacterCreator initialisiert');
-                    }
-                } else {
-                    await handleSlotClick(slotNumber, slotElement);
-                }
-            });
-            
-            logDebug(`Click-Handler für Slot ${(slot as HTMLElement).dataset.slot} registriert`);
-        });
-
         // Richte andere Event-Listener ein
         setupCreatorButtons();
         setupGameStartButton();
@@ -157,22 +116,71 @@ function updateCharacterSlots(characters: SavedCharacter[]): void {
     const slots = document.querySelectorAll('.character-slot');
     
     slots.forEach((slot: Element) => {
-        const slotNumber = parseInt((slot as HTMLElement).dataset.slot || '0');
+        // Entferne zuerst alle existierenden Event-Listener
+        const slotElement = slot as HTMLElement;
+        const newSlot = slotElement.cloneNode(true);
+        slotElement.parentNode?.replaceChild(newSlot, slotElement);
+        
+        const slotNumber = parseInt((newSlot as HTMLElement).dataset.slot || '0');
         const character = characters.find(char => char.slot === slotNumber);
 
         if (character) {
-            slot.innerHTML = `
+            newSlot.innerHTML = `
                 <div class="character-info">
                     <p>${character.gender === 'male' ? 'Männlich' : 'Weiblich'}</p>
                 </div>
             `;
             logDebug(`Slot ${slotNumber} aktualisiert: ${character.gender}`);
         } else {
-            slot.innerHTML = '<p class="empty-slot-text">Leerer Slot</p>';
+            newSlot.innerHTML = '<p class="empty-slot-text">Leerer Slot</p>';
             logDebug(`Slot ${slotNumber} ist leer`);
         }
+
+        // Füge Click-Event-Listener hinzu
+        newSlot.addEventListener('click', async (event: Event) => {
+            logDebug('Click-Event ausgelöst');
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const isEmptySlot = (newSlot as HTMLElement).querySelector('.empty-slot-text') !== null;
+            logDebug(`Slot ${slotNumber} geklickt (${isEmptySlot ? 'leer' : 'belegt'})`);
+            
+            if (isEmptySlot) {
+                logDebug('Leerer Slot erkannt, öffne Charaktererstellung');
+                selectedSlot = slotNumber;
+                
+                const characterCreatorElement = document.getElementById('character-creator');
+                const characterSelectionElement = document.getElementById('character-selection');
+                
+                if (!characterCreatorElement || !characterSelectionElement) {
+                    logDebug('Fehler: UI-Elemente nicht gefunden');
+                    return;
+                }
+                
+                characterSelectionElement.style.display = 'none';
+                characterCreatorElement.style.display = 'flex';
+                characterCreatorElement.style.opacity = '1';
+                
+                logDebug('Charaktererstellung angezeigt');
+                
+                if (!characterCreator) {
+                    logDebug('Initialisiere CharacterCreator');
+                    characterCreator = CharacterCreator.getInstance();
+                    try {
+                        await characterCreator.initialize();
+                        logDebug('CharacterCreator erfolgreich initialisiert');
+                    } catch (error) {
+                        logDebug(`Fehler bei CharacterCreator-Initialisierung: ${error}`);
+                        showError('Fehler beim Laden des Charaktereditors');
+                    }
+                }
+            } else {
+                await handleSlotClick(slotNumber, newSlot as HTMLElement);
+            }
+        });
     });
-    logDebug('Charakter-Slots aktualisiert');
+    
+    logDebug('Charakter-Slots und Event-Handler aktualisiert');
 }
 
 async function handleSlotClick(slotNumber: number, slotElement: HTMLElement): Promise<void> {
