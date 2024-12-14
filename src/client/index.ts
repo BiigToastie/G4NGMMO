@@ -133,17 +133,13 @@ function updateCharacterSlots(characters: SavedCharacter[]): void {
             logDebug(`Slot ${slotNumber} ist leer`);
         }
 
-        // Entferne alte Event-Listener durch Klonen
-        const newSlot = slotElement.cloneNode(true) as HTMLElement;
-        slotElement.parentNode?.replaceChild(newSlot, slotElement);
-
-        // Füge neuen Click-Event-Listener hinzu
-        newSlot.onclick = async (event: MouseEvent) => {
+        // Füge Click-Event-Listener direkt hinzu
+        slotElement.onclick = async (event: MouseEvent) => {
             event.preventDefault();
             event.stopPropagation();
             
             logDebug('Click-Event ausgelöst');
-            const isEmptySlot = newSlot.querySelector('.empty-slot-text') !== null;
+            const isEmptySlot = slotElement.querySelector('.empty-slot-text') !== null;
             logDebug(`Slot ${slotNumber} geklickt (${isEmptySlot ? 'leer' : 'belegt'})`);
             
             if (isEmptySlot) {
@@ -178,7 +174,16 @@ function updateCharacterSlots(characters: SavedCharacter[]): void {
                     }
                 }
             } else {
-                await handleSlotClick(slotNumber, newSlot);
+                const response = await fetch(`/api/character/${WebApp.initDataUnsafe.user?.id}/${slotNumber}`);
+                if (!response.ok) {
+                    showError('Fehler beim Laden des Charakters');
+                    return;
+                }
+
+                selectedCharacter = await response.json();
+                document.querySelectorAll('.character-slot').forEach(s => s.classList.remove('selected'));
+                slotElement.classList.add('selected');
+                document.getElementById('start-game')?.removeAttribute('disabled');
             }
         };
         
@@ -186,54 +191,6 @@ function updateCharacterSlots(characters: SavedCharacter[]): void {
     });
     
     logDebug('Charakter-Slots und Event-Handler aktualisiert');
-}
-
-async function handleSlotClick(slotNumber: number, slotElement: HTMLElement): Promise<void> {
-    try {
-        logDebug(`Verarbeite Slot-Klick für Slot ${slotNumber}`);
-        const isEmptySlot = slotElement.querySelector('.empty-slot-text') !== null;
-        logDebug(`Slot ${slotNumber} Status: ${isEmptySlot ? 'leer' : 'belegt'}`);
-
-        if (!WebApp.initDataUnsafe.user?.id) {
-            showError('Keine Benutzer-ID gefunden');
-            return;
-        }
-
-        if (isEmptySlot) {
-            logDebug('Leerer Slot geklickt, zeige Charaktererstellung');
-            selectedSlot = slotNumber;
-            
-            const characterCreator = document.getElementById('character-creator');
-            const characterSelection = document.getElementById('character-selection');
-            
-            if (!characterCreator || !characterSelection) {
-                logDebug('Fehler: UI-Elemente nicht gefunden');
-                return;
-            }
-
-            // Direkte Style-Änderungen
-            characterSelection.style.display = 'none';
-            characterCreator.style.display = 'flex';
-            characterCreator.style.opacity = '1';
-            
-            logDebug('Charaktererstellung angezeigt');
-            showCharacterCreator();
-        } else {
-            const response = await fetch(`/api/character/${WebApp.initDataUnsafe.user.id}/${slotNumber}`);
-            if (!response.ok) {
-                showError('Fehler beim Laden des Charakters');
-                return;
-            }
-
-            selectedCharacter = await response.json();
-            document.querySelectorAll('.character-slot').forEach(s => s.classList.remove('selected'));
-            slotElement.classList.add('selected');
-            document.getElementById('start-game')?.removeAttribute('disabled');
-        }
-    } catch (error) {
-        logDebug(`Fehler beim Slot-Click-Handling: ${error instanceof Error ? error.message : String(error)}`);
-        showError('Fehler beim Öffnen der Charaktererstellung');
-    }
 }
 
 function setupCreatorButtons(): void {
@@ -392,17 +349,6 @@ function showCharacterCreator(): void {
         characterCreatorElement.style.opacity = '1';
         
         logDebug('Charaktererstellung-UI aktualisiert');
-        
-        if (!characterCreator) {
-            logDebug('Initialisiere CharacterCreator');
-            characterCreator = CharacterCreator.getInstance();
-            characterCreator.initialize().then(() => {
-                logDebug('CharacterCreator erfolgreich initialisiert');
-            }).catch(error => {
-                logDebug(`Fehler bei CharacterCreator-Initialisierung: ${error}`);
-                showError('Fehler beim Laden des Charaktereditors');
-            });
-        }
     } catch (error) {
         logDebug(`Fehler beim Anzeigen der Charaktererstellung: ${error instanceof Error ? error.message : String(error)}`);
         showError('Fehler beim Öffnen der Charaktererstellung');
