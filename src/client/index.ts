@@ -453,6 +453,10 @@ async function startGame(): Promise<void> {
         gameWorldElement.style.display = 'block';
 
         gameWorld = GameWorld.getInstance();
+        if (!gameWorld) {
+            throw new Error('GameWorld konnte nicht initialisiert werden');
+        }
+        
         await gameWorld.initialize();
 
         await gameWorld.addPlayer(
