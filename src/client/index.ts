@@ -118,10 +118,10 @@ function updateCharacterSlots(characters: SavedCharacter[]): void {
     slots.forEach((slot: Element) => {
         // Entferne zuerst alle existierenden Event-Listener
         const slotElement = slot as HTMLElement;
-        const newSlot = slotElement.cloneNode(true);
+        const newSlot = slotElement.cloneNode(true) as HTMLElement;
         slotElement.parentNode?.replaceChild(newSlot, slotElement);
         
-        const slotNumber = parseInt((newSlot as HTMLElement).dataset.slot || '0');
+        const slotNumber = parseInt(newSlot.dataset.slot || '0');
         const character = characters.find(char => char.slot === slotNumber);
 
         if (character) {
@@ -142,7 +142,7 @@ function updateCharacterSlots(characters: SavedCharacter[]): void {
             event.preventDefault();
             event.stopPropagation();
             
-            const isEmptySlot = (newSlot as HTMLElement).querySelector('.empty-slot-text') !== null;
+            const isEmptySlot = newSlot.querySelector('.empty-slot-text') !== null;
             logDebug(`Slot ${slotNumber} geklickt (${isEmptySlot ? 'leer' : 'belegt'})`);
             
             if (isEmptySlot) {
@@ -175,7 +175,7 @@ function updateCharacterSlots(characters: SavedCharacter[]): void {
                     }
                 }
             } else {
-                await handleSlotClick(slotNumber, newSlot as HTMLElement);
+                await handleSlotClick(slotNumber, newSlot);
             }
         });
     });
