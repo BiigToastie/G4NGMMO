@@ -18,43 +18,42 @@ let gameWorld: GameWorld;
 let selectedSlot: number | null = null;
 let selectedCharacter: SavedCharacter | null = null;
 
-declare global {
-    interface Window {
-        logDebug: (message: string) => void;
+// Debug-Logging-Funktion
+function logDebug(message: string): void {
+    console.log(message);
+    const debugInfo = document.getElementById('debug-info');
+    if (debugInfo) {
+        const timestamp = new Date().toLocaleTimeString();
+        debugInfo.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+        debugInfo.scrollTop = debugInfo.scrollHeight;
     }
 }
 
-// Stellen Sie sicher, dass logDebug verfügbar ist
-if (!window.logDebug) {
-    window.logDebug = (message: string) => {
-        console.log(message);
-    };
-}
-
 async function waitForWebApp(): Promise<void> {
-    window.logDebug('Warte auf WebApp...');
+    logDebug('Warte auf WebApp...');
     try {
         await WebApp.ready();
-        window.logDebug('WebApp ist bereit');
+        logDebug('WebApp ist bereit');
     } catch (error) {
-        window.logDebug('Fehler beim Warten auf WebApp');
+        logDebug('Fehler beim Warten auf WebApp');
         throw error;
     }
 }
 
 async function initializeApp(): Promise<void> {
     try {
-        window.logDebug('App-Initialisierung startet...');
+        logDebug('App-Initialisierung startet...');
         
         // Warte auf WebApp
         await waitForWebApp();
 
         // Prüfe DOM-Elemente
         const elements = {
+            loading: document.getElementById('loading'),
             characterSelection: document.getElementById('character-selection'),
             characterCreator: document.getElementById('character-creator'),
             gameWorld: document.getElementById('game-world'),
-            loading: document.getElementById('loading')
+            debugInfo: document.getElementById('debug-info')
         };
 
         // Überprüfe alle erforderlichen Elemente
@@ -62,31 +61,30 @@ async function initializeApp(): Promise<void> {
             if (!element) {
                 throw new Error(`Element ${name} nicht gefunden`);
             }
-            window.logDebug(`Element ${name} gefunden`);
+            logDebug(`Element ${name} gefunden`);
         });
 
-        // Setze initiale Anzeige
-        elements.characterSelection!.style.display = 'flex';
+        // Verstecke alle UI-Elemente außer Loading
+        elements.characterSelection!.style.display = 'none';
         elements.characterCreator!.style.display = 'none';
         elements.gameWorld!.style.display = 'none';
 
-        // Lade Charaktere und richte Event-Listener ein
-        window.logDebug('Lade gespeicherte Charaktere...');
+        // Lade gespeicherte Charaktere
+        logDebug('Lade gespeicherte Charaktere...');
         await loadSavedCharacters();
         
-        window.logDebug('Richte Event-Listener ein...');
+        // Richte Event-Listener ein
+        logDebug('Richte Event-Listener ein...');
         setupEventListeners();
 
-        // Verstecke Ladebildschirm
-        if (elements.loading) {
-            elements.loading.style.display = 'none';
-        }
+        // Zeige Charakterauswahl und verstecke Ladebildschirm
+        elements.loading!.style.display = 'none';
+        elements.characterSelection!.style.display = 'flex';
 
-        window.logDebug('App-Initialisierung abgeschlossen');
+        logDebug('App-Initialisierung abgeschlossen');
 
     } catch (error) {
-        console.error('Fehler bei der App-Initialisierung:', error);
-        window.logDebug(`Fehler: ${error instanceof Error ? error.message : String(error)}`);
+        logDebug(`Fehler bei der App-Initialisierung: ${error instanceof Error ? error.message : String(error)}`);
         showError('Fehler beim Laden des Spiels');
     }
 }
@@ -102,8 +100,9 @@ async function loadSavedCharacters(): Promise<void> {
 
         const characters: SavedCharacter[] = await response.json();
         updateCharacterSlots(characters);
+        logDebug(`${characters.length} Charaktere geladen`);
     } catch (error) {
-        console.error('Fehler beim Laden der gespeicherten Charaktere:', error);
+        logDebug(`Fehler beim Laden der gespeicherten Charaktere: ${error instanceof Error ? error.message : String(error)}`);
         showError('Fehler beim Laden der Charaktere');
     }
 }
@@ -120,8 +119,10 @@ function updateCharacterSlots(characters: SavedCharacter[]): void {
                     <p>${character.gender === 'male' ? 'Männlich' : 'Weiblich'}</p>
                 </div>
             `;
+            logDebug(`Slot ${slotNumber} aktualisiert: ${character.gender}`);
         } else {
             slot.innerHTML = '<p class="empty-slot-text">Leerer Slot</p>';
+            logDebug(`Slot ${slotNumber} ist leer`);
         }
     });
 }
@@ -130,18 +131,17 @@ function setupEventListeners(): void {
     setupCharacterSlots();
     setupCreatorButtons();
     setupGameStartButton();
-
-    console.log('Event-Listener eingerichtet');
+    logDebug('Event-Listener eingerichtet');
 }
 
 function setupCharacterSlots(): void {
     const slots = document.querySelectorAll('.character-slot');
-    console.log('Gefundene Character-Slots:', slots.length);
+    logDebug(`${slots.length} Character-Slots gefunden`);
     
     slots.forEach((slot: Element) => {
         slot.addEventListener('click', () => {
             const slotNumber = parseInt((slot as HTMLElement).dataset.slot || '0');
-            console.log('Slot geklickt:', slotNumber);
+            logDebug(`Slot ${slotNumber} geklickt`);
             handleSlotClick(slotNumber, slot as HTMLElement);
         });
     });
@@ -149,6 +149,7 @@ function setupCharacterSlots(): void {
 
 async function handleSlotClick(slotNumber: number, slotElement: HTMLElement): Promise<void> {
     const isEmptySlot = slotElement.querySelector('.empty-slot-text') !== null;
+    logDebug(`Slot ${slotNumber} geklickt (${isEmptySlot ? 'leer' : 'belegt'})`);
 
     if (!WebApp.initDataUnsafe.user?.id) {
         showError('Keine Benutzer-ID gefunden');
@@ -178,43 +179,23 @@ function setupCreatorButtons(): void {
     const saveBtn = document.getElementById('save-character');
     const cancelBtn = document.getElementById('cancel-creation');
 
-    console.log('Creator-Buttons gefunden:', {
-        maleBtn: !!maleBtn,
-        femaleBtn: !!femaleBtn,
-        saveBtn: !!saveBtn,
-        cancelBtn: !!cancelBtn
-    });
-
     if (maleBtn && femaleBtn && saveBtn && cancelBtn) {
-        maleBtn.addEventListener('click', () => {
-            console.log('Male Button geklickt');
-            handleGenderSelection('male', maleBtn, femaleBtn);
-        });
-
-        femaleBtn.addEventListener('click', () => {
-            console.log('Female Button geklickt');
-            handleGenderSelection('female', femaleBtn, maleBtn);
-        });
-
-        saveBtn.addEventListener('click', () => {
-            console.log('Save Button geklickt');
-            handleSaveCharacter();
-        });
-
-        cancelBtn.addEventListener('click', () => {
-            console.log('Cancel Button geklickt');
-            hideCharacterCreator();
-        });
+        maleBtn.addEventListener('click', () => handleGenderSelection('male', maleBtn, femaleBtn));
+        femaleBtn.addEventListener('click', () => handleGenderSelection('female', femaleBtn, maleBtn));
+        saveBtn.addEventListener('click', handleSaveCharacter);
+        cancelBtn.addEventListener('click', hideCharacterCreator);
+        logDebug('Creator-Buttons eingerichtet');
     } else {
-        console.error('Nicht alle Creator-Buttons gefunden');
+        logDebug('Fehler: Nicht alle Creator-Buttons gefunden');
     }
 }
 
 function setupGameStartButton(): void {
     const startBtn = document.getElementById('start-game');
-    if (!startBtn) return;
-
-    startBtn.addEventListener('click', startGame);
+    if (startBtn) {
+        startBtn.addEventListener('click', startGame);
+        logDebug('Start-Button eingerichtet');
+    }
 }
 
 async function handleGenderSelection(gender: 'male' | 'female', activeBtn: HTMLElement, inactiveBtn: HTMLElement): Promise<void> {
@@ -228,8 +209,9 @@ async function handleGenderSelection(gender: 'male' | 'female', activeBtn: HTMLE
         }
         
         characterCreator.setGender(gender);
+        logDebug(`Geschlecht gewählt: ${gender}`);
     } catch (error) {
-        console.error('Fehler bei der Geschlechterauswahl:', error);
+        logDebug(`Fehler bei der Geschlechterauswahl: ${error instanceof Error ? error.message : String(error)}`);
         showError('Fehler beim Laden des Charakters');
     }
 }
@@ -266,12 +248,13 @@ async function handleSaveCharacter(): Promise<void> {
             throw new Error('Fehler beim Speichern des Charakters');
         }
 
+        logDebug('Charakter erfolgreich gespeichert');
         await loadSavedCharacters();
         hideCharacterCreator();
         selectedSlot = null;
 
     } catch (error) {
-        console.error('Fehler beim Speichern:', error);
+        logDebug(`Fehler beim Speichern: ${error instanceof Error ? error.message : String(error)}`);
         showError('Fehler beim Speichern des Charakters');
     }
 }
@@ -301,21 +284,20 @@ async function startGame(): Promise<void> {
             selectedCharacter.gender
         );
 
-        // TODO: Verbinde mit dem Spiel-Server und lade andere Spieler
-        
+        logDebug('Spiel erfolgreich gestartet');
     } catch (error) {
-        console.error('Fehler beim Spielstart:', error);
+        logDebug(`Fehler beim Spielstart: ${error instanceof Error ? error.message : String(error)}`);
         showError('Fehler beim Starten des Spiels');
     }
 }
 
 function showCharacterCreator(): void {
-    window.logDebug('Zeige Charaktererstellung');
+    logDebug('Zeige Charaktererstellung');
     const characterSelection = document.getElementById('character-selection');
     const characterCreatorElement = document.getElementById('character-creator');
 
     if (!characterSelection || !characterCreatorElement) {
-        window.logDebug('Fehler: DOM-Elemente für Charaktererstellung nicht gefunden');
+        logDebug('Fehler: DOM-Elemente für Charaktererstellung nicht gefunden');
         return;
     }
 
@@ -323,22 +305,23 @@ function showCharacterCreator(): void {
     characterCreatorElement.style.display = 'block';
     
     if (!characterCreator) {
-        window.logDebug('Initialisiere CharacterCreator');
+        logDebug('Initialisiere CharacterCreator');
         characterCreator = CharacterCreator.getInstance();
         characterCreator.initialize().catch(error => {
-            window.logDebug(`Fehler bei CharacterCreator-Initialisierung: ${error}`);
+            logDebug(`Fehler bei CharacterCreator-Initialisierung: ${error}`);
             showError('Fehler beim Laden des Charaktereditors');
         });
     }
 }
 
 function hideCharacterCreator(): void {
-    console.log('Verstecke Charaktererstellung');
+    logDebug('Verstecke Charaktererstellung');
     document.getElementById('character-creator')!.style.display = 'none';
     document.getElementById('character-selection')!.style.display = 'flex';
 }
 
 function showError(message: string): void {
+    logDebug(`Fehler: ${message}`);
     const errorElement = document.createElement('div');
     errorElement.className = 'error-message';
     errorElement.textContent = message;
@@ -351,12 +334,9 @@ function showError(message: string): void {
 
 // Initialisierung
 if (document.readyState === 'loading') {
-    window.logDebug('Dokument lädt noch, warte auf DOMContentLoaded');
-    document.addEventListener('DOMContentLoaded', () => {
-        window.logDebug('DOMContentLoaded ausgelöst');
-        initializeApp();
-    });
+    logDebug('Dokument lädt noch, warte auf DOMContentLoaded');
+    document.addEventListener('DOMContentLoaded', initializeApp);
 } else {
-    window.logDebug('Dokument bereits geladen, starte sofort');
+    logDebug('Dokument bereits geladen, starte sofort');
     initializeApp();
 } 
