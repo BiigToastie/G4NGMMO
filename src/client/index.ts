@@ -1,39 +1,50 @@
 import WebApp from '@twa-dev/sdk';
-import { CharacterCreator } from './character/CharacterCreator';
+import CharacterCreator from './character/CharacterCreator';
 import { GameWorld } from './game/GameWorld';
 
-// Mache CharacterCreator global verfügbar
-declare global {
-    interface Window {
-        CharacterCreator: typeof CharacterCreator;
-        characterCreator: CharacterCreator | null;
-    }
-}
-
-window.CharacterCreator = CharacterCreator;
-window.characterCreator = null;
-
-interface CharacterData {
+// Interface-Definitionen
+export interface CharacterData {
     userId: number;
     gender: 'male' | 'female';
     slot: number;
 }
 
-// Sofortige Debug-Ausgabe
-console.log('=== Modul-Initialisierung ===');
-console.log('CharacterCreator direkt nach Import:', CharacterCreator);
-console.log('Typ von CharacterCreator:', typeof CharacterCreator);
+export interface SavedCharacter {
+    userId: number;
+    gender: 'male' | 'female';
+    slot: number;
+}
 
-// Definiere die Debug-Funktion zuerst
-const logDebug = (message: string): void => {
-    console.log(message);
-    const debugInfo = document.getElementById('debug-info');
-    if (debugInfo) {
-        const timestamp = new Date().toLocaleTimeString();
-        debugInfo.innerHTML += `<div>[${timestamp}] ${message}</div>`;
-        debugInfo.scrollTop = debugInfo.scrollHeight;
-    }
-};
+// Globale Variablen
+let selectedSlot: number | null = null;
+let selectedCharacter: SavedCharacter | null = null;
+let characterCreator: CharacterCreator | null = null;
+let gameWorld: GameWorld | null = null;
+
+// Getter/Setter für globale Variablen
+function getSelectedSlot(): number | null {
+    return selectedSlot;
+}
+
+function setSelectedSlot(value: number | null): void {
+    selectedSlot = value;
+}
+
+function getSelectedCharacter(): SavedCharacter | null {
+    return selectedCharacter;
+}
+
+function setSelectedCharacter(value: SavedCharacter | null): void {
+    selectedCharacter = value;
+}
+
+function getGameWorld(): GameWorld | null {
+    return gameWorld;
+}
+
+function setGameWorld(value: GameWorld | null): void {
+    gameWorld = value;
+}
 
 // Globale Typdeklaration
 declare global {
@@ -44,33 +55,28 @@ declare global {
     }
 }
 
+// Sofortige Debug-Ausgabe
+console.log('=== Modul-Initialisierung ===');
+console.log('CharacterCreator direkt nach Import:', CharacterCreator);
+console.log('Typ von CharacterCreator:', typeof CharacterCreator);
+
+// Definiere die Debug-Funktion
+const logDebug = (message: string): void => {
+    console.log(message);
+    const debugInfo = document.getElementById('debug-info');
+    if (debugInfo) {
+        const timestamp = new Date().toLocaleTimeString();
+        debugInfo.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+        debugInfo.scrollTop = debugInfo.scrollHeight;
+    }
+};
+
 // Globale Zuweisungen
 window.logDebug = logDebug;
-logDebug('=== Debug-System initialisiert ===');
-
-// Versuche die CharacterCreator-Klasse global verfügbar zu machen
-try {
-    logDebug('Versuche CharacterCreator global zu machen...');
-    if (typeof CharacterCreator === 'undefined') {
-        logDebug('WARNUNG: CharacterCreator ist undefined nach Import');
-        throw new Error('CharacterCreator ist undefined nach Import');
-    }
-    
-    window.CharacterCreator = CharacterCreator;
-    logDebug('CharacterCreator erfolgreich global zugewiesen');
-    logDebug(`Typ von window.CharacterCreator: ${typeof window.CharacterCreator}`);
-    
-    if (typeof window.CharacterCreator.getInstance !== 'function') {
-        logDebug('WARNUNG: getInstance ist keine Funktion');
-        throw new Error('getInstance ist keine Funktion');
-    }
-    
-    logDebug('getInstance-Methode ist verfügbar');
-} catch (error) {
-    logDebug(`Fehler bei der globalen Zuweisung: ${error instanceof Error ? error.message : String(error)}`);
-}
-
+window.CharacterCreator = CharacterCreator;
 window.characterCreator = null;
+
+logDebug('=== Debug-System initialisiert ===');
 
 // Modifizierte initializeCharacterCreator-Funktion
 async function initializeCharacterCreator(): Promise<CharacterCreator> {
