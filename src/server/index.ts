@@ -24,27 +24,28 @@ const players = new Map<number, Player>();
 
 // Debug-Logging für Pfade
 console.log('Server-Verzeichnis:', __dirname);
-console.log('Client-Verzeichnis:', path.join(__dirname, '../client'));
-console.log('Assets-Verzeichnis:', path.join(__dirname, '../client/assets'));
+console.log('Client-Verzeichnis:', path.join(process.cwd(), 'dist/client'));
+console.log('Assets-Verzeichnis:', path.join(process.cwd(), 'dist/client/assets'));
 
 // Middleware
 app.use(express.json());
 
 // Statische Dateien
-app.use('/', express.static(path.join(__dirname, '../client')));
-app.use('/models', express.static(path.join(__dirname, '../client/models')));
-app.use('/assets', express.static(path.join(__dirname, '../client/assets')));
+app.use('/', express.static(path.join(process.cwd(), 'dist/client')));
+app.use('/models', express.static(path.join(process.cwd(), 'dist/client/models')));
+app.use('/assets', express.static(path.join(process.cwd(), 'dist/client/assets')));
 
 // Debug-Route
 app.get('/debug/paths', (_req, res) => {
+    const clientDir = path.join(process.cwd(), 'dist/client');
     res.json({
         serverDir: __dirname,
-        clientDir: path.join(__dirname, '../client'),
-        assetsDir: path.join(__dirname, '../client/assets'),
+        clientDir: clientDir,
+        assetsDir: path.join(clientDir, 'assets'),
         exists: {
-            clientDir: require('fs').existsSync(path.join(__dirname, '../client')),
-            indexHtml: require('fs').existsSync(path.join(__dirname, '../client/index.html')),
-            assetsDir: require('fs').existsSync(path.join(__dirname, '../client/assets'))
+            clientDir: require('fs').existsSync(clientDir),
+            indexHtml: require('fs').existsSync(path.join(clientDir, 'index.html')),
+            assetsDir: require('fs').existsSync(path.join(clientDir, 'assets'))
         }
     });
 });
@@ -54,7 +55,7 @@ app.use('/api', characterRoutes);
 
 // Client-Routen
 const sendIndexHtml = (_req: express.Request, res: express.Response) => {
-    res.sendFile(path.join(__dirname, '../client/index.html'));
+    res.sendFile(path.join(process.cwd(), 'dist/client/index.html'));
 };
 
 app.get('/', sendIndexHtml);
@@ -123,7 +124,7 @@ async function startServer() {
         server.listen(PORT, () => {
             console.log(`Server läuft auf Port ${PORT}`);
             console.log(`Client verfügbar unter: http://localhost:${PORT}`);
-            console.log(`Statische Dateien werden von ${path.join(__dirname, '../client')} serviert`);
+            console.log(`Statische Dateien werden von ${path.join(process.cwd(), 'dist/client')} serviert`);
         });
     } catch (error) {
         console.error('Fehler beim Serverstart:', error);
