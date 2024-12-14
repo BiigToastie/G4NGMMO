@@ -1,5 +1,6 @@
 import WebApp from '@twa-dev/sdk';
 import { GameWorld } from './game/GameWorld';
+import type { CharacterCreator } from './character/CharacterCreator';
 
 // Interface-Definitionen
 export interface CharacterData {
@@ -17,8 +18,8 @@ export interface SavedCharacter {
 // Globale Typdeklaration
 declare global {
     interface Window {
-        CharacterCreator: any;
-        characterCreator: any;
+        CharacterCreator: typeof CharacterCreator;
+        characterCreator: CharacterCreator | null;
         logDebug: (message: string) => void;
     }
 }
@@ -26,7 +27,7 @@ declare global {
 // Globale Variablen
 let selectedSlot: number | null = null;
 let selectedCharacter: SavedCharacter | null = null;
-let characterCreator: any = null;
+let characterCreator: CharacterCreator | null = null;
 let gameWorld: GameWorld | null = null;
 
 // Debug-Funktion
@@ -44,6 +45,31 @@ const logDebug = (message: string): void => {
 
 // Globale Zuweisungen
 window.logDebug = logDebug;
+
+// Hilfsfunktionen für Zustandsverwaltung
+function getSelectedSlot(): number | null {
+    return selectedSlot;
+}
+
+function setSelectedSlot(value: number | null): void {
+    selectedSlot = value;
+}
+
+function getSelectedCharacter(): SavedCharacter | null {
+    return selectedCharacter;
+}
+
+function setSelectedCharacter(value: SavedCharacter | null): void {
+    selectedCharacter = value;
+}
+
+function getGameWorld(): GameWorld | null {
+    return gameWorld;
+}
+
+function setGameWorld(value: GameWorld | null): void {
+    gameWorld = value;
+}
 
 // Modifizierte initializeCharacterCreator-Funktion
 async function initializeCharacterCreator(): Promise<any> {
@@ -438,10 +464,10 @@ async function handleGenderSelection(gender: 'male' | 'female', activeBtn: HTMLE
 
 async function handleSaveCharacter(): Promise<void> {
     logDebug('=== Speichern gestartet ===');
-    const selectedSlot = getSelectedSlot();
-    logDebug(`Ausgewählter Slot: ${selectedSlot}`);
+    const currentSlot = getSelectedSlot();
+    logDebug(`Ausgewählter Slot: ${currentSlot}`);
 
-    if (selectedSlot === null) {
+    if (currentSlot === null) {
         logDebug('Kein Slot ausgewählt');
         showError('Kein Slot ausgewählt');
         return;
@@ -462,7 +488,7 @@ async function handleSaveCharacter(): Promise<void> {
         const characterData: CharacterData = {
             userId: WebApp.initDataUnsafe.user.id,
             gender,
-            slot: selectedSlot
+            slot: currentSlot
         };
 
         logDebug('Sende Speicheranfrage...');
@@ -569,8 +595,8 @@ function showSuccess(message: string): void {
 }
 
 async function startGame(): Promise<void> {
-    const selectedCharacter = getSelectedCharacter();
-    if (!selectedCharacter) {
+    const currentCharacter = getSelectedCharacter();
+    if (!currentCharacter) {
         showError('Kein Charakter ausgewählt');
         return;
     }
@@ -597,7 +623,7 @@ async function startGame(): Promise<void> {
         await gameWorld.addPlayer(
             WebApp.initDataUnsafe.user.id,
             WebApp.initDataUnsafe.user.username || 'Spieler',
-            selectedCharacter.gender
+            currentCharacter.gender
         );
 
         logDebug('Spiel erfolgreich gestartet');
