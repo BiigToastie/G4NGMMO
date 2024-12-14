@@ -106,12 +106,12 @@ async function initializeApp(): Promise<void> {
             const slotNumber = (slot as HTMLElement).dataset.slot;
             logDebug(`Registriere Handler für Slot ${slotNumber}`);
             
-            slot.addEventListener('click', function(event: Event) {
+            slot.addEventListener('click', (event: Event) => {
                 logDebug(`Click auf Slot ${slotNumber}`);
                 event.preventDefault();
                 event.stopPropagation();
                 
-                const slotElement = this as HTMLElement;
+                const slotElement = event.currentTarget as HTMLElement;
                 const isEmptySlot = slotElement.querySelector('.empty-slot-text') !== null;
                 
                 logDebug(`Slot ${slotNumber} ist ${isEmptySlot ? 'leer' : 'belegt'}`);
