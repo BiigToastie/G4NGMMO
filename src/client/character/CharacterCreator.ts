@@ -62,6 +62,13 @@ export class CharacterCreator {
 
         this.camera.position.set(0, 1.6, 4);
         this.camera.lookAt(0, 1, 0);
+
+        // Füge einen Debug-Würfel hinzu, um die Szene zu testen
+        const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+        const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        const cube = new THREE.Mesh(geometry, material);
+        cube.position.set(0, 1, 0);
+        this.scene.add(cube);
     }
 
     public async initialize(): Promise<void> {
@@ -104,6 +111,7 @@ export class CharacterCreator {
 
     private async loadModels(): Promise<void> {
         try {
+            window.logDebug('Lade Charaktermodelle...');
             const [maleGLTF, femaleGLTF] = await Promise.all([
                 this.loadModel('male'),
                 this.loadModel('female')
@@ -115,16 +123,16 @@ export class CharacterCreator {
             this.updateModelsVisibility();
             this.centerCameraOnModel(this.selectedGender === 'male' ? this.maleModel!.model : this.femaleModel!.model);
 
-            console.log('Beide Modelle erfolgreich geladen');
+            window.logDebug('Modelle erfolgreich geladen');
         } catch (error) {
-            console.error('Fehler beim Laden der Modelle:', error);
+            window.logDebug('Fehler beim Laden der Modelle: ' + error);
             throw error;
         }
     }
 
     private async loadModel(gender: 'male' | 'female'): Promise<GLTF> {
         const path = `/dist/models/${gender}_all/Animation_Mirror_Viewing_withSkin.glb`;
-        console.log(`Lade ${gender} Modell von ${path}...`);
+        window.logDebug(`Lade ${gender} Modell von ${path}...`);
         return await this.loader.loadAsync(path);
     }
 
@@ -155,11 +163,13 @@ export class CharacterCreator {
     }
 
     public setGender(gender: 'male' | 'female'): void {
+        window.logDebug(`Setze Geschlecht auf: ${gender}`);
         this.selectedGender = gender;
         this.updateModelsVisibility();
     }
 
     private updateModelsVisibility(): void {
+        window.logDebug('Aktualisiere Modell-Sichtbarkeit');
         if (this.maleModel) {
             this.maleModel.model.visible = this.selectedGender === 'male';
             if (this.selectedGender === 'male') {
@@ -184,6 +194,8 @@ export class CharacterCreator {
         if (activeModel) {
             this.centerCameraOnModel(activeModel.model);
         }
+        
+        window.logDebug(`Modell-Sichtbarkeit aktualisiert: ${this.selectedGender}`);
     }
 
     private centerCameraOnModel(model: THREE.Object3D): void {

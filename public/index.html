@@ -223,6 +223,8 @@
             height: calc(100% - 160px);
             position: relative;
             margin-top: 60px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
         }
 
         .gender-buttons {
@@ -341,29 +343,64 @@
         window.addEventListener('resize', appHeight);
         appHeight();
 
+        // Initialisiere CharacterCreator
+        async function initializeCharacterCreator() {
+            try {
+                window.logDebug('Initialisiere CharacterCreator...');
+                if (!window.characterCreator) {
+                    window.characterCreator = await window.CharacterCreator.getInstance();
+                    await window.characterCreator.initialize();
+                    window.logDebug('CharacterCreator erfolgreich initialisiert');
+                }
+            } catch (error) {
+                window.logDebug('Fehler bei der CharacterCreator-Initialisierung: ' + error);
+            }
+        }
+
+        // Event-Handler für Slot-Klicks
+        function handleSlotClick(slotNumber) {
+            window.logDebug('Click auf Slot ' + slotNumber);
+            const creator = document.querySelector('#character-creator');
+            const selection = document.querySelector('#character-selection');
+            
+            creator.style.display = 'flex';
+            creator.style.opacity = '1';
+            creator.style.zIndex = '1000';
+            selection.style.display = 'none';
+            
+            // Initialisiere CharacterCreator
+            initializeCharacterCreator();
+        }
+
         // Initialisiere Event-Handler für Geschlechterauswahl
         document.addEventListener('DOMContentLoaded', function() {
             const maleBtn = document.getElementById('male-btn');
             const femaleBtn = document.getElementById('female-btn');
             
+            // Setze Click-Handler für Slots
+            document.querySelectorAll('.character-slot').forEach(slot => {
+                const slotNumber = slot.getAttribute('data-slot');
+                slot.onclick = () => handleSlotClick(slotNumber);
+            });
+            
             if (maleBtn && femaleBtn) {
-                maleBtn.addEventListener('click', function(event) {
+                maleBtn.addEventListener('click', async function(event) {
                     event.preventDefault();
                     window.logDebug('Männlich ausgewählt');
                     maleBtn.classList.add('selected');
                     femaleBtn.classList.remove('selected');
                     if (window.characterCreator) {
-                        window.characterCreator.setGender('male');
+                        await window.characterCreator.setGender('male');
                     }
                 });
 
-                femaleBtn.addEventListener('click', function(event) {
+                femaleBtn.addEventListener('click', async function(event) {
                     event.preventDefault();
                     window.logDebug('Weiblich ausgewählt');
                     femaleBtn.classList.add('selected');
                     maleBtn.classList.remove('selected');
                     if (window.characterCreator) {
-                        window.characterCreator.setGender('female');
+                        await window.characterCreator.setGender('female');
                     }
                 });
             }
@@ -377,6 +414,10 @@
                     const creator = document.querySelector('#character-creator');
                     const selection = document.querySelector('#character-selection');
                     if (creator && selection) {
+                        if (window.characterCreator) {
+                            window.characterCreator.dispose();
+                            window.characterCreator = null;
+                        }
                         creator.style.opacity = '0';
                         setTimeout(() => {
                             creator.style.display = 'none';
