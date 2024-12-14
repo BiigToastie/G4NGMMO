@@ -102,7 +102,6 @@ async function initializeCharacterCreator(): Promise<CharacterCreator> {
     }
 }
 
-let characterCreator: CharacterCreator;
 let gameWorld: GameWorld;
 
 async function waitForWebApp(): Promise<void> {
