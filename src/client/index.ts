@@ -313,8 +313,15 @@ function showCharacterCreator(): void {
         return;
     }
 
-    characterSelection.style.display = 'none';
-    characterCreatorElement.style.display = 'block';
+    // Sanfte Überblendung
+    characterSelection.style.opacity = '0';
+    setTimeout(() => {
+        characterSelection.style.display = 'none';
+        characterCreatorElement.style.display = 'flex';
+        setTimeout(() => {
+            characterCreatorElement.style.opacity = '1';
+        }, 50);
+    }, 300);
     
     if (!characterCreator) {
         logDebug('Initialisiere CharacterCreator');
@@ -328,8 +335,23 @@ function showCharacterCreator(): void {
 
 function hideCharacterCreator(): void {
     logDebug('Verstecke Charaktererstellung');
-    document.getElementById('character-creator')!.style.display = 'none';
-    document.getElementById('character-selection')!.style.display = 'flex';
+    const characterSelection = document.getElementById('character-selection');
+    const characterCreatorElement = document.getElementById('character-creator');
+
+    if (!characterSelection || !characterCreatorElement) {
+        logDebug('Fehler: DOM-Elemente für Charaktererstellung nicht gefunden');
+        return;
+    }
+
+    // Sanfte Überblendung
+    characterCreatorElement.style.opacity = '0';
+    setTimeout(() => {
+        characterCreatorElement.style.display = 'none';
+        characterSelection.style.display = 'flex';
+        setTimeout(() => {
+            characterSelection.style.opacity = '1';
+        }, 50);
+    }, 300);
 }
 
 function showError(message: string): void {
