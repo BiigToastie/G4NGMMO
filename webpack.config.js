@@ -42,22 +42,27 @@ module.exports = {
         filename: '[name].[contenthash].js',
         path: path.resolve(__dirname, 'dist/client'),
         clean: true,
-        publicPath: '/'
+        publicPath: ''
     },
     plugins: [
         new CopyWebpackPlugin({
             patterns: [
                 {
                     from: 'public/index.html',
-                    to: path.resolve(__dirname, 'dist/client/index.html')
+                    to: 'index.html',
+                    transform(content) {
+                        return content
+                            .toString()
+                            .replace(/src="\/([^"]+)"/g, 'src="$1"');
+                    }
                 },
                 {
                     from: 'src/client/assets',
-                    to: path.resolve(__dirname, 'dist/client/assets')
+                    to: 'assets'
                 },
                 {
                     from: 'public/models',
-                    to: path.resolve(__dirname, 'dist/client/models'),
+                    to: 'models',
                     noErrorOnMissing: true
                 }
             ]

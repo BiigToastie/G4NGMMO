@@ -173,8 +173,26 @@
 
     <div id="error-message" class="error-message"></div>
 
-    <script src="/runtime.0d42e4c757c582c8cfb1.js"></script>
-    <script src="/vendors.27052bde913ea61b4279.js"></script>
-    <script src="/main.3027ab57c263c72f0893.js"></script>
+    <div id="debug-info" style="position: fixed; bottom: 10px; left: 10px; color: white; background: rgba(0,0,0,0.7); padding: 10px; font-family: monospace; font-size: 12px;"></div>
+
+    <script>
+        function logDebug(message) {
+            console.log(message);
+            const debugInfo = document.getElementById('debug-info');
+            if (debugInfo) {
+                debugInfo.innerHTML += `<div>${new Date().toISOString()} - ${message}</div>`;
+            }
+        }
+
+        window.addEventListener('error', function(e) {
+            if (e.target.tagName === 'SCRIPT') {
+                logDebug(`Fehler beim Laden von: ${e.target.src}`);
+            }
+        }, true);
+    </script>
+
+    <script src="runtime.0d42e4c757c582c8cfb1.js"></script>
+    <script src="vendors.27052bde913ea61b4279.js"></script>
+    <script src="main.3027ab57c263c72f0893.js"></script>
 </body>
 </html> 

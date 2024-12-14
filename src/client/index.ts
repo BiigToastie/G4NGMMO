@@ -18,21 +18,41 @@ let gameWorld: GameWorld;
 let selectedSlot: number | null = null;
 let selectedCharacter: SavedCharacter | null = null;
 
+declare global {
+    interface Window {
+        logDebug: (message: string) => void;
+    }
+}
+
 async function initializeApp(): Promise<void> {
     try {
-        console.log('App-Initialisierung startet...');
+        window.logDebug('App-Initialisierung startet...');
         await WebApp.ready();
-        console.log('WebApp ist bereit');
+        window.logDebug('WebApp ist bereit');
 
-        document.getElementById('character-selection')!.style.display = 'flex';
-        document.getElementById('character-creator')!.style.display = 'none';
-        document.getElementById('game-world')!.style.display = 'none';
+        const characterSelection = document.getElementById('character-selection');
+        const characterCreator = document.getElementById('character-creator');
+        const gameWorld = document.getElementById('game-world');
 
+        if (!characterSelection || !characterCreator || !gameWorld) {
+            throw new Error('Erforderliche DOM-Elemente nicht gefunden');
+        }
+
+        window.logDebug('DOM-Elemente gefunden');
+
+        // Setze initiale Anzeige
+        characterSelection.style.display = 'flex';
+        characterCreator.style.display = 'none';
+        gameWorld.style.display = 'none';
+
+        window.logDebug('Lade gespeicherte Charaktere...');
         await loadSavedCharacters();
+        window.logDebug('Richte Event-Listener ein...');
         setupEventListeners();
 
     } catch (error) {
         console.error('Fehler bei der App-Initialisierung:', error);
+        window.logDebug(`Fehler: ${error instanceof Error ? error.message : String(error)}`);
         showError('Fehler beim Laden des Spiels');
     }
 }
@@ -256,15 +276,23 @@ async function startGame(): Promise<void> {
 }
 
 function showCharacterCreator(): void {
-    console.log('Zeige Charaktererstellung');
-    document.getElementById('character-selection')!.style.display = 'none';
-    document.getElementById('character-creator')!.style.display = 'block';
+    window.logDebug('Zeige Charaktererstellung');
+    const characterSelection = document.getElementById('character-selection');
+    const characterCreatorElement = document.getElementById('character-creator');
+
+    if (!characterSelection || !characterCreatorElement) {
+        window.logDebug('Fehler: DOM-Elemente für Charaktererstellung nicht gefunden');
+        return;
+    }
+
+    characterSelection.style.display = 'none';
+    characterCreatorElement.style.display = 'block';
     
     if (!characterCreator) {
-        console.log('Initialisiere CharacterCreator');
+        window.logDebug('Initialisiere CharacterCreator');
         characterCreator = CharacterCreator.getInstance();
         characterCreator.initialize().catch(error => {
-            console.error('Fehler bei der CharacterCreator-Initialisierung:', error);
+            window.logDebug(`Fehler bei CharacterCreator-Initialisierung: ${error}`);
             showError('Fehler beim Laden des Charaktereditors');
         });
     }
