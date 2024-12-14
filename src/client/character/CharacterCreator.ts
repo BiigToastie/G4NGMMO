@@ -73,7 +73,8 @@ export class CharacterCreator {
 
     public async initialize(): Promise<void> {
         try {
-            console.log('Initialisiere CharacterCreator...');
+            const debug = (msg: string) => window.logDebug ? window.logDebug(msg) : console.log(msg);
+            debug('Initialisiere CharacterCreator...');
             
             this.container = document.getElementById('character-preview');
             if (!this.container) {
@@ -93,9 +94,12 @@ export class CharacterCreator {
             await this.loadModels();
             this.animate();
 
-            console.log('CharacterCreator erfolgreich initialisiert');
+            debug('CharacterCreator erfolgreich initialisiert');
         } catch (error) {
-            console.error('Fehler bei der CharacterCreator-Initialisierung:', error);
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            if (window.logDebug) {
+                window.logDebug(`Fehler bei der CharacterCreator-Initialisierung: ${errorMsg}`);
+            }
             throw error;
         }
     }
@@ -110,8 +114,9 @@ export class CharacterCreator {
     }
 
     private async loadModels(): Promise<void> {
+        const debug = (msg: string) => window.logDebug ? window.logDebug(msg) : console.log(msg);
         try {
-            window.logDebug('Lade Charaktermodelle...');
+            debug('Lade Charaktermodelle...');
             const [maleGLTF, femaleGLTF] = await Promise.all([
                 this.loadModel('male'),
                 this.loadModel('female')
@@ -123,16 +128,17 @@ export class CharacterCreator {
             this.updateModelsVisibility();
             this.centerCameraOnModel(this.selectedGender === 'male' ? this.maleModel!.model : this.femaleModel!.model);
 
-            window.logDebug('Modelle erfolgreich geladen');
+            debug('Modelle erfolgreich geladen');
         } catch (error) {
-            window.logDebug('Fehler beim Laden der Modelle: ' + error);
+            debug(`Fehler beim Laden der Modelle: ${error}`);
             throw error;
         }
     }
 
     private async loadModel(gender: 'male' | 'female'): Promise<GLTF> {
+        const debug = (msg: string) => window.logDebug ? window.logDebug(msg) : console.log(msg);
         const path = `/dist/models/${gender}_all/Animation_Mirror_Viewing_withSkin.glb`;
-        window.logDebug(`Lade ${gender} Modell von ${path}...`);
+        debug(`Lade ${gender} Modell von ${path}...`);
         return await this.loader.loadAsync(path);
     }
 
@@ -163,13 +169,15 @@ export class CharacterCreator {
     }
 
     public setGender(gender: 'male' | 'female'): void {
-        window.logDebug(`Setze Geschlecht auf: ${gender}`);
+        const debug = (msg: string) => window.logDebug ? window.logDebug(msg) : console.log(msg);
+        debug(`Setze Geschlecht auf: ${gender}`);
         this.selectedGender = gender;
         this.updateModelsVisibility();
     }
 
     private updateModelsVisibility(): void {
-        window.logDebug('Aktualisiere Modell-Sichtbarkeit');
+        const debug = (msg: string) => window.logDebug ? window.logDebug(msg) : console.log(msg);
+        debug('Aktualisiere Modell-Sichtbarkeit');
         if (this.maleModel) {
             this.maleModel.model.visible = this.selectedGender === 'male';
             if (this.selectedGender === 'male') {
@@ -195,7 +203,7 @@ export class CharacterCreator {
             this.centerCameraOnModel(activeModel.model);
         }
         
-        window.logDebug(`Modell-Sichtbarkeit aktualisiert: ${this.selectedGender}`);
+        debug(`Modell-Sichtbarkeit aktualisiert: ${this.selectedGender}`);
     }
 
     private centerCameraOnModel(model: THREE.Object3D): void {

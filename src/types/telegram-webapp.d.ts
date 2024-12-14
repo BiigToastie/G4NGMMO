@@ -1,3 +1,11 @@
+declare global {
+    interface Window {
+        logDebug: (message: string) => void;
+        characterCreator: any;
+        CharacterCreator: any;
+    }
+}
+
 declare module '@twa-dev/sdk' {
     interface User {
         id: number;
@@ -36,4 +44,6 @@ declare module '@twa-dev/sdk' {
 
     const WebApp: WebApp;
     export default WebApp;
-} 
+}
+
+export {}; 
