@@ -116,32 +116,33 @@ function updateCharacterSlots(characters: SavedCharacter[]): void {
     const slots = document.querySelectorAll('.character-slot');
     
     slots.forEach((slot: Element) => {
-        // Entferne zuerst alle existierenden Event-Listener
         const slotElement = slot as HTMLElement;
-        const newSlot = slotElement.cloneNode(true) as HTMLElement;
-        slotElement.parentNode?.replaceChild(newSlot, slotElement);
-        
-        const slotNumber = parseInt(newSlot.dataset.slot || '0');
+        const slotNumber = parseInt(slotElement.dataset.slot || '0');
         const character = characters.find(char => char.slot === slotNumber);
 
+        // Aktualisiere Slot-Inhalt
         if (character) {
-            newSlot.innerHTML = `
+            slotElement.innerHTML = `
                 <div class="character-info">
                     <p>${character.gender === 'male' ? 'Männlich' : 'Weiblich'}</p>
                 </div>
             `;
             logDebug(`Slot ${slotNumber} aktualisiert: ${character.gender}`);
         } else {
-            newSlot.innerHTML = '<p class="empty-slot-text">Leerer Slot</p>';
+            slotElement.innerHTML = '<p class="empty-slot-text">Leerer Slot</p>';
             logDebug(`Slot ${slotNumber} ist leer`);
         }
 
-        // Füge Click-Event-Listener hinzu
-        newSlot.addEventListener('click', async (event: Event) => {
-            logDebug('Click-Event ausgelöst');
+        // Entferne alte Event-Listener durch Klonen
+        const newSlot = slotElement.cloneNode(true) as HTMLElement;
+        slotElement.parentNode?.replaceChild(newSlot, slotElement);
+
+        // Füge neuen Click-Event-Listener hinzu
+        newSlot.onclick = async (event: MouseEvent) => {
             event.preventDefault();
             event.stopPropagation();
             
+            logDebug('Click-Event ausgelöst');
             const isEmptySlot = newSlot.querySelector('.empty-slot-text') !== null;
             logDebug(`Slot ${slotNumber} geklickt (${isEmptySlot ? 'leer' : 'belegt'})`);
             
@@ -157,12 +158,14 @@ function updateCharacterSlots(characters: SavedCharacter[]): void {
                     return;
                 }
                 
+                // Direkte UI-Manipulation
                 characterSelectionElement.style.display = 'none';
                 characterCreatorElement.style.display = 'flex';
                 characterCreatorElement.style.opacity = '1';
                 
                 logDebug('Charaktererstellung angezeigt');
                 
+                // Initialisiere CharacterCreator
                 if (!characterCreator) {
                     logDebug('Initialisiere CharacterCreator');
                     characterCreator = CharacterCreator.getInstance();
@@ -177,7 +180,9 @@ function updateCharacterSlots(characters: SavedCharacter[]): void {
             } else {
                 await handleSlotClick(slotNumber, newSlot);
             }
-        });
+        };
+        
+        logDebug(`Click-Handler für Slot ${slotNumber} registriert`);
     });
     
     logDebug('Charakter-Slots und Event-Handler aktualisiert');
@@ -382,14 +387,12 @@ function showCharacterCreator(): void {
             return;
         }
 
-        // Direkte Style-Änderungen ohne Verzögerung
         characterSelection.style.display = 'none';
         characterCreatorElement.style.display = 'flex';
         characterCreatorElement.style.opacity = '1';
         
         logDebug('Charaktererstellung-UI aktualisiert');
         
-        // Initialisiere CharacterCreator sofort
         if (!characterCreator) {
             logDebug('Initialisiere CharacterCreator');
             characterCreator = CharacterCreator.getInstance();
@@ -399,8 +402,6 @@ function showCharacterCreator(): void {
                 logDebug(`Fehler bei CharacterCreator-Initialisierung: ${error}`);
                 showError('Fehler beim Laden des Charaktereditors');
             });
-        } else {
-            logDebug('CharacterCreator bereits initialisiert');
         }
     } catch (error) {
         logDebug(`Fehler beim Anzeigen der Charaktererstellung: ${error instanceof Error ? error.message : String(error)}`);
