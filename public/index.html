@@ -3,173 +3,178 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MMO Telegram Game</title>
+    <title>MMO Game</title>
     <style>
         body {
             margin: 0;
-            padding: 0;
+            overflow: hidden;
             font-family: Arial, sans-serif;
             background-color: #17212b;
-            color: #f5f5f5;
-            overflow: hidden;
+            color: white;
+        }
+
+        #character-selection {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .character-slots {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            width: 100%;
+            padding: 20px;
+        }
+
+        .character-slot {
+            width: 150px;
+            height: 200px;
+            border: 2px solid #30475e;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background-color: rgba(48, 71, 94, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .character-slot:hover {
+            border-color: #4a90e2;
+            background-color: rgba(74, 144, 226, 0.1);
+        }
+
+        .character-slot.selected {
+            border-color: #4a90e2;
+            background-color: rgba(74, 144, 226, 0.2);
+        }
+
+        .empty-slot-text {
+            color: #8a9aa9;
+            text-align: center;
+        }
+
+        #character-creator {
+            display: none;
+            position: absolute;
+            width: 100%;
+            height: 100%;
         }
 
         #character-preview {
-            position: fixed;
-            top: 0;
-            left: 0;
             width: 100%;
             height: 100%;
-            z-index: 1;
         }
 
-        #character-ui {
-            position: fixed;
+        .button-container {
+            position: absolute;
             bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4a90e2;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .action-button:disabled {
+            background-color: #30475e;
+            cursor: not-allowed;
+        }
+
+        #game-world {
+            display: none;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .gender-buttons {
+            position: absolute;
+            top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background-color: rgba(35, 46, 60, 0.9);
-            padding: 20px;
-            border-radius: 10px;
-            z-index: 2;
             display: flex;
-            flex-direction: column;
-            gap: 15px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            width: 90%;
-            max-width: 400px;
-        }
-
-        .button-group {
-            display: flex;
-            justify-content: center;
             gap: 10px;
-            flex-wrap: wrap;
         }
 
-        button {
-            background-color: #2b5278;
-            color: white;
-            border: none;
+        .gender-button {
             padding: 10px 20px;
+            border: none;
             border-radius: 5px;
+            background-color: #30475e;
+            color: white;
             cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 14px;
         }
 
-        button:hover {
-            background-color: #3a6d9a;
-            transform: translateY(-2px);
-        }
-
-        button.selected {
-            background-color: #4a8bc2;
-            box-shadow: 0 0 0 2px #6ab2f2;
-            transform: translateY(-2px);
-        }
-
-        .button-icon {
-            width: 20px;
-            height: 20px;
-            filter: invert(1);
-        }
-
-        #save-character {
-            background-color: #4CAF50;
-            width: 100%;
-            padding: 12px;
-            font-size: 16px;
-            margin-top: 10px;
-            justify-content: center;
-        }
-
-        #save-character:hover {
-            background-color: #45a049;
+        .gender-button.selected {
+            background-color: #4a90e2;
         }
 
         .error-message {
-            color: #ec3942;
-            background: rgba(236, 57, 66, 0.1);
-            padding: 10px;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(236, 57, 66, 0.9);
+            color: white;
+            padding: 10px 20px;
             border-radius: 5px;
-            margin: 10px 0;
+            z-index: 1000;
             display: none;
-            text-align: center;
-        }
-
-        .section-title {
-            color: #6ab2f2;
-            margin: 5px 0;
-            font-size: 14px;
-            text-align: center;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        @media (max-width: 480px) {
-            #character-ui {
-                bottom: 10px;
-                padding: 15px;
-            }
-
-            button {
-                padding: 8px 15px;
-                font-size: 12px;
-            }
-
-            .button-icon {
-                width: 16px;
-                height: 16px;
-            }
         }
     </style>
 </head>
 <body>
-    <div id="character-preview"></div>
-    
-    <div id="character-ui">
-        <div class="section-title">Geschlecht</div>
-        <div class="button-group">
-            <button id="male-btn" class="selected">
-                <img src="dist/icons/male.svg" alt="Männlich" class="button-icon">
-                Männlich
-            </button>
-            <button id="female-btn">
-                <img src="dist/icons/female.svg" alt="Weiblich" class="button-icon">
-                Weiblich
-            </button>
+    <div id="character-selection">
+        <h1>Charakterauswahl</h1>
+        <div class="character-slots">
+            <div class="character-slot" data-slot="1">
+                <p class="empty-slot-text">Leerer Slot</p>
+            </div>
+            <div class="character-slot" data-slot="2">
+                <p class="empty-slot-text">Leerer Slot</p>
+            </div>
         </div>
-
-        <div class="section-title">Klasse</div>
-        <div class="button-group">
-            <button id="warrior-btn" class="selected">
-                <img src="dist/icons/warrior.svg" alt="Krieger" class="button-icon">
-                Krieger
-            </button>
-            <button id="mage-btn">
-                <img src="dist/icons/mage.svg" alt="Magier" class="button-icon">
-                Magier
-            </button>
-            <button id="ranger-btn">
-                <img src="dist/icons/ranger.svg" alt="Waldläufer" class="button-icon">
-                Waldläufer
-            </button>
-            <button id="rogue-btn">
-                <img src="dist/icons/rogue.svg" alt="Schurke" class="button-icon">
-                Schurke
-            </button>
+        <div class="button-container">
+            <button id="start-game" class="action-button" disabled>Spiel starten</button>
         </div>
-
-        <button id="save-character">Charakter Erstellen</button>
-        <div id="error-message" class="error-message"></div>
     </div>
 
-    <script src="dist/vendors.bundle.js"></script>
-    <script src="dist/threejs.bundle.js"></script>
-    <script src="dist/main.bundle.js"></script>
+    <div id="character-creator">
+        <div id="character-preview"></div>
+        <div class="gender-buttons">
+            <button id="male-btn" class="gender-button selected">Männlich</button>
+            <button id="female-btn" class="gender-button">Weiblich</button>
+        </div>
+        <div class="button-container">
+            <button id="save-character" class="action-button">Charakter speichern</button>
+            <button id="cancel-creation" class="action-button">Abbrechen</button>
+        </div>
+    </div>
+
+    <div id="game-world">
+        <div id="movement-controller"></div>
+    </div>
+
+    <div id="error-message" class="error-message"></div>
+
+    <script src="/runtime.0d42e4c757c582c8cfb1.js"></script>
+    <script src="/vendors.27052bde913ea61b4279.js"></script>
+    <script src="/main.3027ab57c263c72f0893.js"></script>
 </body>
 </html> 

@@ -24,6 +24,10 @@ async function initializeApp(): Promise<void> {
         await WebApp.ready();
         console.log('WebApp ist bereit');
 
+        document.getElementById('character-selection')!.style.display = 'flex';
+        document.getElementById('character-creator')!.style.display = 'none';
+        document.getElementById('game-world')!.style.display = 'none';
+
         await loadSavedCharacters();
         setupEventListeners();
 
@@ -72,13 +76,18 @@ function setupEventListeners(): void {
     setupCharacterSlots();
     setupCreatorButtons();
     setupGameStartButton();
+
+    console.log('Event-Listener eingerichtet');
 }
 
 function setupCharacterSlots(): void {
     const slots = document.querySelectorAll('.character-slot');
+    console.log('Gefundene Character-Slots:', slots.length);
+    
     slots.forEach((slot: Element) => {
         slot.addEventListener('click', () => {
             const slotNumber = parseInt((slot as HTMLElement).dataset.slot || '0');
+            console.log('Slot geklickt:', slotNumber);
             handleSlotClick(slotNumber, slot as HTMLElement);
         });
     });
@@ -115,15 +124,36 @@ function setupCreatorButtons(): void {
     const saveBtn = document.getElementById('save-character');
     const cancelBtn = document.getElementById('cancel-creation');
 
-    if (!maleBtn || !femaleBtn || !saveBtn || !cancelBtn) {
-        console.error('Charakter-Editor Buttons nicht gefunden');
-        return;
-    }
+    console.log('Creator-Buttons gefunden:', {
+        maleBtn: !!maleBtn,
+        femaleBtn: !!femaleBtn,
+        saveBtn: !!saveBtn,
+        cancelBtn: !!cancelBtn
+    });
 
-    maleBtn.addEventListener('click', () => handleGenderSelection('male', maleBtn, femaleBtn));
-    femaleBtn.addEventListener('click', () => handleGenderSelection('female', femaleBtn, maleBtn));
-    saveBtn.addEventListener('click', handleSaveCharacter);
-    cancelBtn.addEventListener('click', hideCharacterCreator);
+    if (maleBtn && femaleBtn && saveBtn && cancelBtn) {
+        maleBtn.addEventListener('click', () => {
+            console.log('Male Button geklickt');
+            handleGenderSelection('male', maleBtn, femaleBtn);
+        });
+
+        femaleBtn.addEventListener('click', () => {
+            console.log('Female Button geklickt');
+            handleGenderSelection('female', femaleBtn, maleBtn);
+        });
+
+        saveBtn.addEventListener('click', () => {
+            console.log('Save Button geklickt');
+            handleSaveCharacter();
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            console.log('Cancel Button geklickt');
+            hideCharacterCreator();
+        });
+    } else {
+        console.error('Nicht alle Creator-Buttons gefunden');
+    }
 }
 
 function setupGameStartButton(): void {
@@ -226,11 +256,22 @@ async function startGame(): Promise<void> {
 }
 
 function showCharacterCreator(): void {
+    console.log('Zeige Charaktererstellung');
     document.getElementById('character-selection')!.style.display = 'none';
     document.getElementById('character-creator')!.style.display = 'block';
+    
+    if (!characterCreator) {
+        console.log('Initialisiere CharacterCreator');
+        characterCreator = CharacterCreator.getInstance();
+        characterCreator.initialize().catch(error => {
+            console.error('Fehler bei der CharacterCreator-Initialisierung:', error);
+            showError('Fehler beim Laden des Charaktereditors');
+        });
+    }
 }
 
 function hideCharacterCreator(): void {
+    console.log('Verstecke Charaktererstellung');
     document.getElementById('character-creator')!.style.display = 'none';
     document.getElementById('character-selection')!.style.display = 'flex';
 }
