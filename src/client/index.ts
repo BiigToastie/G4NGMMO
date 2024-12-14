@@ -1,9 +1,5 @@
 import WebApp from '@twa-dev/sdk';
 import { GameWorld } from './game/GameWorld';
-import type { CharacterCreator } from './character/CharacterCreator';
-
-// Sofortige Debug-Ausgaben für Import-Status
-console.log('=== Import-Status ===');
 
 // Interface-Definitionen
 export interface CharacterData {
@@ -21,8 +17,8 @@ export interface SavedCharacter {
 // Globale Typdeklaration
 declare global {
     interface Window {
-        CharacterCreator: typeof CharacterCreator;
-        characterCreator: CharacterCreator | null;
+        CharacterCreator: any;
+        characterCreator: any;
         logDebug: (message: string) => void;
     }
 }
@@ -30,33 +26,8 @@ declare global {
 // Globale Variablen
 let selectedSlot: number | null = null;
 let selectedCharacter: SavedCharacter | null = null;
-let characterCreator: CharacterCreator | null = null;
+let characterCreator: any = null;
 let gameWorld: GameWorld | null = null;
-
-// Getter/Setter für globale Variablen
-function getSelectedSlot(): number | null {
-    return selectedSlot;
-}
-
-function setSelectedSlot(value: number | null): void {
-    selectedSlot = value;
-}
-
-function getSelectedCharacter(): SavedCharacter | null {
-    return selectedCharacter;
-}
-
-function setSelectedCharacter(value: SavedCharacter | null): void {
-    selectedCharacter = value;
-}
-
-function getGameWorld(): GameWorld | null {
-    return gameWorld;
-}
-
-function setGameWorld(value: GameWorld | null): void {
-    gameWorld = value;
-}
 
 // Debug-Funktion
 const logDebug = (message: string): void => {
@@ -75,7 +46,7 @@ const logDebug = (message: string): void => {
 window.logDebug = logDebug;
 
 // Modifizierte initializeCharacterCreator-Funktion
-async function initializeCharacterCreator(): Promise<CharacterCreator> {
+async function initializeCharacterCreator(): Promise<any> {
     logDebug('=== CharacterCreator Initialisierung ===');
     
     try {
@@ -90,22 +61,36 @@ async function initializeCharacterCreator(): Promise<CharacterCreator> {
 
         // Versuche die Klasse dynamisch zu laden
         logDebug('Versuche dynamischen Import von CharacterCreator');
-        let CreatorModule;
+        let CharacterCreatorModule;
         try {
-            CreatorModule = await import('./character/CharacterCreator');
+            CharacterCreatorModule = await import('./character/CharacterCreator.js');
             logDebug('Modul erfolgreich geladen');
-            logDebug(`Verfügbare Exports: ${Object.keys(CreatorModule).join(', ')}`);
+            logDebug(`Verfügbare Exports: ${Object.keys(CharacterCreatorModule).join(', ')}`);
         } catch (importError) {
             logDebug(`Import-Fehler: ${importError}`);
-            throw new Error('CharacterCreator-Modul konnte nicht geladen werden');
+            // Versuche alternativen Import-Pfad
+            try {
+                CharacterCreatorModule = await import('./character/CharacterCreator');
+                logDebug('Modul über alternativen Pfad geladen');
+            } catch (altImportError) {
+                logDebug(`Alternativer Import-Fehler: ${altImportError}`);
+                throw new Error('CharacterCreator-Modul konnte nicht geladen werden');
+            }
         }
 
-        const { CharacterCreator } = CreatorModule;
+        // Versuche beide möglichen Export-Varianten
+        const CharacterCreator = CharacterCreatorModule.default || CharacterCreatorModule.CharacterCreator;
         
-        if (!CharacterCreator || typeof CharacterCreator !== 'function') {
-            logDebug(`CharacterCreator Typ: ${typeof CharacterCreator}`);
+        if (!CharacterCreator) {
+            logDebug('Export-Analyse:');
+            Object.keys(CharacterCreatorModule).forEach(key => {
+                logDebug(`- ${key}: ${typeof CharacterCreatorModule[key]}`);
+            });
             throw new Error('CharacterCreator-Klasse nicht gefunden im Modul');
         }
+
+        logDebug(`CharacterCreator Typ: ${typeof CharacterCreator}`);
+        logDebug(`CharacterCreator hat getInstance: ${typeof CharacterCreator.getInstance === 'function'}`);
 
         // Globale Zuweisung der Klasse
         window.CharacterCreator = CharacterCreator;
