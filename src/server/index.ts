@@ -22,20 +22,39 @@ const io = new SocketServer(server);
 const db = Database.getInstance();
 const players = new Map<number, Player>();
 
+// Debug-Logging für Pfade
+console.log('Server-Verzeichnis:', __dirname);
+console.log('Client-Verzeichnis:', path.join(__dirname, '../../client'));
+console.log('Assets-Verzeichnis:', path.join(__dirname, '../../client/assets'));
+
 // Middleware
 app.use(express.json());
 
 // Statische Dateien
-app.use(express.static(path.join(__dirname, '../../../dist/client')));
-app.use('/models', express.static(path.join(__dirname, '../../../dist/client/models')));
-app.use('/assets', express.static(path.join(__dirname, '../../../dist/client/assets')));
+app.use('/', express.static(path.join(__dirname, '../../client')));
+app.use('/models', express.static(path.join(__dirname, '../../client/models')));
+app.use('/assets', express.static(path.join(__dirname, '../../client/assets')));
+
+// Debug-Route
+app.get('/debug/paths', (_req, res) => {
+    res.json({
+        serverDir: __dirname,
+        clientDir: path.join(__dirname, '../../client'),
+        assetsDir: path.join(__dirname, '../../client/assets'),
+        exists: {
+            clientDir: require('fs').existsSync(path.join(__dirname, '../../client')),
+            indexHtml: require('fs').existsSync(path.join(__dirname, '../../client/index.html')),
+            assetsDir: require('fs').existsSync(path.join(__dirname, '../../client/assets'))
+        }
+    });
+});
 
 // API-Routen
 app.use('/api', characterRoutes);
 
 // Client-Routen
 const sendIndexHtml = (_req: express.Request, res: express.Response) => {
-    res.sendFile(path.join(__dirname, '../../../dist/client/index.html'));
+    res.sendFile(path.join(__dirname, '../../client/index.html'));
 };
 
 app.get('/', sendIndexHtml);
@@ -104,7 +123,7 @@ async function startServer() {
         server.listen(PORT, () => {
             console.log(`Server läuft auf Port ${PORT}`);
             console.log(`Client verfügbar unter: http://localhost:${PORT}`);
-            console.log(`Statische Dateien werden von ${path.join(__dirname, '../../../dist/client')} serviert`);
+            console.log(`Statische Dateien werden von ${path.join(__dirname, '../../client')} serviert`);
         });
     } catch (error) {
         console.error('Fehler beim Serverstart:', error);

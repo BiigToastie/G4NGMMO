@@ -57,7 +57,8 @@ module.exports = {
                 },
                 {
                     from: 'public/models',
-                    to: 'models'
+                    to: 'models',
+                    noErrorOnMissing: true
                 }
             ]
         })
