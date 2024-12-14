@@ -21,6 +21,31 @@ let selectedCharacter: SavedCharacter | null = null;
 let characterCreator: CharacterCreator | null = null;
 let gameWorld: GameWorld | null = null;
 
+// Getter/Setter für globale Variablen
+function getSelectedSlot(): number | null {
+    return selectedSlot;
+}
+
+function setSelectedSlot(value: number | null): void {
+    selectedSlot = value;
+}
+
+function getSelectedCharacter(): SavedCharacter | null {
+    return selectedCharacter;
+}
+
+function setSelectedCharacter(value: SavedCharacter | null): void {
+    selectedCharacter = value;
+}
+
+function getGameWorld(): GameWorld | null {
+    return gameWorld;
+}
+
+function setGameWorld(value: GameWorld | null): void {
+    gameWorld = value;
+}
+
 // Globale Typdeklaration
 declare global {
     interface Window {
