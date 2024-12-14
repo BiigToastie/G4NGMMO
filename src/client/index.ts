@@ -97,7 +97,7 @@ async function initializeCharacterCreator(): Promise<any> {
                 './CharacterCreator'
             ];
 
-            let importError = null;
+            let importError: Error | null = null;
             for (const path of importPaths) {
                 try {
                     logDebug(`Versuche Import von: ${path}`);
@@ -105,8 +105,8 @@ async function initializeCharacterCreator(): Promise<any> {
                     logDebug('Import erfolgreich');
                     break;
                 } catch (error) {
-                    importError = error;
-                    logDebug(`Import von ${path} fehlgeschlagen: ${error}`);
+                    importError = error instanceof Error ? error : new Error(String(error));
+                    logDebug(`Import von ${path} fehlgeschlagen: ${importError.message}`);
                 }
             }
 
