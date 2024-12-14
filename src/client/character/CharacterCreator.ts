@@ -25,7 +25,7 @@ interface CharacterSelection {
 }
 
 // Die CharacterCreator-Klasse
-class CharacterCreator {
+export class CharacterCreator {
     private static instance: CharacterCreator | null = null;
     private readonly scene: THREE.Scene;
     private readonly camera: THREE.PerspectiveCamera;

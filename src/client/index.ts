@@ -89,43 +89,24 @@ async function initializeCharacterCreator(): Promise<any> {
         logDebug('Versuche dynamischen Import von CharacterCreator');
         let CharacterCreatorModule;
         try {
-            // Versuche verschiedene Import-Pfade
-            const importPaths = [
-                './character/CharacterCreator',
-                '../character/CharacterCreator',
-                '/character/CharacterCreator',
-                './CharacterCreator'
-            ];
-
-            let importError: Error | null = null;
-            for (const path of importPaths) {
-                try {
-                    logDebug(`Versuche Import von: ${path}`);
-                    CharacterCreatorModule = await import(path);
-                    logDebug('Import erfolgreich');
-                    break;
-                } catch (error) {
-                    importError = error instanceof Error ? error : new Error(String(error));
-                    logDebug(`Import von ${path} fehlgeschlagen: ${importError.message}`);
-                }
-            }
-
-            if (!CharacterCreatorModule) {
-                throw importError || new Error('Kein Import-Pfad erfolgreich');
-            }
-
-            logDebug('Modul geladen, analysiere Exports...');
+            CharacterCreatorModule = await import('./character/CharacterCreator.ts');
+            logDebug('Modul erfolgreich geladen');
             logDebug(`Verfügbare Exports: ${Object.keys(CharacterCreatorModule).join(', ')}`);
             
+            // Analysiere das Modul
+            logDebug('Modul-Analyse:');
+            for (const key in CharacterCreatorModule) {
+                const value = CharacterCreatorModule[key];
+                logDebug(`- ${key}: ${typeof value}`);
+                if (typeof value === 'function') {
+                    logDebug(`  Funktionsname: ${value.name}`);
+                    logDebug(`  Konstruktor: ${value.toString().slice(0, 100)}...`);
+                }
+            }
+            
             // Versuche verschiedene Export-Varianten
-            const CharacterCreator = 
-                CharacterCreatorModule.default || 
-                CharacterCreatorModule.CharacterCreator || 
-                Object.values(CharacterCreatorModule).find(exp => 
-                    typeof exp === 'function' && 
-                    exp.name === 'CharacterCreator'
-                );
-
+            const CharacterCreator = CharacterCreatorModule.CharacterCreator;
+            
             if (!CharacterCreator) {
                 logDebug('Export-Analyse:');
                 Object.entries(CharacterCreatorModule).forEach(([key, value]) => {
@@ -164,7 +145,11 @@ async function initializeCharacterCreator(): Promise<any> {
 
             return instance;
         } catch (error) {
-            logDebug(`Import-Fehler: ${error}`);
+            logDebug(`Import-Fehler: ${error instanceof Error ? error.message : String(error)}`);
+            logDebug('Stack Trace:');
+            if (error instanceof Error && error.stack) {
+                logDebug(error.stack);
+            }
             throw new Error('CharacterCreator-Modul konnte nicht geladen werden');
         }
     } catch (error) {
