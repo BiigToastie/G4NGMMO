@@ -72,6 +72,40 @@ async function initializeApp(): Promise<void> {
         elements.characterCreator!.style.display = 'none';
         elements.gameWorld!.style.display = 'none';
 
+        // Füge Test-Button hinzu
+        const testButton = document.createElement('button');
+        testButton.textContent = 'Test Event Handler';
+        testButton.style.position = 'fixed';
+        testButton.style.top = '10px';
+        testButton.style.right = '10px';
+        testButton.style.zIndex = '9999';
+        testButton.style.padding = '10px';
+        testButton.style.backgroundColor = '#4CAF50';
+        testButton.style.color = 'white';
+        testButton.style.border = 'none';
+        testButton.style.borderRadius = '5px';
+        testButton.style.cursor = 'pointer';
+        
+        testButton.onclick = () => {
+            logDebug('Test-Button geklickt');
+            const slots = document.querySelectorAll('.character-slot');
+            logDebug(`Gefundene Slots: ${slots.length}`);
+            
+            slots.forEach((slot: Element, index: number) => {
+                const slotElement = slot as HTMLElement;
+                const hasClickHandler = typeof slotElement.onclick === 'function';
+                logDebug(`Slot ${index + 1}: Hat Click-Handler: ${hasClickHandler}`);
+                
+                // Teste Click-Event
+                if (hasClickHandler) {
+                    logDebug(`Simuliere Click auf Slot ${index + 1}`);
+                    slotElement.click();
+                }
+            });
+        };
+        
+        document.body.appendChild(testButton);
+
         // Lade gespeicherte Charaktere
         logDebug('Lade gespeicherte Charaktere...');
         await loadSavedCharacters();
@@ -84,6 +118,14 @@ async function initializeApp(): Promise<void> {
         // Richte andere Event-Listener ein
         setupCreatorButtons();
         setupGameStartButton();
+
+        // Überprüfe nochmal die Event-Handler
+        const slots = document.querySelectorAll('.character-slot');
+        slots.forEach((slot: Element, index: number) => {
+            const slotElement = slot as HTMLElement;
+            const hasClickHandler = typeof slotElement.onclick === 'function';
+            logDebug(`Slot ${index + 1} nach Setup: Hat Click-Handler: ${hasClickHandler}`);
+        });
 
         logDebug('App-Initialisierung abgeschlossen');
 
