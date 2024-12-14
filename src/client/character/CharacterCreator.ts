@@ -47,28 +47,21 @@ export class CharacterCreator {
     private setupScene(): void {
         this.scene.background = new THREE.Color(0x17212b);
 
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
         const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
         directionalLight.position.set(5, 5, 5);
         directionalLight.castShadow = true;
         
-        const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
+        const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.8);
         directionalLight2.position.set(-5, 5, -5);
 
-        const directionalLight3 = new THREE.DirectionalLight(0xffffff, 0.3);
+        const directionalLight3 = new THREE.DirectionalLight(0xffffff, 0.5);
         directionalLight3.position.set(0, -5, 5);
         
         this.scene.add(ambientLight, directionalLight, directionalLight2, directionalLight3);
 
-        this.camera.position.set(0, 1.6, 4);
+        this.camera.position.set(0, 1.6, 2.5);
         this.camera.lookAt(0, 1, 0);
-
-        // Füge einen Debug-Würfel hinzu, um die Szene zu testen
-        const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-        const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-        const cube = new THREE.Mesh(geometry, material);
-        cube.position.set(0, 1, 0);
-        this.scene.add(cube);
     }
 
     public async initialize(): Promise<void> {
@@ -107,10 +100,11 @@ export class CharacterCreator {
     private setupControls(): void {
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
-        this.controls.minDistance = 1;
-        this.controls.maxDistance = 5;
+        this.controls.minDistance = 1.5;
+        this.controls.maxDistance = 4;
         this.controls.maxPolarAngle = Math.PI / 1.5;
         this.controls.target.set(0, 1, 0);
+        this.controls.update();
     }
 
     private async loadModels(): Promise<void> {
@@ -137,14 +131,20 @@ export class CharacterCreator {
 
     private async loadModel(gender: 'male' | 'female'): Promise<GLTF> {
         const debug = (msg: string) => window.logDebug ? window.logDebug(msg) : console.log(msg);
-        const path = `/dist/models/${gender}_all/Animation_Mirror_Viewing_withSkin.glb`;
+        const path = `/models/${gender}_all/Animation_Mirror_Viewing_withSkin.glb`;
         debug(`Lade ${gender} Modell von ${path}...`);
-        return await this.loader.loadAsync(path);
+        try {
+            return await this.loader.loadAsync(path);
+        } catch (error) {
+            debug(`Fehler beim Laden des Modells ${gender}: ${error}`);
+            throw error;
+        }
     }
 
     private async setupModel(gltf: GLTF, xPosition: number): Promise<CharacterModel> {
         const model = gltf.scene;
         model.position.set(xPosition, 0, 0);
+        model.scale.set(1, 1, 1);
         
         model.traverse((object: THREE.Object3D) => {
             if (object instanceof THREE.SkinnedMesh) {
@@ -160,7 +160,11 @@ export class CharacterCreator {
         let animation: THREE.AnimationAction | null = null;
 
         if (gltf.animations.length > 0) {
-            animation = mixer.clipAction(gltf.animations[0]);
+            const idleAnimation = gltf.animations.find(anim => 
+                anim.name.toLowerCase().includes('idle')
+            ) || gltf.animations[0];
+            
+            animation = mixer.clipAction(idleAnimation);
             animation.play();
         }
 

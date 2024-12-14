@@ -32,29 +32,20 @@ module.exports = {
         fallback: {
             "path": false,
             "fs": false
-        },
-        modules: [
-            path.resolve(__dirname, 'node_modules'),
-            'node_modules'
-        ]
+        }
     },
     output: {
         filename: '[name].[contenthash].js',
         path: path.resolve(__dirname, 'dist/client'),
         clean: true,
-        publicPath: ''
+        publicPath: '/'
     },
     plugins: [
         new CopyWebpackPlugin({
             patterns: [
                 {
                     from: 'public/index.html',
-                    to: 'index.html',
-                    transform(content) {
-                        return content
-                            .toString()
-                            .replace(/src="\/([^"]+)"/g, 'src="$1"');
-                    }
+                    to: 'index.html'
                 },
                 {
                     from: 'src/client/assets',
