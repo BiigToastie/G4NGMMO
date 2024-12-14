@@ -60,13 +60,15 @@ declare global {
     }
 }
 
-// Definiere die Debug-Funktion
+// Debug-Funktion
 const logDebug = (message: string): void => {
-    console.log(message);
+    const timestamp = new Date().toLocaleTimeString();
+    const formattedMessage = `[${timestamp}] ${message}`;
+    console.log(formattedMessage);
+    
     const debugInfo = document.getElementById('debug-info');
     if (debugInfo) {
-        const timestamp = new Date().toLocaleTimeString();
-        debugInfo.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+        debugInfo.innerHTML += `<div>${formattedMessage}</div>`;
         debugInfo.scrollTop = debugInfo.scrollHeight;
     }
 };
@@ -83,7 +85,13 @@ if (typeof CharacterCreator !== 'undefined') {
 // Modifizierte initializeCharacterCreator-Funktion
 async function initializeCharacterCreator(): Promise<CharacterCreator> {
     logDebug('=== CharacterCreator Initialisierung ===');
+    
     try {
+        // Debug-Ausgaben für den aktuellen Status
+        logDebug(`CharacterCreator (direkt): ${typeof CharacterCreator}`);
+        logDebug(`window.CharacterCreator: ${typeof window.CharacterCreator}`);
+        logDebug(`window.characterCreator: ${window.characterCreator ? 'existiert' : 'null'}`);
+
         // Prüfe ob bereits eine Instanz existiert
         if (window.characterCreator) {
             logDebug('Verwende existierende CharacterCreator-Instanz');
@@ -93,25 +101,33 @@ async function initializeCharacterCreator(): Promise<CharacterCreator> {
         // Versuche die Klasse zu laden
         let CreatorClass = CharacterCreator;
         
-        if (!CreatorClass) {
-            logDebug('CharacterCreator nicht direkt verfügbar, versuche dynamischen Import');
-            const module = await import('./character/CharacterCreator');
-            CreatorClass = module.CharacterCreator;
+        if (!CreatorClass || typeof CreatorClass !== 'function') {
+            logDebug('CharacterCreator nicht als Klasse verfügbar, versuche dynamischen Import');
+            try {
+                const module = await import('./character/CharacterCreator');
+                CreatorClass = module.CharacterCreator;
+                logDebug(`Dynamischer Import erfolgreich: ${typeof CreatorClass}`);
+            } catch (importError) {
+                logDebug(`Fehler beim dynamischen Import: ${importError}`);
+                throw new Error('CharacterCreator-Klasse konnte nicht geladen werden');
+            }
         }
 
-        if (!CreatorClass) {
-            throw new Error('CharacterCreator-Klasse konnte nicht geladen werden');
+        if (!CreatorClass || typeof CreatorClass !== 'function') {
+            logDebug('CharacterCreator-Klasse nicht gefunden nach Import-Versuch');
+            throw new Error('CharacterCreator-Klasse nicht gefunden');
         }
 
         logDebug('Erstelle neue CharacterCreator-Instanz');
         const instance = CreatorClass.getInstance();
         
         if (!instance) {
+            logDebug('getInstance lieferte keine Instanz zurück');
             throw new Error('getInstance lieferte keine Instanz zurück');
         }
 
         window.characterCreator = instance;
-        logDebug('Neue Instanz erstellt');
+        logDebug('Neue Instanz erstellt und global zugewiesen');
 
         logDebug('Initialisiere Instanz...');
         await instance.initialize();
@@ -411,10 +427,11 @@ async function handleGenderSelection(gender: 'male' | 'female', activeBtn: HTMLE
         activeBtn.classList.add('selected');
         inactiveBtn.classList.remove('selected');
         
-        logDebug('Initialisiere CharacterCreator...');
+        logDebug('Hole CharacterCreator-Instanz...');
         const creator = await initializeCharacterCreator();
         
         if (!creator) {
+            logDebug('Keine CharacterCreator-Instanz verfügbar');
             throw new Error('Keine CharacterCreator-Instanz verfügbar');
         }
         

@@ -4,6 +4,15 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader';
 import WebApp from '@twa-dev/sdk';
 
+// Globale Typdeklaration
+declare global {
+    interface Window {
+        CharacterCreator: typeof CharacterCreator;
+        characterCreator: CharacterCreator | null;
+        logDebug: (message: string) => void;
+    }
+}
+
 interface CharacterModel {
     model: THREE.Group;
     mixer: THREE.AnimationMixer;
@@ -13,15 +22,6 @@ interface CharacterModel {
 interface CharacterSelection {
     gender: 'male' | 'female';
     class: 'warrior' | 'mage' | 'ranger' | 'rogue';
-}
-
-// Globale Typdeklaration
-declare global {
-    interface Window {
-        CharacterCreator: typeof CharacterCreator;
-        characterCreator: CharacterCreator | null;
-        logDebug: (message: string) => void;
-    }
 }
 
 // Die CharacterCreator-Klasse
@@ -60,11 +60,18 @@ export class CharacterCreator {
 
     public static getInstance(): CharacterCreator {
         const debug = (msg: string) => window.logDebug ? window.logDebug(msg) : console.log(msg);
-        debug('getInstance aufgerufen');
+        debug('CharacterCreator.getInstance aufgerufen');
         
         if (!CharacterCreator.instance) {
             debug('Erstelle neue CharacterCreator-Instanz');
             CharacterCreator.instance = new CharacterCreator();
+            
+            // Stelle sicher, dass die Instanz global verfügbar ist
+            if (typeof window !== 'undefined') {
+                debug('Mache CharacterCreator global verfügbar');
+                window.CharacterCreator = CharacterCreator;
+                window.characterCreator = CharacterCreator.instance;
+            }
         } else {
             debug('Verwende existierende CharacterCreator-Instanz');
         }
@@ -358,4 +365,5 @@ export class CharacterCreator {
 // Stelle sicher, dass die Klasse global verfügbar ist
 if (typeof window !== 'undefined') {
     window.CharacterCreator = CharacterCreator;
+    console.log('CharacterCreator wurde global registriert');
 }
