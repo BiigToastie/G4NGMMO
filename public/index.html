@@ -95,6 +95,7 @@
             transition: all 0.3s ease;
             padding: 15px;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .character-slot:hover {
@@ -198,6 +199,56 @@
             max-width: 90%;
             text-align: center;
         }
+
+        #character-creator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--tg-theme-bg-color, #17212b);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            z-index: 100;
+        }
+
+        #character-preview {
+            width: 100%;
+            height: calc(100% - 200px);
+            position: relative;
+        }
+
+        .gender-buttons {
+            position: fixed;
+            top: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            z-index: 101;
+        }
+
+        .gender-button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--tg-theme-secondary-bg-color, #242f3d);
+            color: var(--tg-theme-text-color, white);
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .gender-button.selected {
+            background-color: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, white);
+        }
     </style>
 </head>
 <body>
@@ -222,6 +273,24 @@
             <div class="button-container">
                 <button id="start-game" class="action-button" disabled>Spiel starten</button>
             </div>
+        </div>
+
+        <div id="character-creator">
+            <div class="gender-buttons">
+                <button id="male-btn" class="gender-button selected">Männlich</button>
+                <button id="female-btn" class="gender-button">Weiblich</button>
+            </div>
+            
+            <div id="character-preview"></div>
+            
+            <div class="button-container">
+                <button id="save-character" class="action-button">Speichern</button>
+                <button id="cancel-creation" class="action-button">Abbrechen</button>
+            </div>
+        </div>
+
+        <div id="game-world">
+            <div id="movement-controller"></div>
         </div>
     </div>
 
